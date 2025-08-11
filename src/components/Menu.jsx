@@ -5,15 +5,17 @@ import "@/style/menu.css"; // Asumiendo que @ apunta a raíz del proyecto
 import Link from "next/link";
 import Image from "next/image";
 
-import compra from "@/img/eventos.png";
+import eventos from "@/img/eventos.png";
 import producto from "@/img/cliente.png";
 import cliente from "@/img/product.png";
+import depo from "@/img/deposito.png";
+
 
 const menuItems = [
   {
     id: 1,
     name: "Compra Directa",
-    image: compra, // imagen importada
+    image: depo, // imagen importada
     link: "/compra",
   },
   {
@@ -26,13 +28,13 @@ const menuItems = [
     id: 3,
     name: "Producto",
     image: cliente,
-    link: "/ventas",
+    link: "/producto",
   },
   {
     id: 4,
-    name: "Contactos",
-    image: compra,
-    link: "/contactos",
+    name: "Evento",
+    image: eventos,
+    link: "/eventos",
   },
 ];
 

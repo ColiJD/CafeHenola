@@ -1,15 +1,18 @@
-// components/CompraForm.jsx
 'use client';
 import { useEffect, useState } from 'react';
+import Select from 'react-select'; // Componente para select con búsqueda
 import '../../style/compra.css';
 
 export default function CompraForm() {
+  // Estados para datos cargados
   const [clientes, setClientes] = useState([]);
   const [productos, setProductos] = useState([]);
 
-  const [clienteID, setClienteID] = useState('');
-  const [compraFecha, setCompraFecha] = useState('');
-  const [compraTipoCafe, setCompraTipoCafe] = useState('');
+  // Estados para los campos del formulario
+  const [cliente, setCliente] = useState(null); // objeto cliente seleccionado
+  const [producto, setProducto] = useState(null); // objeto producto seleccionado
+  const [compraTipoDocumento, setCompraTipoDocumento] = useState('');
+  const [compraEn, setCompraEn] = useState('');
   const [compraPrecioQQ, setCompraPrecioQQ] = useState('');
   const [compraCatidadQQ, setCompraCatidadQQ] = useState('');
   const [compraTotal, setCompraTotal] = useState(0);
@@ -18,6 +21,7 @@ export default function CompraForm() {
   const [compraDescripcion, setCompraDescripcion] = useState('');
   const [mensaje, setMensaje] = useState('');
 
+  // Carga clientes y productos al montar componente
   useEffect(() => {
     async function cargarDatos() {
       try {
@@ -27,8 +31,20 @@ export default function CompraForm() {
         ]);
         const clientesData = await resClientes.json();
         const productosData = await resProductos.json();
-        setClientes(clientesData);
-        setProductos(productosData);
+
+        // Adaptamos los datos para react-select (value y label)
+        setClientes(
+          clientesData.map((c) => ({
+            value: c.clienteID,
+            label: `${c.clienteNombre} ${c.clienteApellido}`,
+          }))
+        );
+        setProductos(
+          productosData.map((p) => ({
+            value: p.productID,
+            label: p.productName,
+          }))
+        );
       } catch (error) {
         console.error('Error cargando datos:', error);
       }
@@ -36,40 +52,50 @@ export default function CompraForm() {
     cargarDatos();
   }, []);
 
+  // Calcula total y retención cuando precio o cantidad cambian
   useEffect(() => {
     const precio = parseFloat(compraPrecioQQ) || 0;
     const cantidad = parseFloat(compraCatidadQQ) || 0;
     const total = precio * cantidad;
-    const retencion = (cantidad)-( cantidad * 0.04);
+    const retencion = cantidad - cantidad * 0.04;
     setCompraTotal(total.toFixed(2));
     setCompraRetencio(retencion.toFixed(2));
   }, [compraPrecioQQ, compraCatidadQQ]);
 
+  // Maneja el envío del formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validación rápida
-    if (!clienteID || !compraFecha || !compraTipoCafe || !compraPrecioQQ || !compraCatidadQQ) {
+    // Validar que todos los campos obligatorios estén llenos
+    if (
+      !cliente ||
+      !producto ||
+      !compraTipoDocumento ||
+      !compraEn ||
+      !compraPrecioQQ ||
+      !compraCatidadQQ
+    ) {
       setMensaje('Por favor complete todos los campos obligatorios.');
       return;
     }
 
+    // Preparar datos para backend
     const data = {
-      clienteID: parseInt(clienteID),
-      compraFecha,
-      compraTipoCafe: parseInt(compraTipoCafe),
+      clienteID: cliente.value, // id real
+      compraTipoDocumento,
+      compraTipoCafe: producto.value, // id real producto
       compraPrecioQQ: parseFloat(compraPrecioQQ),
       compraCatidadQQ: parseFloat(compraCatidadQQ),
       compraTotal: parseFloat(compraTotal),
       comprarTotalSacos: comprarTotalSacos ? parseFloat(comprarTotalSacos) : 0,
       compraRetencio: parseFloat(compraRetencio),
       compraDescripcion,
-      compraMovimiento: "Entrada",
-      compraTipoDocumento: "Compra directa",
-      compraEn: "Efectivo",
+      compraMovimiento: 'Entrada',
+      compraEn,
     };
 
     try {
+      // Enviar datos al backend
       const res = await fetch('/api/compras', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -78,10 +104,12 @@ export default function CompraForm() {
 
       if (res.ok) {
         setMensaje('Compra registrada exitosamente');
+
         // Reset campos
-        setClienteID('');
-        setCompraFecha('');
-        setCompraTipoCafe('');
+        setCliente(null);
+        setProducto(null);
+        setCompraTipoDocumento('');
+        setCompraEn('');
         setCompraPrecioQQ('');
         setCompraCatidadQQ('');
         setComprarTotalSacos('');
@@ -100,31 +128,44 @@ export default function CompraForm() {
     <form className="compra-form" onSubmit={handleSubmit}>
       <h2>Compra</h2>
 
-      <select value={clienteID} onChange={(e) => setClienteID(e.target.value)} required>
-        <option value="">Seleccione cliente</option>
-        {clientes.map((cliente) => (
-          <option key={cliente.clienteID} value={cliente.clienteID}>
-            {cliente.clienteNombre} {cliente.clienteApellido}
-          </option>
-        ))}
-      </select>
-
-      <select value={compraTipoCafe} onChange={(e) => setCompraTipoCafe(e.target.value)} required>
-        <option value="">Seleccione tipo de café</option>
-        {productos.map((producto) => (
-          <option key={producto.productID} value={producto.productID}>
-            {producto.productName}
-          </option>
-        ))}
-      </select>
-
-      <input
-        type="date"
-        value={compraFecha}
-        onChange={(e) => setCompraFecha(e.target.value)}
-        required
+      {/* Select con búsqueda para cliente */}
+       <label htmlFor="cliente">Cliente:</label>
+      <Select
+        options={clientes}
+        value={cliente}
+        onChange={setCliente}
+        placeholder="Seleccione o busque un cliente"
+        isClearable
       />
 
+      {/* Select con búsqueda para tipo de café/producto */}
+       <label htmlFor="producto">Tipo de Café:</label>
+      <Select
+        options={productos}
+        value={producto}
+        onChange={setProducto}
+        placeholder="Seleccione o busque un tipo de café"
+        isClearable
+      />
+
+      {/* Campos de texto normales */}
+      <label htmlFor="tipoDocumento">Tipo de Documento:</label>
+      <input
+        type="text"
+        placeholder="Tipo de Documento"
+        value={compraTipoDocumento}
+        onChange={(e) => setCompraTipoDocumento(e.target.value)}
+        required
+      />
+      <label htmlFor="compraEn">Compra en:</label>
+      <input
+        type="text"
+        placeholder="Compra en (Efectivo, Transferencia, etc.)"
+        value={compraEn}
+        onChange={(e) => setCompraEn(e.target.value)}
+        required
+      />
+      <label htmlFor="compraPrecioQQ">Precio por QQ:</label>
       <input
         type="number"
         placeholder="Precio por QQ"
@@ -133,7 +174,7 @@ export default function CompraForm() {
         step="0.01"
         required
       />
-
+      <label htmlFor="compraCatidadQQ">Cantidad QQ:</label>
       <input
         type="number"
         placeholder="Cantidad QQ"
@@ -143,10 +184,15 @@ export default function CompraForm() {
         required
       />
 
+      <label htmlFor="compraTotal">Total (Lps):</label>
       <input type="text" value={`L. ${compraTotal}`} readOnly placeholder="Total (Lps)" />
+
+      <label htmlFor="compraRetencio">Retención (Lps):</label>
       <input type="text" value={`L. ${compraRetencio}`} readOnly placeholder="Retención (Lps)" />
 
+      <label htmlFor="comprarTotalSacos">Total Sacos:</label>
       <input
+      
         type="number"
         placeholder="Total Sacos"
         value={comprarTotalSacos}
@@ -154,7 +200,9 @@ export default function CompraForm() {
         step="0.01"
       />
 
+      <label htmlFor="compraDescripcion">Descripción:</label>
       <textarea
+        id="compraDescripcion"
         placeholder="Descripción"
         value={compraDescripcion}
         onChange={(e) => setCompraDescripcion(e.target.value)}

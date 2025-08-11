@@ -1,4 +1,3 @@
-// app/api/compras/route.js
 import prisma from "@/lib/prisma";
 
 export async function GET() {
@@ -17,7 +16,7 @@ export async function POST(request) {
     const body = await request.json();
     const {
       clienteID,
-      compraFecha,
+      compraTipoDocumento,
       compraTipoCafe,
       compraPrecioQQ,
       compraCatidadQQ,
@@ -25,15 +24,17 @@ export async function POST(request) {
       comprarTotalSacos,
       compraRetencio,
       compraDescripcion,
+      compraEn
     } = body;
 
-    // Validaciones básicas (opcional)
+    // Validaciones
     if (
       !clienteID ||
-      !compraFecha ||
       !compraTipoCafe ||
       !compraPrecioQQ ||
-      !compraCatidadQQ
+      !compraCatidadQQ ||
+      !compraTipoDocumento ||
+      !compraEn
     ) {
       return new Response(
         JSON.stringify({ error: "Faltan datos obligatorios" }),
@@ -44,8 +45,8 @@ export async function POST(request) {
     const nuevaCompra = await prisma.compra.create({
       data: {
         clienteID: Number(clienteID),
-        compraFecha: new Date(compraFecha),
-        compraTipoDocumento: "Compra directa",
+        compraFecha: new Date(), // Fecha automática
+        compraTipoDocumento,
         compraMovimiento: "Entrada",
         compraTipoCafe: Number(compraTipoCafe),
         compraPrecioQQ: parseFloat(compraPrecioQQ),
@@ -53,7 +54,7 @@ export async function POST(request) {
         compraTotal: parseFloat(compraTotal),
         comprarTotalSacos: comprarTotalSacos ? parseFloat(comprarTotalSacos) : 0,
         compraRetencio: parseFloat(compraRetencio),
-        compraEn: "Compra Directa",
+        compraEn,
         compraDescripcion: compraDescripcion || "",
       },
     });

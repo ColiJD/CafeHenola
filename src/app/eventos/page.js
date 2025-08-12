@@ -21,12 +21,12 @@ export default function EventosPage() {
 
   return (
     <div className="eventos-container">
-      <h1 className="eventos-title">Eventos</h1>
+      <h1 className="eventos-title">Historial de Compras</h1>
       <div className="overflow-auto">
         <table className="eventos-table">
           <thead>
             <tr>
-              <th>Tipo</th>
+              <th>Numero</th>
               <th>Fecha</th>
               <th>Movimiento</th>
               <th>Cliente</th>
@@ -41,9 +41,9 @@ export default function EventosPage() {
           <tbody className="tarjeta-body">
             {eventos.map((evento, idx) => (
               <tr key={idx} className="tarjeta">
-                <td data-label="Tipo">{evento.tipo}</td>
+                <td data-label="Numero">{evento.id}</td>
                 <td data-label="Fecha">
-                  {new Date(evento.fecha).toLocaleDateString()}
+                  {new Date(evento.fecha).toLocaleDateString("es-HN")}
                 </td>
                 <td data-label="Movimiento">{evento.movimiento}</td>
                 <td data-label="Cliente">{evento.cliente}</td>

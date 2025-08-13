@@ -16,8 +16,7 @@ export default function EventosPage() {
       });
   }, []);
 
-  if (loading)
-    return <div className="eventos-loading">Cargando eventos...</div>;
+  if (loading) return <div className="eventos-loading">Cargando eventos...</div>;
 
   return (
     <div className="eventos-container">

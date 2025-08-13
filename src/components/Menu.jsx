@@ -36,6 +36,12 @@ const menuItems = [
     image: eventos,
     link: "/eventos",
   },
+  {
+    id: 5,
+    name: "Deposito",
+    image: depo,
+    link: "/deposito",
+  },
 ];
 
 export default function Menu() {

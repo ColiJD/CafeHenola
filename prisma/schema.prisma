@@ -8,19 +8,18 @@ datasource db {
 }
 
 model cliente {
-  clienteID          Int           @id @default(autoincrement())
-  clienteCedula      String?       @unique(map: "clienteCedula") @db.VarChar(13)
-  clienteNombre      String?       @db.VarChar(20)
-  clienteApellido    String?       @db.VarChar(20)
-  clienteDirecion    String?       @db.VarChar(200)
-  clienteMunicipio   String?       @db.VarChar(30)
-  clienteDepartament String?       @db.VarChar(30)
-  claveIHCAFE        Int?
-  clienteTelefono    String?       @db.VarChar(30)
+  clienteID          Int        @id @default(autoincrement())
+  clienteCedula      String?    @unique(map: "clienteCedula") @db.VarChar(13)
+  clienteNombre      String?    @db.VarChar(20)
+  clienteApellido    String?    @db.VarChar(20)
+  clienteDirecion    String?    @db.VarChar(200)
+  clienteMunicipio   String?    @db.VarChar(30)
+  clienteDepartament String?    @db.VarChar(30)
+  claveIHCAFE        String?    @db.VarChar(30)
+  clienteTelefono    String?    @db.VarChar(30)
   clienteRTN         Int?
   compra             compra[]
   deposito           deposito[]
-  liqdeposito        liqdeposito[]
 }
 
 model compra {
@@ -45,66 +44,26 @@ model compra {
 }
 
 model deposito {
-  depositoID          Int                  @id @default(autoincrement())
-  depositoClienteID   Int?
-  depositoFecha       DateTime?            @db.Date
+  depositoID          Int       @id @default(autoincrement())
+  depositoFecha       DateTime? @db.DateTime(0)
+  clienteID           Int?
   depositoTipoCafe    Int?
-  depositoMovimiento  String?              @db.VarChar(20)
-  depositoCatidadQQ   Decimal?             @db.Decimal(15, 2)
-  depositoPrecio      Decimal?             @db.Decimal(15, 2)
-  depositoTotal       Decimal?             @db.Decimal(15, 2)
-  depositoTotalSacos  Decimal?             @db.Decimal(15, 2)
-  depositoEn          String?              @db.VarChar(20)
-  depositoDescripcion String?              @db.VarChar(200)
-  estado              String?              @default("Pendiente") @db.VarChar(20)
-  cliente             cliente?             @relation(fields: [depositoClienteID], references: [clienteID], onDelete: Restrict, onUpdate: Restrict, map: "deposito_ibfk_1")
-  producto            producto?            @relation(fields: [depositoTipoCafe], references: [productID], onDelete: Restrict, onUpdate: Restrict, map: "deposito_ibfk_2")
-  detalleliqdeposito  detalleliqdeposito[]
+  depositoMovimiento  String?   @db.VarChar(20)
+  depositoCantidadQQ  Decimal?  @db.Decimal(15, 2)
+  depositoTotalSacos  Decimal?  @db.Decimal(15, 2)
+  depositoEn          String?   @db.VarChar(20)
+  depositoDescripcion String?   @db.VarChar(200)
+  estado              String?   @default("Pendiente") @db.VarChar(20)
+  cliente             cliente?  @relation(fields: [clienteID], references: [clienteID], onDelete: Restrict, onUpdate: Restrict, map: "deposito_ibfk_1")
+  producto            producto? @relation(fields: [depositoTipoCafe], references: [productID], onDelete: Restrict, onUpdate: Restrict, map: "deposito_ibfk_2")
 
-  @@index([depositoClienteID], map: "depositoClienteID")
+  @@index([clienteID], map: "clienteID")
   @@index([depositoTipoCafe], map: "depositoTipoCafe")
 }
 
-model detalleliqdeposito {
-  id          Int          @id @default(autoincrement())
-  liqID       Int?
-  depositoID  Int?
-  cantidadQQ  Decimal?     @db.Decimal(15, 2)
-  precio      Decimal?     @db.Decimal(15, 2)
-  totalLps    Decimal?     @db.Decimal(15, 2)
-  nota        String?      @db.VarChar(200)
-  liqdeposito liqdeposito? @relation(fields: [liqID], references: [liqID], onDelete: Restrict, onUpdate: Restrict, map: "detalleliqdeposito_ibfk_1")
-  deposito    deposito?    @relation(fields: [depositoID], references: [depositoID], onDelete: Restrict, onUpdate: Restrict, map: "detalleliqdeposito_ibfk_2")
-
-  @@index([depositoID], map: "depositoID")
-  @@index([liqID], map: "liqID")
-}
-
-model liqdeposito {
-  liqID              Int                  @id @default(autoincrement())
-  liqclienteID       Int?
-  liqFecha           DateTime?            @db.Date
-  liqTipoDocumento   String?              @db.VarChar(20)
-  liqMovimiento      String?              @db.VarChar(20)
-  liqTipoCafe        Int?
-  liqPrecio          Decimal?             @db.Decimal(15, 2)
-  liqCatidadQQ       Decimal?             @db.Decimal(15, 2)
-  liqTotalLps        Decimal?             @db.Decimal(15, 2)
-  liqEn              String?              @db.VarChar(20)
-  liqDescripcion     String?              @db.VarChar(200)
-  detalleliqdeposito detalleliqdeposito[]
-  cliente            cliente?             @relation(fields: [liqclienteID], references: [clienteID], onDelete: Restrict, onUpdate: Restrict, map: "liqdeposito_ibfk_1")
-  producto           producto?            @relation(fields: [liqTipoCafe], references: [productID], onDelete: Restrict, onUpdate: Restrict, map: "liqdeposito_ibfk_2")
-
-  @@index([liqTipoCafe], map: "liqTipoCafe")
-  @@index([liqclienteID], map: "liqclienteID")
-}
-
 model producto {
-  productID          Int           @id @default(autoincrement())
-  productName        String        @db.VarChar(50)
-  productDescripcion String?       @db.VarChar(200)
-  compra             compra[]
-  deposito           deposito[]
-  liqdeposito        liqdeposito[]
+  productID   Int        @id @default(autoincrement())
+  productName String     @db.VarChar(50)
+  compra      compra[]
+  deposito    deposito[]
 }

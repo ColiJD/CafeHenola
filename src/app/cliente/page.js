@@ -33,7 +33,7 @@ export default function ClienteForm() {
       clienteDirecion,
       clienteMunicipio,
       clienteDepartament,
-      claveIHCAFE: claveIHCAFE ? Number(claveIHCAFE) : null,
+      claveIHCAFE,
       clienteTelefono,
       clienteRTN: clienteRTN ? Number(clienteRTN) : null,
     };
@@ -129,7 +129,7 @@ export default function ClienteForm() {
       </select>
 
       <input
-        type="number"
+        type="text"
         placeholder="Clave IHCAFE"
         value={claveIHCAFE}
         onChange={(e) => setClaveIHCAFE(e.target.value)}

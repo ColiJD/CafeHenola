@@ -1,27 +1,40 @@
 'use client';
-import "@/style/producto.css"
+import "@/style/producto.css";
 import { useState } from 'react';
 
 export default function ProductoForm() {
   const [productName, setProductName] = useState('');
-  const [productDescripcion, setProductDescripcion] = useState('');
   const [mensaje, setMensaje] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const res = await fetch('/api/productos', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ productName, productDescripcion }),
-    });
+    const nombreLimpio = productName.trim(); // limpiar espacios
 
-    if (res.ok) {
-      setMensaje('Producto agregado correctamente');
-      setProductName('');
-      setProductDescripcion('');
-    } else {
-      setMensaje('Error al agregar el producto');
+    if (!nombreLimpio) {
+      setMensaje('El nombre del producto no puede estar vacío');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/productos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productName: nombreLimpio }),
+      });
+
+      if (res.ok) {
+        setMensaje('Producto agregado correctamente');
+        setProductName('');
+
+        // limpiar mensaje después de 3 segundos
+        setTimeout(() => setMensaje(''), 3000);
+      } else {
+        const data = await res.json();
+        setMensaje(data.error || 'Error al agregar el producto');
+      }
+    } catch (error) {
+      setMensaje('Error al conectar con el servidor');
     }
   };
 
@@ -37,15 +50,6 @@ export default function ProductoForm() {
             onChange={(e) => setProductName(e.target.value)}
             required
           />
-        </div>
-
-        <div className="form-group">
-          <label>Descripción</label>
-          <textarea
-            value={productDescripcion}
-            onChange={(e) => setProductDescripcion(e.target.value)}
-            rows="3"
-          ></textarea>
         </div>
 
         <button type="submit">Guardar</button>

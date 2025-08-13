@@ -21,7 +21,7 @@ export async function POST(req) {
         clienteDirecion: body.clienteDirecion,
         clienteMunicipio: body.clienteMunicipio,
         clienteDepartament: body.clienteDepartament,
-        claveIHCAFE: body.claveIHCAFE ? Number(body.claveIHCAFE) : null,
+        claveIHCAFE: body.claveIHCAFE,
         clienteTelefono: body.clienteTelefono,
         clienteRTN: body.clienteRTN ? Number(body.clienteRTN) : null,
       },

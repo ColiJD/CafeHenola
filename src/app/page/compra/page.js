@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Select from "react-select"; // Componente para select con búsqueda
-import "../../style/compra.css";
+import "@/style/compra.css";
 
 export default function CompraForm() {
   // Estados para datos cargados

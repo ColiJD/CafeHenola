@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import "../../style/cliente.css"; // Importa el CSS
+import "@/style/cliente.css"; // Importa el CSS
 import { departamentos, municipiosPorDepartamento } from "./data";
 
 

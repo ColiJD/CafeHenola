@@ -24,7 +24,7 @@ export async function POST(request) {
       comprarTotalSacos,
       compraRetencio,
       compraDescripcion,
-      compraEn
+      compraEn,
     } = body;
 
     // Validaciones
@@ -52,10 +52,37 @@ export async function POST(request) {
         compraPrecioQQ: parseFloat(compraPrecioQQ),
         compraCatidadQQ: parseFloat(compraCatidadQQ),
         compraTotal: parseFloat(compraTotal),
-        comprarTotalSacos: comprarTotalSacos ? parseFloat(comprarTotalSacos) : 0,
+        comprarTotalSacos: comprarTotalSacos
+          ? parseFloat(comprarTotalSacos)
+          : 0,
         compraRetencio: parseFloat(compraRetencio),
         compraEn,
         compraDescripcion: compraDescripcion || "",
+      },
+    });
+    // 2️⃣ Actualizar o crear inventario
+    const productoID = Number(compraTipoCafe);
+    const cantidadQQ = parseFloat(compraCatidadQQ);
+    const cantidadSacos = parseFloat(comprarTotalSacos);
+
+    // 2️⃣ Actualizar o crear inventario empresa
+    await prisma.inventarioempresa.upsert({
+      where: { productoID },
+      update: { cantidadQQ: { increment: cantidadQQ }, cantidadSacos: { increment: cantidadSacos } },
+      create: { productoID, cantidadQQ, cantidadSacos },
+    });
+
+    // 3️⃣ Registrar movimiento
+    await prisma.movimientoinventario.create({
+      data: {
+        tipoInventario: "Empresa",
+        inventarioID: productoID, // referencia al producto
+        tipoMovimiento: "Entrada",
+        referenciaTipo: `Compra directa #${nuevaCompra.compraId}`,
+        referenciaID: nuevaCompra.compraId,
+        cantidadQQ,
+        cantidadSacos: comprarTotalSacos ? parseFloat(comprarTotalSacos) : 0,
+        nota: "Entrada de café por compra directa",
       },
     });
 

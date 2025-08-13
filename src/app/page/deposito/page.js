@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Select from "react-select";
-import "../../style/compra.css";
+import "@/style/compra.css";
 
 export default function DepositoForm() {
   // Estados para datos cargados

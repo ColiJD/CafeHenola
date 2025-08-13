@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import "../../style/eventos.css";
+import "@/style/eventos.css";
 
 export default function EventosPage() {
   const [eventos, setEventos] = useState([]);

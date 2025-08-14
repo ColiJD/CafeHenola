@@ -156,13 +156,6 @@ export default function CompraForm() {
             onChange={(e) => setCompraEn(e.target.value)}
             required
           />
-          <label htmlFor="compraRetencio">Retención (Lps):</label>
-          <input
-            type="text"
-            value={`L. ${compraRetencio}`}
-            readOnly
-            placeholder="Retención (Lps)"
-          />
           <label htmlFor="compraDescripcion">Descripción:</label>
           <textarea
             id="compraDescripcion"
@@ -199,15 +192,6 @@ export default function CompraForm() {
             step="0.01"
             required
           />
-
-          <label htmlFor="compraTotal">Total (Lps):</label>
-          <input
-            type="text"
-            value={`L. ${compraTotal}`}
-            readOnly
-            placeholder="Total (Lps)"
-          />
-
           <label htmlFor="comprarTotalSacos">Total Sacos:</label>
           <input
             type="number"
@@ -215,6 +199,13 @@ export default function CompraForm() {
             value={comprarTotalSacos}
             onChange={(e) => setComprarTotalSacos(e.target.value)}
             step="0.01"
+          />
+          <label htmlFor="compraTotal">Total (Lps):</label>
+          <input
+            type="text"
+            value={`L. ${compraTotal}`}
+            readOnly
+            placeholder="Total (Lps)"
           />
         </div>
       </div>

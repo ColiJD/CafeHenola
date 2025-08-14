@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Select from "react-select";
-import "@/style/compra.css";
+import "@/style/cliente.css";
 
 export default function DepositoForm() {
   // Estados para datos cargados
@@ -16,6 +16,7 @@ export default function DepositoForm() {
   const [depositoTotalSacos, setDepositoTotalSacos] = useState("");
   const [depositoDescripcion, setDepositoDescripcion] = useState("");
   const [mensaje, setMensaje] = useState("");
+  const [error, setError] = useState("");
 
   // Carga clientes y productos al montar componente
   useEffect(() => {
@@ -31,7 +32,7 @@ export default function DepositoForm() {
         setClientes(
           clientesData.map((c) => ({
             value: c.clienteID,
-           label: `${c.clienteNombre} ${c.clienteApellido}`, 
+            label: `${c.clienteNombre} ${c.clienteApellido}`,
           }))
         );
         setProductos(
@@ -50,6 +51,8 @@ export default function DepositoForm() {
   // Maneja el envío del formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setMensaje("");
+    setError("");
 
     if (!cliente || !producto || !depositoCantidadQQ || !depositoEn) {
       setMensaje("Por favor complete todos los campos obligatorios.");
@@ -85,74 +88,72 @@ export default function DepositoForm() {
         setDepositoDescripcion("");
       } else {
         const err = await res.json();
-        setMensaje("Error: " + (err.error || "Error desconocido"));
+        setError("Error: " + (err.error || "No se pudo registrar el depósito"));
       }
     } catch (error) {
-      setMensaje("Error enviando los datos");
+      setError("Error enviando los datos");
       console.error(error);
     }
   };
 
   return (
-    <form className="compra-form" onSubmit={handleSubmit}>
-      <h2>Depósito</h2>
-      <div className="form-container">
-        <div className="form-grid">
-          <label htmlFor="cliente">Cliente:</label>
-          <Select
-            options={clientes}
-            value={cliente}
-            onChange={setCliente}
-            placeholder="Seleccione un cliente"
-            isClearable
-          />
+    <form className="cliente-form" onSubmit={handleSubmit}>
+      <h2 style={{ textAlign: "center", marginBottom: "1rem" }}>Depósito</h2>
+      <label htmlFor="cliente">Cliente:</label>
+      <Select
+        options={clientes}
+        value={cliente}
+        onChange={setCliente}
+        placeholder="Seleccione un cliente"
+        isClearable
+      />
 
-          <label htmlFor="producto">Tipo de Café:</label>
-          <Select
-            options={productos}
-            value={producto}
-            onChange={setProducto}
-            placeholder="Seleccione café"
-            isClearable
-          />
+      <label htmlFor="producto">Tipo de Café:</label>
+      <Select
+        options={productos}
+        value={producto}
+        onChange={setProducto}
+        placeholder="Seleccione café"
+        isClearable
+      />
 
-          <label htmlFor="depositoCantidadQQ">Cantidad QQ:</label>
-          <input
-            type="number"
-            placeholder="Cantidad QQ"
-            value={depositoCantidadQQ}
-            onChange={(e) => setDepositoCantidadQQ(e.target.value)}
-            step="0.01"
-            required
-          />
+      <label htmlFor="depositoCantidadQQ">Cantidad QQ:</label>
+      <input
+        type="number"
+        placeholder="Cantidad QQ"
+        value={depositoCantidadQQ}
+        onChange={(e) => setDepositoCantidadQQ(e.target.value)}
+        step="0.01"
+        required
+      />
 
-          <label htmlFor="depositoTotalSacos">Total Sacos:</label>
-          <input
-            type="number"
-            placeholder="Total Sacos"
-            value={depositoTotalSacos}
-            onChange={(e) => setDepositoTotalSacos(e.target.value)}
-            step="0.01"
-          />
-          <label htmlFor="depositoEn">Depósito en:</label>
-          <input
-            type="text"
-            placeholder="Depósito en"
-            value={depositoEn}
-            onChange={(e) => setDepositoEn(e.target.value)}
-            required
-          />
+      <label htmlFor="depositoTotalSacos">Total Sacos:</label>
+      <input
+        type="number"
+        placeholder="Total Sacos"
+        value={depositoTotalSacos}
+        onChange={(e) => setDepositoTotalSacos(e.target.value)}
+        step="0.01"
+      />
+      <label htmlFor="depositoEn">Depósito en:</label>
+      <input
+        type="text"
+        placeholder="Depósito en"
+        value={depositoEn}
+        onChange={(e) => setDepositoEn(e.target.value)}
+        required
+      />
 
-          <label htmlFor="depositoDescripcion">Descripción:</label>
-          <textarea
-            placeholder="Descripción"
-            value={depositoDescripcion}
-            onChange={(e) => setDepositoDescripcion(e.target.value)}
-          />
-        </div>
-      </div>
+      <label htmlFor="depositoDescripcion">Descripción:</label>
+      <textarea
+        placeholder="Descripción"
+        value={depositoDescripcion}
+        onChange={(e) => setDepositoDescripcion(e.target.value)}
+      />
+
       <button type="submit">Registrar Depósito</button>
-      {mensaje && <p>{mensaje}</p>}
+      {mensaje && <p className="message">{mensaje}</p>}
+      {error && <p className="error">{error}</p>}
     </form>
   );
 }

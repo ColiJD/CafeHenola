@@ -5,11 +5,21 @@ form.cliente-form {
   border: 1px solid #ccc;
   border-radius: 8px;
   background-color: #fafafa;
-  font-family: 'Montserrat', sans-serif;
+  font-family: "Montserrat", sans-serif;
+}
+.cliente-form h2 {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.cliente-form label {
+  font-size: 0.9rem;
+  color: #333;
 }
 
 .cliente-form input,
-.cliente-form select {
+.cliente-form select,
+.cliente-form textarea {
   width: 100%;
   padding: 8px 10px;
   margin: 8px 0;
@@ -19,6 +29,7 @@ form.cliente-form {
   box-sizing: border-box;
   transition: border-color 0.3s ease;
 }
+
 
 .cliente-form input:focus,
 .cliente-form select:focus {

@@ -38,3 +38,35 @@ export const menuItems = [
     link: Ruta + "deposito",
   },
 ];
+
+export const menuHeader = [
+  {
+
+    name: "Inicio",
+    link: "/",
+  },
+  {
+
+    name: "Compra",
+    link: Ruta + "compra",
+  },
+  {
+
+    name: "Clientes",
+    link: Ruta + "cliente",
+  },
+  {
+
+    name: "Productos",
+    link: Ruta + "producto",
+  },
+  {
+
+    name: "Eventos",
+    link: Ruta + "eventos",
+  },
+  {
+    name: "Deposito",
+    link: Ruta + "deposito",
+  },
+];

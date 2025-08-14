@@ -2,6 +2,7 @@
 import { useState } from "react";
 import "../style/Header.css";
 import Link from "next/link";
+import { menuHeader } from "@/lib/menu";
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   // Función para cerrar menú
@@ -23,31 +24,13 @@ export default function Header() {
 
       <nav className={`side-menu ${menuOpen ? "open" : ""}`}>
         <ul className="menu-list">
-          <li>
-            <Link href="/" onClick={cerrarMenu}>
-              Inicio
-            </Link>
-          </li>
-          <li>
-            <Link href="/compra" onClick={cerrarMenu}>
-              Compra Directa
-            </Link>
-          </li>
-          <li>
-            <Link href="/cliente" onClick={cerrarMenu}>
-              Clientes
-            </Link>
-          </li>
-          <li>
-            <Link href="/producto" onClick={cerrarMenu}>
-              Productos
-            </Link>
-          </li>
-          <li>
-            <Link href="/eventos" onClick={cerrarMenu}>
-              Eventos
-            </Link>
-          </li>
+          {menuHeader.map(({ name, link }) => (
+            <li key={name}>
+              <Link href={link} onClick={cerrarMenu}>
+                {name}
+              </Link>
+            </li>
+          ))}
         </ul>
       </nav>
 

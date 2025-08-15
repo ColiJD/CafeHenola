@@ -21,7 +21,6 @@ model cliente {
   compra             compra[]
   deposito           deposito[]
   inventariocliente  inventariocliente[]
-  liqdeposito        liqdeposito[]
 }
 
 model compra {
@@ -71,21 +70,19 @@ model producto {
   deposito          deposito[]
   inventariocliente inventariocliente[]
   inventarioempresa inventarioempresa?
-  liqdeposito       liqdeposito[]
 }
 
 model detalleliqdeposito {
-  id          Int          @id @default(autoincrement())
-  liqID       Int?
-  depositoID  Int?
-  cantidadQQ  Decimal?     @db.Decimal(15, 2)
-  precio      Decimal?     @db.Decimal(15, 2)
-  totalLps    Decimal?     @db.Decimal(15, 2)
-  liqdeposito liqdeposito? @relation(fields: [liqID], references: [liqID], onDelete: Restrict, onUpdate: Restrict, map: "detalleliqdeposito_ibfk_1")
-  deposito    deposito?    @relation(fields: [depositoID], references: [depositoID], onDelete: Restrict, onUpdate: Restrict, map: "detalleliqdeposito_ibfk_2")
+  detalleLiqDepositoID Int       @id @default(autoincrement())
+  depositoID           Int
+  cantidadQQ           Decimal   @db.Decimal(15, 2)
+  precioQQ             Decimal   @db.Decimal(15, 2)
+  totalLps             Decimal   @db.Decimal(15, 2)
+  fechaLiquidacion     DateTime? @default(now()) @db.DateTime(0)
+  nota                 String?   @db.VarChar(200)
+  deposito             deposito  @relation(fields: [depositoID], references: [depositoID], onUpdate: Restrict, map: "detalleliqdeposito_ibfk_2")
 
-  @@index([depositoID], map: "depositoID")
-  @@index([liqID], map: "liqID")
+  @@index([depositoID], map: "fk_detalle_deposito")
 }
 
 model inventariocliente {
@@ -107,26 +104,6 @@ model inventarioempresa {
   cantidadQQ          Decimal  @default(0.00) @db.Decimal(15, 2)
   cantidadSacos       Decimal  @default(0.00) @db.Decimal(15, 2)
   producto            producto @relation(fields: [productoID], references: [productID], onUpdate: Restrict, map: "inventarioempresa_ibfk_1")
-}
-
-model liqdeposito {
-  liqID              Int                  @id @default(autoincrement())
-  liqFecha           DateTime?            @db.DateTime(0)
-  liqclienteID       Int?
-  liqTipoDocumento   String?              @db.VarChar(20)
-  liqMovimiento      String?              @db.VarChar(20)
-  liqTipoCafe        Int?
-  liqPrecio          Decimal?             @db.Decimal(15, 2)
-  liqCatidadQQ       Decimal?             @db.Decimal(15, 2)
-  liqTotalLps        Decimal?             @db.Decimal(15, 2)
-  liqEn              String?              @db.VarChar(20)
-  liqDescripcion     String?              @db.VarChar(200)
-  detalleliqdeposito detalleliqdeposito[]
-  cliente            cliente?             @relation(fields: [liqclienteID], references: [clienteID], onDelete: Restrict, onUpdate: Restrict, map: "liqdeposito_ibfk_1")
-  producto           producto?            @relation(fields: [liqTipoCafe], references: [productID], onDelete: Restrict, onUpdate: Restrict, map: "liqdeposito_ibfk_2")
-
-  @@index([liqTipoCafe], map: "liqTipoCafe")
-  @@index([liqclienteID], map: "liqclienteID")
 }
 
 model movimientoinventario {

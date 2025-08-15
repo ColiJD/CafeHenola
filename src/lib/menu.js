@@ -37,6 +37,12 @@ export const menuItems = [
     image: deposito,
     link: Ruta + "deposito",
   },
+  {
+    id: 6,
+    name: "Liquidación de Depósito",
+    image: deposito,
+    link: Ruta + "liqDeposito",
+  },
 ];
 
 export const menuHeader = [

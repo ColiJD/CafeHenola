@@ -1,16 +1,5 @@
 import prisma from "@/lib/prisma";
 
-export async function GET() {
-  const compras = await prisma.compra.findMany({
-    include: {
-      cliente: true,
-      producto: true,
-    },
-  });
-
-  return new Response(JSON.stringify(compras), { status: 200 });
-}
-
 export async function POST(request) {
   try {
     const body = await request.json();

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Select from "react-select";
+import "@/style/cliente.css";
 
 export default function LiquidacionContratoForm() {
   const [clientes, setClientes] = useState([]);
@@ -11,13 +12,18 @@ export default function LiquidacionContratoForm() {
 
   const [saldoDisponibleQQ, setSaldoDisponibleQQ] = useState(0);
   const [saldoDisponibleLps, setSaldoDisponibleLps] = useState(0);
-  const [tipoCafe, setTipoCafe] = useState("");
+  const [tipoCafeID, setTipoCafeID] = useState(0); // 🔹 ID para enviar al backend
+  const [tipoCafeNombre, setTipoCafeNombre] = useState(""); // 🔹 Nombre para mostrar
   const [precioQQ, setPrecioQQ] = useState(0);
   const [cantidadLiquidar, setCantidadLiquidar] = useState("");
+  const [totalLiquidacion, setTotalLiquidacion] = useState(0);
+  const [totalSacos, setTotalSacos] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
 
-  // Cargar clientes al montar
+  // -----------------------------
+  // Función para cargar clientes
+  // -----------------------------
   useEffect(() => {
     async function cargarClientes() {
       try {
@@ -36,95 +42,157 @@ export default function LiquidacionContratoForm() {
     cargarClientes();
   }, []);
 
-  // Cargar contratos pendientes al seleccionar cliente
-  useEffect(() => {
-    async function cargarContratos() {
-      if (!cliente) {
-        setContratos([]);
-        setContrato(null);
-        return;
-      }
-      try {
-        const res = await fetch(`/api/contratos/pendientes/${cliente.value}`);
-        const data = await res.json();
-        setContratos(
-          data.map((c) => ({
-            value: c.contratoID,
-            label: `Contrato #${c.contratoID} - ${c.contratoCatidadQQ} QQ`,
-          }))
-        );
-        setContrato(null);
-      } catch (err) {
-        console.error(err);
-      }
+  // --------------------------------------------
+  // Función para cargar contratos pendientes
+  // --------------------------------------------
+  async function cargarContratos(clienteID) {
+    if (!clienteID) {
+      setContratos([]);
+      setContrato(null);
+      return;
     }
-    cargarContratos();
+    try {
+      const res = await fetch(`/api/contratos/pendientes/${clienteID}`);
+      const data = await res.json();
+      setContratos(
+        data.map((c) => ({
+          value: c.contratoID,
+          label: `Contrato #${c.contratoID} - ${c.contratoCatidadQQ} QQ`,
+          tipoCafeID: c.tipoCafeID,
+          tipoCafeNombre: c.tipoCafeNombre,
+        }))
+      );
+      setContrato(null);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+  // --------------------------------------------
+  // Cargar contratos cuando cambia el cliente
+  // --------------------------------------------
+  useEffect(() => {
+    if (cliente) {
+      cargarContratos(cliente.value);
+    } else {
+      setContratos([]);
+      setContrato(null);
+    }
   }, [cliente]);
 
-  // Cargar saldo disponible al seleccionar contrato
+  // --------------------------------------------
+  // Cargar saldo disponible cuando cambia contrato
+  // --------------------------------------------
   useEffect(() => {
     async function cargarSaldo() {
       if (!contrato) {
         setSaldoDisponibleQQ(0);
         setSaldoDisponibleLps(0);
-        setTipoCafe("");
+        setTipoCafeID(0);
+        setTipoCafeNombre("");
         setPrecioQQ(0);
+        setTotalLiquidacion(0);
         return;
       }
       try {
-        const res = await fetch(`/api/contratos/saldoDisponible/${contrato.value}`);
+        const res = await fetch(
+          `/api/contratos/saldoDisponible/${contrato.value}`
+        );
         const data = await res.json();
-        setSaldoDisponibleQQ(data.saldoDisponibleQQ || 0);
-        setSaldoDisponibleLps(data.saldoDisponibleLps || 0);
-        setTipoCafe(data.tipoCafeNombre || "");
+
+        if (!data || data.saldoDisponibleQQ === undefined) {
+          setSaldoDisponibleQQ(0);
+          setSaldoDisponibleLps(0);
+          setTipoCafeID(0);
+          setTipoCafeNombre("");
+          setPrecioQQ(0);
+          setTotalLiquidacion(0);
+          setError("No se encontró saldo disponible para este contrato");
+          return;
+        }
+
+        setSaldoDisponibleQQ(data.saldoDisponibleQQ);
+        setSaldoDisponibleLps(data.saldoDisponibleLps);
+        setTipoCafeID(data.tipoCafeID || 0); // 🔹 ID para backend
+        setTipoCafeNombre(data.tipoCafeNombre || ""); // 🔹 nombre para mostrar
         setPrecioQQ(data.precioQQ || 0);
+        setTotalLiquidacion(0);
+        setError("");
       } catch (err) {
         console.error(err);
+        setError("Error cargando saldo disponible");
       }
     }
     cargarSaldo();
   }, [contrato]);
+  // --------------------------------------------
+  // Calcular total de liquidación automáticamente
+  // --------------------------------------------
+  useEffect(() => {
+    if (cantidadLiquidar && precioQQ) {
+      setTotalLiquidacion(parseFloat(cantidadLiquidar) * parseFloat(precioQQ));
+    } else {
+      setTotalLiquidacion(0);
+    }
+  }, [cantidadLiquidar, precioQQ]);
 
+  // --------------------------------------------
   // Manejar envío del formulario
+  // --------------------------------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMensaje("");
     setError("");
 
-    if (!cliente || !contrato || !cantidadLiquidar) {
-      setMensaje("Complete todos los campos obligatorios");
+    if (!cliente || !contrato || !cantidadLiquidar || !totalSacos) {
+      setError("Complete todos los campos obligatorios");
       return;
     }
 
-    if (parseFloat(cantidadLiquidar) > saldoDisponibleQQ) {
-      setError("La cantidad a liquidar no puede superar el saldo disponible");
+    const cantidad = parseFloat(cantidadLiquidar);
+
+    if (cantidad > saldoDisponibleQQ) {
+      setError(
+        `La cantidad a liquidar (${cantidad}) supera el saldo disponible (${saldoDisponibleQQ})`
+      );
       return;
     }
 
     const data = {
       contratoID: contrato.value,
       clienteID: cliente.value,
-      cantidadQQ: parseFloat(cantidadLiquidar),
+      tipoCafe: tipoCafeID, // 🔹 enviamos ID numérico
+      cantidadQQ: cantidad,
+      precioQQ,
+      totalSacos: parseInt(totalSacos),
+      tipoDocumento: "EntregaContrato",
+      descripcion: "Liquidación de contrato",
+      liqEn: "Bodega",
     };
 
     try {
-      const res = await fetch("/api/liquidaciones", {
+      const res = await fetch("/api/contratos/entregar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
 
+      const respData = await res.json();
+
       if (res.ok) {
-        setMensaje("Liquidación registrada correctamente ✅");
+        setMensaje(
+          `Liquidación registrada ✅. Saldo disponible: ${respData.saldoDespuesQQ} QQ / ${respData.saldoDespuesLps} Lps`
+        );
         setCantidadLiquidar("");
+        setTotalSacos("");
         setContrato(null);
         setSaldoDisponibleQQ(0);
         setSaldoDisponibleLps(0);
-        setTipoCafe("");
+        setTipoCafeID(0);
+        setTipoCafeNombre("");
         setPrecioQQ(0);
+        setTotalLiquidacion(0);
       } else {
-        const err = await res.json();
-        setError(err.error || "No se pudo registrar la liquidación");
+        setError(respData.error || "No se pudo registrar la liquidación");
       }
     } catch (err) {
       console.error(err);
@@ -134,8 +202,9 @@ export default function LiquidacionContratoForm() {
 
   return (
     <form className="cliente-form" onSubmit={handleSubmit}>
-      <h2 style={{ textAlign: "center", marginBottom: "1rem" }}>Liquidación de Contrato</h2>
-
+      <h2 style={{ textAlign: "center", marginBottom: "1rem" }}>
+        Liquidación de Contrato
+      </h2>
       <label>Cliente:</label>
       <Select
         options={clientes}
@@ -144,7 +213,6 @@ export default function LiquidacionContratoForm() {
         placeholder="Seleccione un cliente"
         isClearable
       />
-
       <label>Contrato pendiente:</label>
       <Select
         options={contratos}
@@ -154,19 +222,15 @@ export default function LiquidacionContratoForm() {
         isClearable
         isDisabled={!cliente || contratos.length === 0}
       />
-
       <label>Tipo de Café:</label>
-      <input type="text" value={tipoCafe} disabled />
-
+      <input type="text" value={tipoCafeNombre} disabled />{" "}
+      {/* 🔹 mostrar nombre */}
       <label>Precio por QQ (Lps):</label>
       <input type="number" value={precioQQ} disabled />
-
       <label>Saldo disponible (QQ):</label>
       <input type="number" value={saldoDisponibleQQ} disabled />
-
       <label>Saldo disponible (Lps):</label>
       <input type="number" value={saldoDisponibleLps} disabled />
-
       <label>Cantidad a liquidar (QQ):</label>
       <input
         type="number"
@@ -177,9 +241,18 @@ export default function LiquidacionContratoForm() {
         required
         max={saldoDisponibleQQ}
       />
-
+      <label>Total de Sacos:</label>
+      <input
+        type="number"
+        placeholder="Total de sacos"
+        value={totalSacos}
+        onChange={(e) => setTotalSacos(e.target.value)}
+        min={1}
+        required
+      />
+      <label>Total de la liquidación (Lps):</label>
+      <input type="number" value={totalLiquidacion} disabled />
       <button type="submit">Registrar Liquidación</button>
-
       {mensaje && <p className="message">{mensaje}</p>}
       {error && <p className="error">{error}</p>}
     </form>

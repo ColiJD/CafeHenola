@@ -51,6 +51,7 @@ model deposito {
   depositoFecha       DateTime?            @db.DateTime(0)
   clienteID           Int?
   depositoTipoCafe    Int?
+  contratoID          Int?
   depositoMovimiento  String?              @db.VarChar(20)
   depositoCantidadQQ  Decimal?             @db.Decimal(15, 2)
   depositoTotalSacos  Decimal?             @db.Decimal(15, 2)
@@ -59,10 +60,12 @@ model deposito {
   estado              String?              @default("Pendiente") @db.VarChar(20)
   cliente             cliente?             @relation(fields: [clienteID], references: [clienteID], onDelete: Restrict, onUpdate: Restrict, map: "deposito_ibfk_1")
   producto            producto?            @relation(fields: [depositoTipoCafe], references: [productID], onDelete: Restrict, onUpdate: Restrict, map: "deposito_ibfk_2")
+  contrato            contrato?            @relation(fields: [contratoID], references: [contratoID], onDelete: Restrict, onUpdate: Restrict, map: "fk_deposito_contrato")
   detalleliqdeposito  detalleliqdeposito[]
 
   @@index([clienteID], map: "clienteID")
   @@index([depositoTipoCafe], map: "depositoTipoCafe")
+  @@index([contratoID], map: "fk_deposito_contrato")
 }
 
 model producto {
@@ -127,7 +130,7 @@ model movimientoinventario {
 model contrato {
   contratoID          Int               @id @default(autoincrement())
   contratoclienteID   Int?
-  contratoFecha       DateTime?         @db.Date
+  contratoFecha       DateTime?         @db.DateTime(0)
   contratoMovimiento  String?           @db.VarChar(20)
   contratoTipoCafe    Int?
   contratoPrecio      Decimal?          @db.Decimal(15, 2)
@@ -138,6 +141,7 @@ model contrato {
   estado              String?           @default("Pendiente") @db.VarChar(20)
   cliente             cliente?          @relation(fields: [contratoclienteID], references: [clienteID], onDelete: Restrict, onUpdate: Restrict, map: "contrato_ibfk_1")
   producto            producto?         @relation(fields: [contratoTipoCafe], references: [productID], onDelete: Restrict, onUpdate: Restrict, map: "contrato_ibfk_2")
+  deposito            deposito[]
   detallecontrato     detallecontrato[]
 
   @@index([contratoTipoCafe], map: "contratoTipoCafe")

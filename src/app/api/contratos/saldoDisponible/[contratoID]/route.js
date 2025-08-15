@@ -22,6 +22,7 @@ export async function GET(request, context) {
     if (saldoData.length === 0) {
       return new Response(
         JSON.stringify({
+          tipoCafeID: 0,
           tipoCafeNombre: "",
           precioQQ: 0,
           saldoDisponibleQQ: 0,
@@ -35,6 +36,7 @@ export async function GET(request, context) {
 
     return new Response(
       JSON.stringify({
+        tipoCafeID: parseFloat(row.tipoCafeID) || 0,
         tipoCafeNombre: row.tipoCafeNombre || "",
         precioQQ: parseFloat(row.precioQQ) || 0,
         saldoDisponibleQQ: parseFloat(row.saldoDisponibleQQ) || 0,

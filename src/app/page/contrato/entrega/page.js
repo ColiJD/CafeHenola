@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Select from "react-select";
-import "@/style/cliente.css";
+import "@/style/liquidacion.css";
 
 export default function LiquidacionContratoForm() {
   const [clientes, setClientes] = useState([]);
@@ -201,57 +201,74 @@ export default function LiquidacionContratoForm() {
   };
 
   return (
-    <form className="cliente-form" onSubmit={handleSubmit}>
-      <h2 style={{ textAlign: "center", marginBottom: "1rem" }}>
-        Liquidación de Contrato
-      </h2>
-      <label>Cliente:</label>
-      <Select
-        options={clientes}
-        value={cliente}
-        onChange={setCliente}
-        placeholder="Seleccione un cliente"
-        isClearable
-      />
-      <label>Contrato pendiente:</label>
-      <Select
-        options={contratos}
-        value={contrato}
-        onChange={setContrato}
-        placeholder="Seleccione un contrato pendiente"
-        isClearable
-        isDisabled={!cliente || contratos.length === 0}
-      />
-      <label>Tipo de Café:</label>
-      <input type="text" value={tipoCafeNombre} disabled />{" "}
-      {/* 🔹 mostrar nombre */}
-      <label>Precio por QQ (Lps):</label>
-      <input type="number" value={precioQQ} disabled />
-      <label>Saldo disponible (QQ):</label>
-      <input type="number" value={saldoDisponibleQQ} disabled />
-      <label>Saldo disponible (Lps):</label>
-      <input type="number" value={saldoDisponibleLps} disabled />
-      <label>Cantidad a liquidar (QQ):</label>
-      <input
-        type="number"
-        placeholder="Cantidad a liquidar"
-        value={cantidadLiquidar}
-        onChange={(e) => setCantidadLiquidar(e.target.value)}
-        step="0.01"
-        required
-        max={saldoDisponibleQQ}
-      />
-      <label>Total de Sacos:</label>
-      <input
-        type="number"
-        placeholder="Total de sacos"
-        value={totalSacos}
-        onChange={(e) => setTotalSacos(e.target.value)}
-        min={1}
-        required
-      />
-      <label>Total de la liquidación (Lps):</label>
-      <input type="number" value={totalLiquidacion} disabled />
+    <form className="liq-contrato-form" onSubmit={handleSubmit}>
+      <h2>Liquidación de Contrato</h2>
+
+      <div className="form-grid">
+        {/* Campos de entrada */}
+        <div className="col-inputs">
+          <label>Cliente:</label>
+          <Select
+            options={clientes}
+            value={cliente}
+            onChange={setCliente}
+            placeholder="Seleccione un cliente"
+            isClearable
+            classNamePrefix="liq"
+          />
+
+          <label>Contrato pendiente:</label>
+          <Select
+            options={contratos}
+            value={contrato}
+            onChange={setContrato}
+            placeholder="Seleccione un contrato pendiente"
+            isClearable
+            isDisabled={!cliente || contratos.length === 0}
+            classNamePrefix="liq"
+          />
+
+          <label>Cantidad a liquidar (QQ):</label>
+          <input
+            type="number"
+            placeholder="Cantidad a liquidar"
+            value={cantidadLiquidar}
+            onChange={(e) => setCantidadLiquidar(e.target.value)}
+            step="0.01"
+            required
+            max={saldoDisponibleQQ}
+          />
+
+          <label>Total de Sacos:</label>
+          <input
+            type="number"
+            placeholder="Total de sacos"
+            value={totalSacos}
+            onChange={(e) => setTotalSacos(e.target.value)}
+            min={1}
+            required
+          />
+        </div>
+
+        {/* Campos display */}
+        <div className="col-display">
+          <label>Tipo de Café:</label>
+          <input type="text" value={tipoCafeNombre} disabled />
+
+          <label>Precio por QQ (Lps):</label>
+          <input type="number" value={precioQQ} disabled />
+
+          <label>Saldo disponible (QQ):</label>
+          <input type="number" value={saldoDisponibleQQ} disabled />
+
+          <label>Saldo disponible (Lps):</label>
+          <input type="number" value={saldoDisponibleLps} disabled />
+
+          <label>Total de la liquidación (Lps):</label>
+          <input type="number" value={totalLiquidacion} disabled />
+        </div>
+      </div>
+
       <button type="submit">Registrar Liquidación</button>
       {mensaje && <p className="message">{mensaje}</p>}
       {error && <p className="error">{error}</p>}

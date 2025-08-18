@@ -52,3 +52,17 @@ export async function POST(request) {
     );
   }
 }
+
+export async function GET() {
+  try {
+    // Usamos query raw para traer todo de la vista
+    const depositos = await prisma.$queryRawUnsafe(`
+      SELECT * from vw_SaldoPorContrato
+    `);
+
+    return new Response(JSON.stringify(depositos), { status: 200 });
+  } catch (error) {
+    console.error("Error al obtener vista vw_SaldoPorContrato:", error);
+    return new Response(JSON.stringify({ error: "Error interno" }), { status: 500 });
+  }
+}

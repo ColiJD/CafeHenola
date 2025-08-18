@@ -80,49 +80,64 @@ export async function POST(request) {
   }
 }
 
-export async function GET(request) {
+// export async function GET(request) {
+//   try {
+//     const { searchParams } = new URL(request.url);
+//     const clienteID = Number(searchParams.get("clienteID"));
+//     const productoID = Number(searchParams.get("productoID"));
+
+//     if (!clienteID || !productoID) {
+//       return new Response(JSON.stringify({ error: "Faltan parámetros" }), { status: 400 });
+//     }
+
+//     const depositos = await prisma.deposito.findMany({
+//       where: {
+//         clienteID,
+//         depositoTipoCafe: productoID,
+//         estado: { not: "Liquidado" },
+//       },
+//       include: {
+//         cliente: { select: { clienteID: true, clienteNombre: true, clienteApellido: true } },
+//         producto: { select: { productID: true, productName: true } },
+//         detalleliqdeposito: { select: { cantidadQQ: true } },
+//       },
+//     });
+
+//     const depositosConSaldo = depositos.map((dep) => {
+//       const totalLiquidado = dep.detalleliqdeposito.reduce(
+//         (acc, detalle) => acc + Number(detalle.cantidadQQ),
+//         0
+//       );
+
+//       return {
+//         depositoID: dep.depositoID,
+//         depositoFecha: dep.depositoFecha,
+//         depositoCantidadQQ: dep.depositoCantidadQQ,
+//         saldoDisponibleQQ: Number(dep.depositoCantidadQQ) - totalLiquidado,
+//         estado: dep.estado,
+//         cliente: dep.cliente,
+//         producto: dep.producto,
+//       };
+//     });
+
+//     return new Response(JSON.stringify(depositosConSaldo), { status: 200 });
+//   } catch (error) {
+//     console.error("Error al obtener depósitos:", error);
+//     return new Response(JSON.stringify({ error: "Error interno" }), { status: 500 });
+//   }
+// }
+
+
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const clienteID = Number(searchParams.get("clienteID"));
-    const productoID = Number(searchParams.get("productoID"));
+    // Usamos query raw para traer todo de la vista
+    const depositos = await prisma.$queryRawUnsafe(`
+      SELECT * FROM vw_saldodepositos
+    `);
 
-    if (!clienteID || !productoID) {
-      return new Response(JSON.stringify({ error: "Faltan parámetros" }), { status: 400 });
-    }
-
-    const depositos = await prisma.deposito.findMany({
-      where: {
-        clienteID,
-        depositoTipoCafe: productoID,
-        estado: { not: "Liquidado" },
-      },
-      include: {
-        cliente: { select: { clienteID: true, clienteNombre: true, clienteApellido: true } },
-        producto: { select: { productID: true, productName: true } },
-        detalleliqdeposito: { select: { cantidadQQ: true } },
-      },
-    });
-
-    const depositosConSaldo = depositos.map((dep) => {
-      const totalLiquidado = dep.detalleliqdeposito.reduce(
-        (acc, detalle) => acc + Number(detalle.cantidadQQ),
-        0
-      );
-
-      return {
-        depositoID: dep.depositoID,
-        depositoFecha: dep.depositoFecha,
-        depositoCantidadQQ: dep.depositoCantidadQQ,
-        saldoDisponibleQQ: Number(dep.depositoCantidadQQ) - totalLiquidado,
-        estado: dep.estado,
-        cliente: dep.cliente,
-        producto: dep.producto,
-      };
-    });
-
-    return new Response(JSON.stringify(depositosConSaldo), { status: 200 });
+    return new Response(JSON.stringify(depositos), { status: 200 });
   } catch (error) {
-    console.error("Error al obtener depósitos:", error);
+    console.error("Error al obtener vista vw_saldodepositos:", error);
     return new Response(JSON.stringify({ error: "Error interno" }), { status: 500 });
   }
 }

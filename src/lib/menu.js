@@ -26,12 +26,6 @@ export const menuItems = [
     link: Ruta + "producto",
   },
   {
-    id: 4,
-    name: "Evento",
-    image: eventos,
-    link: Ruta + "eventos",
-  },
-  {
     id: 5,
     name: "Deposito",
     image: deposito,
@@ -43,13 +37,13 @@ export const menuItems = [
     image: deposito,
     link: Ruta + "liqDeposito",
   },
-    {
+  {
     id: 7,
     name: "Contrato",
     image: deposito,
     link: Ruta + "contrato",
   },
-   {
+  {
     id: 8,
     name: "Entrega Contrato",
     image: deposito,
@@ -59,32 +53,47 @@ export const menuItems = [
 
 export const menuHeader = [
   {
-
     name: "Inicio",
     link: "/",
   },
   {
-
     name: "Compra",
     link: Ruta + "compra",
   },
   {
-
     name: "Clientes",
     link: Ruta + "cliente",
   },
   {
-
     name: "Productos",
     link: Ruta + "producto",
   },
   {
-
-    name: "Eventos",
-    link: Ruta + "eventos",
-  },
-  {
     name: "Deposito",
     link: Ruta + "deposito",
+  },
+
+  {
+    name: "Liquidación de Deposito",
+    link: Ruta + "liqDeposito",
+  },
+
+  {
+    name: "Contratos",
+    link: Ruta + "contrato",
+  },
+
+  {
+    name: "Entregas de Contrato",
+    link: Ruta + "contrato/entrega",
+  },
+   {
+    name: "Registro Depositos",
+    link: Ruta + "deposito/vista",
+  },
+
+  {
+    name: "Registro Contratos",
+    link: Ruta + "contrato/vista",
   },
 ];

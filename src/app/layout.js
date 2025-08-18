@@ -1,32 +1,33 @@
 import { Montserrat, Roboto } from "next/font/google";
+import "antd/dist/reset.css";
 import "./globals.css";
-import Header from "@/components/Header";
+import ClientProviders from "@/config/providers"; // wrapper para client-side
+import DashboardLayout from "@/components/MenuAnt";
 
 const montserrat = Montserrat({
   variable: "--font-montserrat",
   subsets: ["latin"],
-  weight: ["400", "700"], // Puedes agregar los pesos que necesites
-  style: ["normal"], // Puedes agregar estilos si quieres (normal, italic)
+  weight: ["400", "700"],
 });
 
 const roboto = Roboto({
   variable: "--font-roboto",
   subsets: ["latin"],
   weight: ["400", "700"],
-  style: ["normal"],
 });
 
 export const metadata = {
   title: "Cafe Henola",
-  description: "Beneficio Cafe henola",
+  description: "Beneficio Cafe Henola",
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="es">
       <body className={`${montserrat.variable} ${roboto.variable}`}>
-        <Header />
-        {children}
+        <ClientProviders>
+          <DashboardLayout>{children}</DashboardLayout>
+        </ClientProviders>
       </body>
     </html>
   );

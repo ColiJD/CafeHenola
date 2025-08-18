@@ -2,16 +2,52 @@ import eventos from "@/img/eventos.png";
 import producto from "@/img/cliente.png";
 import cliente from "@/img/product.png";
 import compra from "@/img/deposito.png";
+import money from "@/img/money.png";
+import prestamo from "@/img/co.png";
 // import contrato from "@/img/co.png";
 import deposito from "@/img/contrato.png";
+import {
+  UserOutlined,
+  HomeOutlined,
+  SettingOutlined,
+  ShoppingCartOutlined,
+  DollarOutlined,
+  AppstoreOutlined,
+  FileTextOutlined,
+} from "@ant-design/icons";
 
 const Ruta = "/page/";
 export const menuItems = [
   {
     id: 1,
-    name: "Compra Directa",
+    name: "Compra",
     image: compra, // imagen importada
     link: Ruta + "compra", // ruta relativa
+  },
+
+  {
+    id: 5,
+    name: "ventas",
+    image: money,
+    link: Ruta + "deposito",
+  },
+  {
+    id: 6,
+    name: "Inventario",
+    image: deposito,
+    link: Ruta + "liqDeposito",
+  },
+  {
+    id: 7,
+    name: "Informe",
+    image: eventos,
+    link: Ruta + "contrato",
+  },
+  {
+    id: 8,
+    name: "Prestamo",
+    image: prestamo,
+    link: Ruta + "contrato/entrega",
   },
   {
     id: 2,
@@ -25,75 +61,78 @@ export const menuItems = [
     image: cliente,
     link: Ruta + "producto",
   },
-  {
-    id: 5,
-    name: "Deposito",
-    image: deposito,
-    link: Ruta + "deposito",
-  },
-  {
-    id: 6,
-    name: "Liquidación de Depósito",
-    image: deposito,
-    link: Ruta + "liqDeposito",
-  },
-  {
-    id: 7,
-    name: "Contrato",
-    image: deposito,
-    link: Ruta + "contrato",
-  },
-  {
-    id: 8,
-    name: "Entrega Contrato",
-    image: deposito,
-    link: Ruta + "contrato/entrega",
-  },
 ];
 
-export const menuHeader = [
+// Diccionario de menú con rutas y submenus
+export const menuItem = [
+  { key: "inicio", icon: <HomeOutlined />, label: "Inicio", route: "/" },
   {
-    name: "Inicio",
-    link: "/",
-  },
-  {
-    name: "Compra",
-    link: Ruta + "compra",
-  },
-  {
-    name: "Clientes",
-    link: Ruta + "cliente",
-  },
-  {
-    name: "Productos",
-    link: Ruta + "producto",
-  },
-  {
-    name: "Deposito",
-    link: Ruta + "deposito",
-  },
+    key: "compras",
+    icon: <ShoppingCartOutlined />,
+    label: "Compra",
 
-  {
-    name: "Liquidación de Deposito",
-    link: Ruta + "liqDeposito",
+    children: [
+      {
+        key: "compraDirecta",
+        label: "Compra Directa",
+        route: Ruta + "/compra",
+      },
+      {
+        key: "compraDeposito",
+        label: "Deposito",
+        route: Ruta + "/deposito",
+      },
+      {
+        key: "compraLiqDeposito",
+        label: "Liquidacion de Deposito",
+        route: Ruta + "/liqDeposito",
+      },
+      {
+        key: "compraContrato",
+        label: "Contrato",
+        route: Ruta + "/contrato",
+      },
+      {
+        key: "compraEntregaContrato",
+        label: "Entrega Contrato",
+        route: Ruta + "/contrato/entrega",
+      },
+    ],
   },
-
   {
-    name: "Contratos",
-    link: Ruta + "contrato",
+    key: "venta",
+    icon: <DollarOutlined />,
+    label: "Venta",
+    children: [
+      { key: "venta-nueva", label: "Nueva Venta", route: "/venta/nueva" },
+      { key: "venta-historial", label: "Historial", route: "/venta/historial" },
+    ],
   },
-
   {
-    name: "Entregas de Contrato",
-    link: Ruta + "contrato/entrega",
+    key: "configuracion",
+    icon: <SettingOutlined />,
+    label: "Configuración",
+    children: [
+      { key: "cliente", label: "Cliente", route: Ruta + "/cliente" },
+      { key: "producto", label: "Producto", route: Ruta + "/producto" },
+    ],
   },
-   {
-    name: "Registro Depositos",
-    link: Ruta + "deposito/vista",
-  },
-
+  // {
+  //   key: "usuario",
+  //   icon: <UserOutlined />,
+  //   label: "Usuario",
+  //   route: "/usuario",
+  // },
   {
-    name: "Registro Contratos",
-    link: Ruta + "contrato/vista",
+    key: "inventario",
+    icon: <AppstoreOutlined />,
+    label: "Inventario",
+    route: "/inventario",
+  },
+  {
+    key: "informe",
+    icon: <FileTextOutlined />,
+    label: "Informe",
+    route: "/informe",
   },
 ];

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import "../style/Header.css";
 import Link from "next/link";
-import { menuHeader } from "@/lib/menu";
+import { menuHeader } from "@/lib/page";
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   // Función para cerrar menú

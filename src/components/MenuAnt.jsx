@@ -43,11 +43,11 @@ export default function DashboardLayout({ children }) {
         theme="dark"
         width={250}
         style={{
-          overflow: "hidden",
-          position: "sticky",
-          top: 0,
-          height: "100vh",
+          height: "100vh", // 🔹 altura fija de pantalla
+          overflowY: "auto", // 🔹 scroll independiente
+          flexShrink: 0, // 🔹 evita que se reduzca con el contenido
         }}
+        className="scroll-hidden" // 🔹 oculta barra scroll
       >
         <div
           style={{
@@ -67,7 +67,7 @@ export default function DashboardLayout({ children }) {
               fontWeight: 700,
               textAlign: "center",
               margin: 0,
-              whiteSpace: 'wrap',
+              whiteSpace: "wrap",
               transition: "all 0.2s",
             }}
           >
@@ -101,11 +101,13 @@ export default function DashboardLayout({ children }) {
       <Layout style={{ flex: 1, overflowY: "auto", maxHeight: "100vh" }}>
         <Content
           style={{
-            margin: "24px 16px",
+            height: "100vh", // 🔹 altura completa
+            overflowY: "auto", // 🔹 scroll independiente
             padding: 24,
             background: colorBgContainer,
             borderRadius: borderRadiusLG,
           }}
+          className="scroll-hidden" // 🔹 oculta barra scroll
         >
           {children}
         </Content>

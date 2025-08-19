@@ -1,11 +1,11 @@
 import eventos from "@/img/eventos.png";
 import producto from "@/img/cliente.png";
 import cliente from "@/img/product.png";
-import compra from "@/img/deposito.png";
+import deposito from "@/img/deposito.png";
 import money from "@/img/money.png";
 import prestamo from "@/img/co.png";
 // import contrato from "@/img/co.png";
-import deposito from "@/img/contrato.png";
+import contrato from "@/img/contrato.png";
 import {
   UserOutlined,
   HomeOutlined,
@@ -17,50 +17,69 @@ import {
 } from "@ant-design/icons";
 
 const Ruta = "/page/";
+// 📂 lib/menu.js
+
 export const menuItems = [
   {
     id: 1,
     name: "Compra",
-    image: compra, // imagen importada
-    link: Ruta + "compra", // ruta relativa
+    image: money,
+    subItems: [
+      { id: 101, name: "Nueva Compra", href: Ruta + "/compra/", image: money },
+      { id: 102, name: "Deposito", href: Ruta + "/deposito", image: deposito },
+      {
+        id: 103,
+        name: "Liquidar Deposito",
+        href: Ruta + "/liqDeposito",
+        image: deposito,
+      },
+      { id: 104, name: "Contrato", href: Ruta + "/contrato", image: contrato },
+      {
+        id: 105,
+        name: "Entregar Contrato",
+        href: Ruta + "/contrato/entrega",
+        image: contrato,
+      },
+    ],
+  },
+  {
+    id: 2,
+    name: "Ventas",
+    image: deposito,
+    subItems: [
+      { id: 201, name: "Nueva Venta", href: "/ventas/nueva", image: deposito },
+      { id: 202, name: "Reporte", href: "/ventas/reporte", image: deposito },
+    ],
+  },
+  {
+    id: 3,
+    name: "Inventario",
+    image: producto,
+    subItems: [
+      { id: 201, name: "Nueva Venta", href: "/ventas/nueva", image: deposito },
+      { id: 202, name: "Reporte", href: "/ventas/reporte", image: deposito },
+    ],
+  },
+  {
+    id: 4,
+    name: "Informe",
+    image: eventos,
+    subItems: [
+      { id: 201, name: "Nueva Venta", href: "/ventas/nueva", image: deposito },
+      { id: 202, name: "Reporte", href: "/ventas/reporte", image: deposito },
+    ],
   },
 
   {
     id: 5,
-    name: "ventas",
+    name: "Configuración",
     image: money,
-    link: Ruta + "deposito",
+    subItems: [
+      { id: 501, name: "Productos", href: Ruta + "/producto", image: deposito },
+      { id: 502, name: "Clientes", href: Ruta + "/cliente", image: deposito },
+    ],
   },
-  {
-    id: 6,
-    name: "Inventario",
-    image: deposito,
-    link: Ruta + "liqDeposito",
-  },
-  {
-    id: 7,
-    name: "Informe",
-    image: eventos,
-    link: Ruta + "contrato",
-  },
-  {
-    id: 8,
-    name: "Prestamo",
-    image: prestamo,
-    link: Ruta + "contrato/entrega",
-  },
-  {
-    id: 2,
-    name: "Clientes",
-    image: producto, // ruta desde public
-    link: Ruta + "cliente",
-  },
-  {
-    id: 3,
-    name: "Producto",
-    image: cliente,
-    link: Ruta + "producto",
-  },
+  // resto de items...
 ];
 
 // Diccionario de menú con rutas y submenus

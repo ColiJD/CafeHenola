@@ -37,3 +37,10 @@
   font-weight: 600;
   text-align: center;
 }
+.scroll-hidden {
+  scrollbar-width: none;       /* Firefox */
+  -ms-overflow-style: none;    /* IE y Edge */
+}
+.scroll-hidden::-webkit-scrollbar {
+  display: none;               /* Chrome, Safari y Opera */
+}

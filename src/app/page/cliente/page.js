@@ -1,43 +1,87 @@
 "use client";
 import { useState, useEffect } from "react";
-import "@/style/cliente.css"; // Importa el CSS
+import { Form, Input, Button, message, Row, Col } from "antd";
+import Select from "react-select";
+import CreatableSelect from "react-select/creatable";
 import { departamentos, municipiosPorDepartamento } from "./data";
-
+import { obtenerClientesSelect } from "@/lib/consultas";
 
 export default function ClienteForm() {
-  const [clienteCedula, setClienteCedula] = useState("");
-  const [clienteNombre, setClienteNombre] = useState("");
-  const [clienteApellido, setClienteApellido] = useState("");
-  const [clienteDirecion, setClienteDirecion] = useState("");
-  const [clienteDepartament, setClienteDepartament] = useState("");
-  const [clienteMunicipio, setClienteMunicipio] = useState("");
-  const [claveIHCAFE, setClaveIHCAFE] = useState("");
-  const [clienteTelefono, setClienteTelefono] = useState("");
-  const [clienteRTN, setClienteRTN] = useState("");
-  const [mensaje, setMensaje] = useState("");
-  const [error, setError] = useState("");
+  const [form] = Form.useForm();
+  const [selectedCliente, setSelectedCliente] = useState(null);
+  const [municipiosOptions, setMunicipiosOptions] = useState([]);
+  const [clientesOptions, setClientesOptions] = useState([]);
+
+  // Aquí usamos message.useMessage() para evitar el warning
+  const [messageApi, contextHolder] = message.useMessage();
 
   useEffect(() => {
-    setClienteMunicipio("");
-  }, [clienteDepartament]);
+    async function cargarClientes() {
+      const clientes = await obtenerClientesSelect();
+      setClientesOptions(clientes);
+    }
+    cargarClientes();
+  }, []);
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setMensaje("");
-    setError("");
+  const handleDepartamentoChange = (selected) => {
+    form.setFieldsValue({ clienteMunicipio: null });
+    setMunicipiosOptions(
+      selected
+        ? (municipiosPorDepartamento[selected.value] || []).map((m) => ({
+            value: m,
+            label: m,
+          }))
+        : []
+    );
+  };
 
+  const handleClienteSelect = (selected) => {
+    setSelectedCliente(selected);
+    if (selected?.data) {
+      const c = selected.data;
+      form.setFieldsValue({
+        clienteCedula: c.clienteCedula,
+        clienteNombre: selected,
+        clienteApellido: c.clienteApellido,
+        clienteDirecion: c.clienteDirecion,
+        clienteDepartament: c.clienteDepartament
+          ? { value: c.clienteDepartament, label: c.clienteDepartament }
+          : null,
+        clienteMunicipio: c.clienteMunicipio
+          ? { value: c.clienteMunicipio, label: c.clienteMunicipio }
+          : null,
+        claveIHCAFE: c.claveIHCAFE,
+        clienteTelefono: c.clienteTelefono,
+        clienteRTN: c.clienteRTN,
+      });
+
+      if (c.clienteDepartament) {
+        setMunicipiosOptions(
+          (municipiosPorDepartamento[c.clienteDepartament] || []).map((m) => ({
+            value: m,
+            label: m,
+          }))
+        );
+      }
+    }
+  };
+
+  const handleSubmit = async (values) => {
     const data = {
-      clienteCedula,
-      clienteNombre,
-      clienteApellido,
-      clienteDirecion,
-      clienteMunicipio,
-      clienteDepartament,
-      claveIHCAFE,
-      clienteTelefono,
-      clienteRTN: clienteRTN ? Number(clienteRTN) : null,
+      clienteCedula: values.clienteCedula,
+      clienteNombre:
+        typeof values.clienteNombre === "string"
+          ? values.clienteNombre
+          : values.clienteNombre?.data?.clienteNombre || "",
+      clienteApellido:
+        values.clienteApellido?.value || values.clienteApellido || "",
+      clienteDirecion: values.clienteDirecion || "",
+      clienteDepartament: values.clienteDepartament?.value || "",
+      clienteMunicipio: values.clienteMunicipio?.value || "",
+      claveIHCAFE: values.claveIHCAFE || "",
+      clienteTelefono: values.clienteTelefono || "",
+      clienteRTN: values.clienteRTN ? Number(values.clienteRTN) : null,
     };
-
     try {
       const res = await fetch("/api/clientes", {
         method: "POST",
@@ -46,113 +90,221 @@ export default function ClienteForm() {
       });
 
       if (res.ok) {
-        setMensaje("Cliente creado con éxito");
-        setClienteCedula("");
-        setClienteNombre("");
-        setClienteApellido("");
-        setClienteDirecion("");
-        setClienteDepartament("");
-        setClienteMunicipio("");
-        setClaveIHCAFE("");
-        setClienteTelefono("");
-        setClienteRTN("");
+        messageApi.success("Cliente creado con éxito"); // usamos messageApi
+        form.resetFields();
+        setSelectedCliente(null);
+        setMunicipiosOptions([]);
       } else {
         const err = await res.json();
-        setError("Error: " + (err.error || "No se pudo crear el cliente"));
+        messageApi.error(
+          "Error: " + (err.error || "No se pudo crear el cliente")
+        ); // messageApi
       }
-    } catch (err) {
-      setError("Error de red o servidor");
+    } catch {
+      messageApi.error("Error de red o servidor"); // messageApi
     }
-  }
+  };
+
+  const SelectField = ({
+    name,
+    options,
+    placeholder,
+    isDisabled,
+    onChange,
+  }) => (
+    <Form.Item
+      name={name}
+      rules={[
+        {
+          required: true,
+          message: `Por favor seleccione ${placeholder.toLowerCase()}`,
+        },
+      ]}
+    >
+      <Select
+        options={options}
+        placeholder={placeholder}
+        isDisabled={isDisabled}
+        onChange={(value) => {
+          form.setFieldsValue({ [name]: value });
+          if (onChange) onChange(value);
+        }}
+      />
+    </Form.Item>
+  );
 
   return (
-    <form className="cliente-form" onSubmit={handleSubmit}>
-      <h2 style={{ textAlign: "center", marginBottom: "1rem" }}>Cliente</h2>
-      <input
-        type="text"
-        placeholder="Cédula"
-        value={clienteCedula}
-        onChange={(e) => setClienteCedula(e.target.value)}
-        maxLength={13}
-        required
-      />
-      <input
-        type="text"
-        placeholder="Nombre"
-        value={clienteNombre}
-        onChange={(e) => setClienteNombre(e.target.value)}
-        maxLength={20}
-        required
-      />
-      <input
-        type="text"
-        placeholder="Apellido"
-        value={clienteApellido}
-        onChange={(e) => setClienteApellido(e.target.value)}
-        maxLength={20}
-        required
-      />
-      <input
-        type="text"
-        placeholder="Dirección"
-        value={clienteDirecion}
-        onChange={(e) => setClienteDirecion(e.target.value)}
-        maxLength={200}
-        required
-      />
-
-      <select
-        value={clienteDepartament}
-        onChange={(e) => setClienteDepartament(e.target.value)}
-        required
+    <>
+      {contextHolder}
+      <Form
+        form={form}
+        layout="vertical"
+        onFinish={handleSubmit}
+        style={{ maxWidth: 800, margin: "0 auto" }}
       >
-        <option value="">Seleccione departamento</option>
-        {departamentos.map((dep) => (
-          <option key={dep} value={dep}>
-            {dep}
-          </option>
-        ))}
-      </select>
+        <h2 style={{ textAlign: "center", marginBottom: "1rem" }}>Cliente</h2>
 
-      <select
-        value={clienteMunicipio}
-        onChange={(e) => setClienteMunicipio(e.target.value)}
-        disabled={!clienteDepartament}
-        required
-      >
-        <option value="">Seleccione municipio</option>
-        {(municipiosPorDepartamento[clienteDepartament] || []).map((mun) => (
-          <option key={mun} value={mun}>
-            {mun}
-          </option>
-        ))}
-      </select>
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="clienteNombre"
+              label="Nombre"
+              rules={[
+                {
+                  required: true,
+                  message: "Por favor seleccione o ingrese un cliente",
+                },
+              ]}
+            >
+              <CreatableSelect
+                options={clientesOptions}
+                placeholder="Seleccione o ingrese un cliente"
+                value={selectedCliente}
+                getOptionValue={(option) => option.value}
+                formatCreateLabel={(inputValue) =>
+                  `Crear nuevo cliente: "${inputValue}"`
+                }
+                onCreateOption={(inputValue) => {
+                  // opción temporal SOLO seleccionada
+                  const newOption = {
+                    value: inputValue, // el texto escrito
+                    label: inputValue,
+                    data: { clienteNombre: inputValue },
+                  };
 
-      <input
-        type="text"
-        placeholder="Clave IHCAFE"
-        value={claveIHCAFE}
-        onChange={(e) => setClaveIHCAFE(e.target.value)}
-      />
-      <input
-        type="text"
-        placeholder="Teléfono"
-        value={clienteTelefono}
-        onChange={(e) => setClienteTelefono(e.target.value)}
-        maxLength={13}
-      />
-      <input
-        type="number"
-        placeholder="RTN"
-         maxLength={1}
-        value={clienteRTN}
-        onChange={(e) => setClienteRTN(e.target.value)}
-      />
+                  // 👇 con esto se selecciona automáticamente
+                  setSelectedCliente(newOption);
+                  form.setFieldsValue({ clienteNombre: newOption });
 
-      <button type="submit">Crear Cliente</button>
+                  // limpiar los demás campos
+                  form.resetFields([
+                    "clienteCedula",
+                    "clienteApellido",
+                    "clienteDirecion",
+                    "clienteDepartament",
+                    "clienteMunicipio",
+                    "claveIHCAFE",
+                    "clienteTelefono",
+                    "clienteRTN",
+                  ]);
+                }}
+                onChange={(selected) => {
+                  setSelectedCliente(selected);
+                  form.setFieldsValue({ clienteNombre: selected });
+                  if (selected?.data) handleClienteSelect(selected);
+                  else {
+                    form.resetFields([
+                      "clienteCedula",
+                      "clienteApellido",
+                      "clienteDirecion",
+                      "clienteDepartament",
+                      "clienteMunicipio",
+                      "claveIHCAFE",
+                      "clienteTelefono",
+                      "clienteRTN",
+                    ]);
+                  }
+                }}
+                isClearable
+              />
+            </Form.Item>
+          </Col>
 
-      {mensaje && <p className="message">{mensaje}</p>}
-      {error && <p className="error">{error}</p>}
-    </form>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="clienteApellido"
+              label="Apellido"
+              rules={[
+                { required: true, message: "Por favor ingrese el apellido" },
+              ]}
+            >
+              <Input maxLength={20} />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="clienteCedula"
+              label="Cédula"
+              rules={[
+                { required: true, message: "Por favor ingrese la cédula" },
+              ]}
+            >
+              <Input maxLength={13} />
+            </Form.Item>
+          </Col>
+
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="clienteDirecion"
+              label="Dirección"
+              rules={[
+                { required: true, message: "Por favor ingrese la dirección" },
+              ]}
+            >
+              <Input maxLength={200} />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <SelectField
+              name="clienteDepartament"
+              options={departamentos.map((dep) => ({ value: dep, label: dep }))}
+              placeholder="Seleccione departamento"
+              onChange={handleDepartamentoChange}
+            />
+          </Col>
+
+          <Col xs={24} md={12}>
+            <SelectField
+              name="clienteMunicipio"
+              options={municipiosOptions}
+              placeholder="Seleccione municipio"
+              isDisabled={municipiosOptions.length === 0}
+            />
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <Form.Item name="claveIHCAFE" label="Clave IHCAFE">
+              <Input />
+            </Form.Item>
+          </Col>
+
+          <Col xs={24} md={12}>
+            <Form.Item name="clienteTelefono" label="Teléfono">
+              <Input maxLength={13} />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <Form.Item name="clienteRTN" label="RTN">
+              <Input type="number" />
+            </Form.Item>
+          </Col>
+
+          <Col xs={24} md={12}>
+            {/* Espacio libre o futuro campo */}
+          </Col>
+        </Row>
+
+        <Form.Item style={{ marginTop: 16 }}>
+          <Button
+            type="primary"
+            htmlType="submit"
+            disabled={!!selectedCliente?.data?.clienteID}
+          >
+            Crear Cliente
+          </Button>
+        </Form.Item>
+      </Form>
+    </>
   );
 }

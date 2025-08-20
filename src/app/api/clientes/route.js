@@ -5,7 +5,9 @@ export async function GET() {
     const clientes = await prisma.cliente.findMany();
     return new Response(JSON.stringify(clientes), { status: 200 });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+    });
   }
 }
 
@@ -23,12 +25,15 @@ export async function POST(req) {
         clienteDepartament: body.clienteDepartament,
         claveIHCAFE: body.claveIHCAFE,
         clienteTelefono: body.clienteTelefono,
-        clienteRTN: body.clienteRTN ? Number(body.clienteRTN) : null,
+        clienteRTN: body.clienteRTN,
       },
     });
 
     return new Response(JSON.stringify(cliente), { status: 201 });
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+    console.error("Error creando cliente:", error); // <- Mostrar el error real en la consola
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+    });
   }
 }

@@ -65,8 +65,13 @@ export const menuItems = [
     name: "Informe",
     image: eventos,
     subItems: [
-      { id: 201, name: "Nueva Venta", href: "/ventas/nueva", image: deposito },
-      { id: 202, name: "Reporte", href: "/ventas/reporte", image: deposito },
+      {
+        id: 401,
+        name: "Saldo Disponible",
+        href: Ruta + "/deposito/vista",
+        image: deposito,
+      },
+      { id: 402, name: "Reporte", href: "/ventas/reporte", image: deposito },
     ],
   },
 

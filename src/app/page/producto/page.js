@@ -154,7 +154,7 @@ export default function ProductoForm() {
       <Table
         dataSource={productos}
         columns={columns}
-        rowKey="productID"
+        rowKey="value"
         style={{ marginTop: 24 }}
         pagination={{ pageSize: 3 }}
       />

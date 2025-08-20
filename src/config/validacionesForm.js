@@ -23,3 +23,9 @@ export function validarTelefono(value) {
   const regex = /^\d+$/;
   return regex.test(value);
 }
+
+// 🔹 Función utilitaria para formatear números
+export const formatNumber = (value) => {
+  const num = parseFloat(value);
+  return isNaN(num) ? "0" : num.toString();
+};

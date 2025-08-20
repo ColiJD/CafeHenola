@@ -14,7 +14,6 @@ export async function obtenerClientesSelect() {
   }
 }
 
-
 // lib/consultasProductos.js
 export async function obtenerProductosSelect() {
   try {
@@ -22,12 +21,28 @@ export async function obtenerProductosSelect() {
     const productosData = await res.json();
 
     return productosData.map((p) => ({
-      value: p.id,           // id del producto
-      label: p.productName,  // nombre que se muestra en el select
-      data: p,               // guardamos todo el objeto para edición
+      value: p.id, // id del producto
+      label: p.productName, // nombre que se muestra en el select
+      data: p, // guardamos todo el objeto para edición
     }));
   } catch (err) {
     console.error("Error al cargar productos:", err);
     return []; // retornamos array vacío si falla
+  }
+}
+
+export async function obtenerDepositos() {
+  try {
+    const res = await fetch("/api/deposito");
+    const depositosData = await res.json();
+
+    return depositosData.map((d) => ({
+      value: d.depositoID,
+      label: `Depósito ${d.depositoID}`,
+      data: d,
+    }));
+  } catch (err) {
+    console.error("Error al cargar depósitos:", err);
+    return [];
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Form, Input, Button, message, Row, Col } from "antd";
+import { Form, Input, Button, message, Row, Col, Popconfirm } from "antd";
 import Select from "react-select";
 import CreatableSelect from "react-select/creatable";
 import { departamentos, municipiosPorDepartamento } from "./data";
@@ -415,12 +415,14 @@ export default function ClienteForm() {
 
           {selectedCliente?.data?.clienteID && (
             <Col>
-              <Button
-                danger
-                onClick={() => handleDelete(selectedCliente.data.clienteID)}
+              <Popconfirm
+                title="¿Seguro que quieres eliminar?"
+                onConfirm={() => handleDelete(selectedCliente.data.clienteID)} // usamos value = id
+                okText="Sí"
+                cancelText="No"
               >
-                Eliminar Cliente
-              </Button>
+                <Button danger>Eliminar Cliente</Button>
+              </Popconfirm>
             </Col>
           )}
         </Row>

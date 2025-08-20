@@ -17,7 +17,7 @@ model cliente {
   clienteDepartament String?             @db.VarChar(30)
   claveIHCAFE        String?             @db.VarChar(30)
   clienteTelefono    String?             @db.VarChar(30)
-  clienteRTN         Int?
+  clienteRTN         String?             @db.VarChar(17)
   compra             compra[]
   contrato           contrato[]
   deposito           deposito[]

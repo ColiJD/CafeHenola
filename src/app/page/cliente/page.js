@@ -80,7 +80,7 @@ export default function ClienteForm() {
       clienteMunicipio: values.clienteMunicipio?.value || "",
       claveIHCAFE: values.claveIHCAFE || "",
       clienteTelefono: values.clienteTelefono || "",
-      clienteRTN: values.clienteRTN ? Number(values.clienteRTN) : null,
+      clienteRTN: values.clienteRTN || "",
     };
     try {
       const res = await fetch("/api/clientes", {
@@ -286,7 +286,11 @@ export default function ClienteForm() {
         <Row gutter={16}>
           <Col xs={24} md={12}>
             <Form.Item name="clienteRTN" label="RTN">
-              <Input type="number" />
+              <Input
+                type="text"
+                maxLength={17}
+                placeholder="RTN: 0000-0000-00000??"
+              />
             </Form.Item>
           </Col>
 

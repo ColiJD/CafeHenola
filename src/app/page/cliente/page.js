@@ -1,19 +1,24 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Form, Input, Button, message, Row, Col } from "antd";
 import Select from "react-select";
 import CreatableSelect from "react-select/creatable";
 import { departamentos, municipiosPorDepartamento } from "./data";
 import { obtenerClientesSelect } from "@/lib/consultas";
+import {
+  capitalizarNombre,
+  validarCedula,
+  validarRTN,
+  validarTelefono,
+} from "@/config/validacionesForm";
 
 export default function ClienteForm() {
   const [form] = Form.useForm();
   const [selectedCliente, setSelectedCliente] = useState(null);
   const [municipiosOptions, setMunicipiosOptions] = useState([]);
   const [clientesOptions, setClientesOptions] = useState([]);
-
-  // Aquí usamos message.useMessage() para evitar el warning
   const [messageApi, contextHolder] = message.useMessage();
+  const selectRef = useRef(null); // Para focus automático
 
   useEffect(() => {
     async function cargarClientes() {
@@ -21,6 +26,10 @@ export default function ClienteForm() {
       setClientesOptions(clientes);
     }
     cargarClientes();
+    // Focus al CreatableSelect al cargar
+    setTimeout(() => {
+      selectRef.current?.focus();
+    }, 200);
   }, []);
 
   const handleDepartamentoChange = (selected) => {
@@ -40,19 +49,19 @@ export default function ClienteForm() {
     if (selected?.data) {
       const c = selected.data;
       form.setFieldsValue({
-        clienteCedula: c.clienteCedula,
-        clienteNombre: selected,
-        clienteApellido: c.clienteApellido,
-        clienteDirecion: c.clienteDirecion,
+        clienteCedula: c.clienteCedula || "",
+        clienteNombre: c.clienteNombre || "",
+        clienteApellido: c.clienteApellido || "",
+        clienteDirecion: c.clienteDirecion || "",
         clienteDepartament: c.clienteDepartament
           ? { value: c.clienteDepartament, label: c.clienteDepartament }
           : null,
         clienteMunicipio: c.clienteMunicipio
           ? { value: c.clienteMunicipio, label: c.clienteMunicipio }
           : null,
-        claveIHCAFE: c.claveIHCAFE,
-        clienteTelefono: c.clienteTelefono,
-        clienteRTN: c.clienteRTN,
+        claveIHCAFE: c.claveIHCAFE || "",
+        clienteTelefono: c.clienteTelefono || "",
+        clienteRTN: c.clienteRTN || "",
       });
 
       if (c.clienteDepartament) {
@@ -68,13 +77,9 @@ export default function ClienteForm() {
 
   const handleSubmit = async (values) => {
     const data = {
-      clienteCedula: values.clienteCedula,
-      clienteNombre:
-        typeof values.clienteNombre === "string"
-          ? values.clienteNombre
-          : values.clienteNombre?.data?.clienteNombre || "",
-      clienteApellido:
-        values.clienteApellido?.value || values.clienteApellido || "",
+      clienteCedula: values.clienteCedula || "",
+      clienteNombre: capitalizarNombre(values.clienteNombre) || "",
+      clienteApellido: capitalizarNombre(values.clienteApellido) || "",
       clienteDirecion: values.clienteDirecion || "",
       clienteDepartament: values.clienteDepartament?.value || "",
       clienteMunicipio: values.clienteMunicipio?.value || "",
@@ -82,26 +87,84 @@ export default function ClienteForm() {
       clienteTelefono: values.clienteTelefono || "",
       clienteRTN: values.clienteRTN || "",
     };
+    // Validaciones
+    if (!validarCedula(data.clienteCedula)) {
+      messageApi.error("Cédula inválida, formato esperado: 0703-2001-00798");
+      return;
+    }
+
+    if (!validarRTN(data.clienteRTN)) {
+      messageApi.error("RTN inválido, formato esperado: 0703-2001-0079812");
+      return;
+    }
+
+    if (!validarTelefono(data.clienteTelefono)) {
+      messageApi.error("Teléfono inválido, solo números");
+      return;
+    }
+    const method = selectedCliente?.data?.clienteID ? "PUT" : "POST";
+    const url = selectedCliente?.data?.clienteID
+      ? `/api/clientes/${selectedCliente.data.clienteID}`
+      : "/api/clientes";
+
     try {
-      const res = await fetch("/api/clientes", {
-        method: "POST",
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
 
       if (res.ok) {
-        messageApi.success("Cliente creado con éxito"); // usamos messageApi
+        messageApi.success(
+          selectedCliente?.data?.clienteID
+            ? "Cliente actualizado con éxito"
+            : "Cliente creado con éxito"
+        );
         form.resetFields();
         setSelectedCliente(null);
         setMunicipiosOptions([]);
+        const clientes = await obtenerClientesSelect();
+        setClientesOptions(clientes);
+        // Volver a focus en el select
+        setTimeout(() => {
+          selectRef.current?.focus();
+        }, 200);
       } else {
         const err = await res.json();
         messageApi.error(
-          "Error: " + (err.error || "No se pudo crear el cliente")
-        ); // messageApi
+          "Error: " + (err.error || "No se pudo guardar el cliente")
+        );
       }
     } catch {
-      messageApi.error("Error de red o servidor"); // messageApi
+      messageApi.error("Error de red o servidor");
+    }
+  };
+
+  const handleDelete = async (clienteID) => {
+    try {
+      const res = await fetch(`/api/clientes/${clienteID}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        messageApi.success("Cliente eliminado con éxito");
+        if (selectedCliente?.data?.clienteID === clienteID) {
+          form.resetFields();
+          setSelectedCliente(null);
+          setMunicipiosOptions([]);
+        }
+        const clientes = await obtenerClientesSelect();
+        setClientesOptions(clientes);
+        setTimeout(() => {
+          selectRef.current?.focus();
+        }, 200);
+      } else {
+        const err = await res.json();
+        messageApi.error(
+          "Error eliminando: " + (err.error || "Error desconocido")
+        );
+      }
+    } catch {
+      messageApi.error("Error de red o servidor");
     }
   };
 
@@ -144,39 +207,28 @@ export default function ClienteForm() {
       >
         <h2 style={{ textAlign: "center", marginBottom: "1rem" }}>Cliente</h2>
 
+        {/* Select para buscar cliente existente */}
         <Row gutter={16}>
-          <Col xs={24} md={12}>
-            <Form.Item
-              name="clienteNombre"
-              label="Nombre"
-              rules={[
-                {
-                  required: true,
-                  message: "Por favor seleccione o ingrese un cliente",
-                },
-              ]}
-            >
+          <Col xs={24}>
+            <Form.Item label="Buscar cliente existente">
               <CreatableSelect
+                ref={selectRef}
                 options={clientesOptions}
-                placeholder="Seleccione o ingrese un cliente"
+                placeholder="Seleccione un cliente"
                 value={selectedCliente}
                 getOptionValue={(option) => option.value}
+                getOptionLabel={(option) => option.label}
                 formatCreateLabel={(inputValue) =>
                   `Crear nuevo cliente: "${inputValue}"`
                 }
                 onCreateOption={(inputValue) => {
-                  // opción temporal SOLO seleccionada
                   const newOption = {
-                    value: inputValue, // el texto escrito
+                    value: inputValue,
                     label: inputValue,
                     data: { clienteNombre: inputValue },
                   };
-
-                  // 👇 con esto se selecciona automáticamente
                   setSelectedCliente(newOption);
-                  form.setFieldsValue({ clienteNombre: newOption });
-
-                  // limpiar los demás campos
+                  form.setFieldsValue({ clienteNombre: inputValue });
                   form.resetFields([
                     "clienteCedula",
                     "clienteApellido",
@@ -190,7 +242,7 @@ export default function ClienteForm() {
                 }}
                 onChange={(selected) => {
                   setSelectedCliente(selected);
-                  form.setFieldsValue({ clienteNombre: selected });
+                  form.setFieldsValue({ clienteNombre: selected?.label || "" });
                   if (selected?.data) handleClienteSelect(selected);
                   else {
                     form.resetFields([
@@ -206,6 +258,24 @@ export default function ClienteForm() {
                   }
                 }}
                 isClearable
+                autoFocus
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="clienteNombre"
+              label="Nombre"
+              rules={[
+                { required: true, message: "Por favor ingrese el nombre" },
+              ]}
+            >
+              <Input
+                maxLength={50}
+                onBlur={() => form.validateFields(["clienteNombre"])}
               />
             </Form.Item>
           </Col>
@@ -218,7 +288,10 @@ export default function ClienteForm() {
                 { required: true, message: "Por favor ingrese el apellido" },
               ]}
             >
-              <Input maxLength={20} />
+              <Input
+                maxLength={50}
+                onBlur={() => form.validateFields(["clienteApellido"])}
+              />
             </Form.Item>
           </Col>
         </Row>
@@ -230,9 +303,17 @@ export default function ClienteForm() {
               label="Cédula"
               rules={[
                 { required: true, message: "Por favor ingrese la cédula" },
+                {
+                  pattern: /^\d{4}-\d{4}-\d{5}$/,
+                  message: "Cédula inválida, formato esperado: 0000-0000-00000",
+                },
               ]}
             >
-              <Input maxLength={13} />
+              <Input
+                maxLength={15}
+                placeholder="0000-0000-00000"
+                onBlur={() => form.validateFields(["clienteCedula"])}
+              />
             </Form.Item>
           </Col>
 
@@ -244,7 +325,10 @@ export default function ClienteForm() {
                 { required: true, message: "Por favor ingrese la dirección" },
               ]}
             >
-              <Input maxLength={200} />
+              <Input
+                maxLength={200}
+                onBlur={() => form.validateFields(["clienteDirecion"])}
+              />
             </Form.Item>
           </Col>
         </Row>
@@ -277,37 +361,69 @@ export default function ClienteForm() {
           </Col>
 
           <Col xs={24} md={12}>
-            <Form.Item name="clienteTelefono" label="Teléfono">
-              <Input maxLength={13} />
+            <Form.Item
+              name="clienteTelefono"
+              label="Teléfono"
+              rules={[
+                { required: true, message: "Por favor ingrese el teléfono" },
+                {
+                  pattern: /^\d+$/,
+                  message: "El teléfono solo puede contener números",
+                },
+              ]}
+            >
+              <Input
+                maxLength={13}
+                placeholder="Solo números"
+                onBlur={() => form.validateFields(["clienteTelefono"])}
+              />
             </Form.Item>
           </Col>
         </Row>
 
         <Row gutter={16}>
           <Col xs={24} md={12}>
-            <Form.Item name="clienteRTN" label="RTN">
+            <Form.Item
+              name="clienteRTN"
+              label="RTN"
+              rules={[
+                { required: true, message: "Por favor ingrese el RTN" },
+                {
+                  pattern: /^\d{4}-\d{4}-\d{7}$/,
+                  message: "RTN inválido, formato esperado: 0000-0000-0000000",
+                },
+              ]}
+            >
               <Input
-                type="text"
                 maxLength={17}
-                placeholder="RTN: 0000-0000-00000??"
+                placeholder="0000-0000-0000000"
+                onBlur={() => form.validateFields(["clienteRTN"])}
               />
             </Form.Item>
           </Col>
-
-          <Col xs={24} md={12}>
-            {/* Espacio libre o futuro campo */}
-          </Col>
         </Row>
 
-        <Form.Item style={{ marginTop: 16 }}>
-          <Button
-            type="primary"
-            htmlType="submit"
-            disabled={!!selectedCliente?.data?.clienteID}
-          >
-            Crear Cliente
-          </Button>
-        </Form.Item>
+        {/* Botones centrados y separados */}
+        <Row justify="center" gutter={16} style={{ marginTop: 16 }}>
+          <Col>
+            <Button type="primary" htmlType="submit">
+              {selectedCliente?.data?.clienteID
+                ? "Actualizar Cliente"
+                : "Crear Cliente"}
+            </Button>
+          </Col>
+
+          {selectedCliente?.data?.clienteID && (
+            <Col>
+              <Button
+                danger
+                onClick={() => handleDelete(selectedCliente.data.clienteID)}
+              >
+                Eliminar Cliente
+              </Button>
+            </Col>
+          )}
+        </Row>
       </Form>
     </>
   );

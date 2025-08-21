@@ -9,7 +9,7 @@ datasource db {
 
 model cliente {
   clienteID          Int                 @id @default(autoincrement())
-  clienteCedula      String?             @unique(map: "clienteCedula") @db.VarChar(13)
+  clienteCedula      String?             @unique(map: "clienteCedula") @db.VarChar(15)
   clienteNombre      String?             @db.VarChar(20)
   clienteApellido    String?             @db.VarChar(20)
   clienteDirecion    String?             @db.VarChar(200)

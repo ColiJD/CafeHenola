@@ -157,6 +157,13 @@ export const menuItem = [
     key: "informe",
     icon: <FileTextOutlined />,
     label: "Informe",
-    route: "/informe",
+    children: [
+      {
+        key: "SaldoDisponible",
+        label: "Saldo Disponible",
+        route: Ruta + "/deposito/vista",
+      },
+      { key: "venta-historial", label: "Historial", route: "/venta/historial" },
+    ],
   },
 ];

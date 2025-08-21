@@ -4,6 +4,7 @@ import Link from "next/link";
 import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
 import { menuItem } from "@/lib/menu";
 import { Layout, Menu, Button, theme } from "antd";
+import "@/style/menu.css"; // 🔹 Importar estilos globales
 
 const { Sider, Content } = Layout;
 

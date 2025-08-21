@@ -1,6 +1,15 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { Form, Input, Button, message, Row, Col, Popconfirm } from "antd";
+import {
+  Form,
+  Input,
+  Button,
+  message,
+  Row,
+  Col,
+  Modal,
+  Popconfirm,
+} from "antd";
 import Select from "react-select";
 import CreatableSelect from "react-select/creatable";
 import { departamentos, municipiosPorDepartamento } from "./data";
@@ -18,19 +27,20 @@ export default function ClienteForm() {
   const [municipiosOptions, setMunicipiosOptions] = useState([]);
   const [clientesOptions, setClientesOptions] = useState([]);
   const [messageApi, contextHolder] = message.useMessage();
-  const selectRef = useRef(null); // Para focus automático
+  const selectRef = useRef(null);
+
+  const [errors, setErrors] = useState({});
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     async function cargarClientes() {
-      const clientes = await obtenerClientesSelect();
+      const clientes = await obtenerClientesSelect(messageApi);
       setClientesOptions(clientes);
     }
     cargarClientes();
-    // Focus al CreatableSelect al cargar
-    setTimeout(() => {
-      selectRef.current?.focus();
-    }, 200);
-  }, []);
+    setTimeout(() => selectRef.current?.focus(), 200);
+  }, [messageApi]);
 
   const handleDepartamentoChange = (selected) => {
     form.setFieldsValue({ clienteMunicipio: null });
@@ -75,7 +85,43 @@ export default function ClienteForm() {
     }
   };
 
-  const handleSubmit = async (values) => {
+  const validarDatos = (values) => {
+    const newErrors = {};
+    if (!values.clienteNombre) newErrors.clienteNombre = "Ingrese el nombre";
+    if (!values.clienteApellido)
+      newErrors.clienteApellido = "Ingrese el apellido";
+    if (!validarCedula(values.clienteCedula))
+      newErrors.clienteCedula = "Cédula inválida, formato: 0000-0000-00000";
+    if (!values.clienteDirecion)
+      newErrors.clienteDirecion = "Ingrese la dirección";
+    if (!values.clienteDepartament)
+      newErrors.clienteDepartament = "Seleccione departamento";
+    if (!values.clienteMunicipio)
+      newErrors.clienteMunicipio = "Seleccione municipio";
+    if (!validarTelefono(values.clienteTelefono))
+      newErrors.clienteTelefono = "Teléfono inválido, solo números";
+    if (!validarRTN(values.clienteRTN))
+      newErrors.clienteRTN = "RTN inválido, formato: 0000-0000-0000000";
+
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      messageApi.warning("Complete los campos obligatorios correctamente");
+      return false;
+    }
+    return true;
+  };
+
+  const handlePrevisualizar = () => {
+    const values = form.getFieldsValue();
+    if (validarDatos(values)) {
+      messageApi.info("Revisa la previsualización antes de confirmar");
+      setPreviewVisible(true);
+    }
+  };
+
+  const handleConfirmar = async () => {
+    setSubmitting(true);
+    const values = form.getFieldsValue();
     const data = {
       clienteCedula: values.clienteCedula || "",
       clienteNombre: capitalizarNombre(values.clienteNombre) || "",
@@ -87,21 +133,7 @@ export default function ClienteForm() {
       clienteTelefono: values.clienteTelefono || "",
       clienteRTN: values.clienteRTN || "",
     };
-    // Validaciones
-    if (!validarCedula(data.clienteCedula)) {
-      messageApi.error("Cédula inválida, formato esperado: 0703-2001-00798");
-      return;
-    }
 
-    if (!validarRTN(data.clienteRTN)) {
-      messageApi.error("RTN inválido, formato esperado: 0703-2001-0079812");
-      return;
-    }
-
-    if (!validarTelefono(data.clienteTelefono)) {
-      messageApi.error("Teléfono inválido, solo números");
-      return;
-    }
     const method = selectedCliente?.data?.clienteID ? "PUT" : "POST";
     const url = selectedCliente?.data?.clienteID
       ? `/api/clientes/${selectedCliente.data.clienteID}`
@@ -113,7 +145,6 @@ export default function ClienteForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-
       if (res.ok) {
         messageApi.success(
           selectedCliente?.data?.clienteID
@@ -125,10 +156,8 @@ export default function ClienteForm() {
         setMunicipiosOptions([]);
         const clientes = await obtenerClientesSelect();
         setClientesOptions(clientes);
-        // Volver a focus en el select
-        setTimeout(() => {
-          selectRef.current?.focus();
-        }, 200);
+        setPreviewVisible(false);
+        setTimeout(() => selectRef.current?.focus(), 200);
       } else {
         const err = await res.json();
         messageApi.error(
@@ -137,6 +166,8 @@ export default function ClienteForm() {
       }
     } catch {
       messageApi.error("Error de red o servidor");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -154,9 +185,7 @@ export default function ClienteForm() {
         }
         const clientes = await obtenerClientesSelect();
         setClientesOptions(clientes);
-        setTimeout(() => {
-          selectRef.current?.focus();
-        }, 200);
+        setTimeout(() => selectRef.current?.focus(), 200);
       } else {
         const err = await res.json();
         messageApi.error(
@@ -177,12 +206,8 @@ export default function ClienteForm() {
   }) => (
     <Form.Item
       name={name}
-      rules={[
-        {
-          required: true,
-          message: `Por favor seleccione ${placeholder.toLowerCase()}`,
-        },
-      ]}
+      validateStatus={errors[name] ? "error" : ""}
+      help={errors[name]}
     >
       <Select
         options={options}
@@ -192,6 +217,15 @@ export default function ClienteForm() {
           form.setFieldsValue({ [name]: value });
           if (onChange) onChange(value);
         }}
+        styles={{
+          control: (base) => ({
+            ...base,
+            borderColor: errors[name] ? "red" : base.borderColor,
+            boxShadow: errors[name]
+              ? "0 0 0 2px rgba(255,0,0,0.2)"
+              : base.boxShadow,
+          }),
+        }}
       />
     </Form.Item>
   );
@@ -199,15 +233,9 @@ export default function ClienteForm() {
   return (
     <>
       {contextHolder}
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={handleSubmit}
-        style={{ maxWidth: 800, margin: "0 auto" }}
-      >
-        <h2 style={{ textAlign: "center", marginBottom: "1rem" }}>Cliente</h2>
+      <Form form={form} layout="vertical">
+        <h2 style={{ textAlign: "left", marginBottom: "1rem" }}>Cliente</h2>
 
-        {/* Select para buscar cliente existente */}
         <Row gutter={16}>
           <Col xs={24}>
             <Form.Item label="Buscar cliente existente">
@@ -259,39 +287,42 @@ export default function ClienteForm() {
                 }}
                 isClearable
                 autoFocus
+                styles={{
+                  control: (base) => ({
+                    ...base,
+                    borderColor: errors.clienteNombre
+                      ? "red"
+                      : base.borderColor,
+                    boxShadow: errors.clienteNombre
+                      ? "0 0 0 2px rgba(255,0,0,0.2)"
+                      : base.boxShadow,
+                  }),
+                }}
               />
             </Form.Item>
           </Col>
         </Row>
 
+        {/* Campos del formulario */}
         <Row gutter={16}>
           <Col xs={24} md={12}>
             <Form.Item
               name="clienteNombre"
               label="Nombre"
-              rules={[
-                { required: true, message: "Por favor ingrese el nombre" },
-              ]}
+              validateStatus={errors.clienteNombre ? "error" : ""}
+              help={errors.clienteNombre}
             >
-              <Input
-                maxLength={50}
-                onBlur={() => form.validateFields(["clienteNombre"])}
-              />
+              <Input maxLength={50} />
             </Form.Item>
           </Col>
-
           <Col xs={24} md={12}>
             <Form.Item
               name="clienteApellido"
               label="Apellido"
-              rules={[
-                { required: true, message: "Por favor ingrese el apellido" },
-              ]}
+              validateStatus={errors.clienteApellido ? "error" : ""}
+              help={errors.clienteApellido}
             >
-              <Input
-                maxLength={50}
-                onBlur={() => form.validateFields(["clienteApellido"])}
-              />
+              <Input maxLength={50} />
             </Form.Item>
           </Col>
         </Row>
@@ -301,34 +332,20 @@ export default function ClienteForm() {
             <Form.Item
               name="clienteCedula"
               label="Cédula"
-              rules={[
-                { required: true, message: "Por favor ingrese la cédula" },
-                {
-                  pattern: /^\d{4}-\d{4}-\d{5}$/,
-                  message: "Cédula inválida, formato esperado: 0000-0000-00000",
-                },
-              ]}
+              validateStatus={errors.clienteCedula ? "error" : ""}
+              help={errors.clienteCedula}
             >
-              <Input
-                maxLength={15}
-                placeholder="0000-0000-00000"
-                onBlur={() => form.validateFields(["clienteCedula"])}
-              />
+              <Input maxLength={15} placeholder="0000-0000-00000" />
             </Form.Item>
           </Col>
-
           <Col xs={24} md={12}>
             <Form.Item
               name="clienteDirecion"
               label="Dirección"
-              rules={[
-                { required: true, message: "Por favor ingrese la dirección" },
-              ]}
+              validateStatus={errors.clienteDirecion ? "error" : ""}
+              help={errors.clienteDirecion}
             >
-              <Input
-                maxLength={200}
-                onBlur={() => form.validateFields(["clienteDirecion"])}
-              />
+              <Input maxLength={200} />
             </Form.Item>
           </Col>
         </Row>
@@ -342,7 +359,6 @@ export default function ClienteForm() {
               onChange={handleDepartamentoChange}
             />
           </Col>
-
           <Col xs={24} md={12}>
             <SelectField
               name="clienteMunicipio"
@@ -359,24 +375,14 @@ export default function ClienteForm() {
               <Input />
             </Form.Item>
           </Col>
-
           <Col xs={24} md={12}>
             <Form.Item
               name="clienteTelefono"
               label="Teléfono"
-              rules={[
-                { required: true, message: "Por favor ingrese el teléfono" },
-                {
-                  pattern: /^\d+$/,
-                  message: "El teléfono solo puede contener números",
-                },
-              ]}
+              validateStatus={errors.clienteTelefono ? "error" : ""}
+              help={errors.clienteTelefono}
             >
-              <Input
-                maxLength={13}
-                placeholder="Solo números"
-                onBlur={() => form.validateFields(["clienteTelefono"])}
-              />
+              <Input maxLength={13} placeholder="Solo números" />
             </Form.Item>
           </Col>
         </Row>
@@ -386,46 +392,84 @@ export default function ClienteForm() {
             <Form.Item
               name="clienteRTN"
               label="RTN"
-              rules={[
-                { required: true, message: "Por favor ingrese el RTN" },
-                {
-                  pattern: /^\d{4}-\d{4}-\d{7}$/,
-                  message: "RTN inválido, formato esperado: 0000-0000-0000000",
-                },
-              ]}
+              validateStatus={errors.clienteRTN ? "error" : ""}
+              help={errors.clienteRTN}
             >
-              <Input
-                maxLength={17}
-                placeholder="0000-0000-0000000"
-                onBlur={() => form.validateFields(["clienteRTN"])}
-              />
+              <Input maxLength={17} placeholder="0000-0000-0000000" />
             </Form.Item>
           </Col>
         </Row>
 
-        {/* Botones centrados y separados */}
+        {/* Botones */}
         <Row justify="center" gutter={16} style={{ marginTop: 16 }}>
           <Col>
-            <Button type="primary" htmlType="submit">
+            <Button
+              type="primary"
+              onClick={handlePrevisualizar}
+              disabled={submitting}
+            >
               {selectedCliente?.data?.clienteID
                 ? "Actualizar Cliente"
                 : "Crear Cliente"}
             </Button>
           </Col>
-
           {selectedCliente?.data?.clienteID && (
             <Col>
               <Popconfirm
                 title="¿Seguro que quieres eliminar?"
-                onConfirm={() => handleDelete(selectedCliente.data.clienteID)} // usamos value = id
+                onConfirm={() => handleDelete(selectedCliente.data.clienteID)}
                 okText="Sí"
                 cancelText="No"
               >
-                <Button danger>Eliminar Cliente</Button>
+                <Button danger disabled={submitting}>
+                  Eliminar Cliente
+                </Button>
               </Popconfirm>
             </Col>
           )}
         </Row>
+
+        {/* Modal de previsualización */}
+        <Modal
+          open={previewVisible}
+          title="Previsualización del Cliente"
+          onCancel={() => setPreviewVisible(false)}
+          onOk={handleConfirmar}
+          confirmLoading={submitting}
+          okText="Confirmar"
+          cancelText="Cancelar"
+        >
+          <p>
+            <strong>Nombre:</strong> {form.getFieldValue("clienteNombre")}
+          </p>
+          <p>
+            <strong>Apellido:</strong> {form.getFieldValue("clienteApellido")}
+          </p>
+          <p>
+            <strong>Cédula:</strong> {form.getFieldValue("clienteCedula")}
+          </p>
+          <p>
+            <strong>Dirección:</strong> {form.getFieldValue("clienteDirecion")}
+          </p>
+          <p>
+            <strong>Departamento:</strong>{" "}
+            {form.getFieldValue("clienteDepartament")?.label}
+          </p>
+          <p>
+            <strong>Municipio:</strong>{" "}
+            {form.getFieldValue("clienteMunicipio")?.label}
+          </p>
+          <p>
+            <strong>Clave IHCAFE:</strong>{" "}
+            {form.getFieldValue("claveIHCAFE") || "-"}
+          </p>
+          <p>
+            <strong>Teléfono:</strong> {form.getFieldValue("clienteTelefono")}
+          </p>
+          <p>
+            <strong>RTN:</strong> {form.getFieldValue("clienteRTN")}
+          </p>
+        </Modal>
       </Form>
     </>
   );

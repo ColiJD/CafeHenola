@@ -1,24 +1,27 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Form, Input, Button, Modal, Row, Col, message } from "antd";
+import { useState, useEffect } from "react";
 import Select from "react-select";
-import "@/style/cliente.css";
+import { obtenerClientesSelect, obtenerProductosSelect } from "@/lib/consultas";
 
 export default function DepositoForm() {
-  // Estados para datos cargados
   const [clientes, setClientes] = useState([]);
   const [productos, setProductos] = useState([]);
 
-  // Estados para los campos del formulario
   const [cliente, setCliente] = useState(null);
   const [producto, setProducto] = useState(null);
-  const [depositoEn, setDepositoEn] = useState("");
   const [depositoCantidadQQ, setDepositoCantidadQQ] = useState("");
   const [depositoTotalSacos, setDepositoTotalSacos] = useState("");
+  const [depositoEn, setDepositoEn] = useState("");
   const [depositoDescripcion, setDepositoDescripcion] = useState("");
-  const [mensaje, setMensaje] = useState("");
-  const [error, setError] = useState("");
 
-  // Carga clientes y productos al montar componente
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
+
+  // Hook para mensajes
+  const [messageApi, contextHolder] = message.useMessage();
+
   useEffect(() => {
     async function cargarDatos() {
       try {
@@ -43,28 +46,56 @@ export default function DepositoForm() {
         );
       } catch (error) {
         console.error("Error cargando datos:", error);
+        messageApi.error("Error cargando clientes o productos");
       }
     }
     cargarDatos();
-  }, []);
+  }, [messageApi]);
 
-  // Maneja el envío del formulario
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setMensaje("");
-    setError("");
+  const validarDatos = () => {
+    const newErrors = {};
+    if (!cliente) newErrors.cliente = "Seleccione un cliente";
+    if (!producto) newErrors.producto = "Seleccione un tipo de café";
+    if (!depositoCantidadQQ)
+      newErrors.depositoCantidadQQ = "Ingrese cantidad QQ";
+    else if (
+      !/^\d+$/.test(depositoCantidadQQ) ||
+      parseInt(depositoCantidadQQ, 10) <= 0
+    )
+      newErrors.depositoCantidadQQ = "Cantidad QQ debe ser entero mayor a 0";
+    if (
+      depositoTotalSacos &&
+      (!/^\d+$/.test(depositoTotalSacos) ||
+        parseInt(depositoTotalSacos, 10) < 0)
+    )
+      newErrors.depositoTotalSacos = "Total sacos debe ser entero positivo";
+    if (!depositoEn) newErrors.depositoEn = "Ingrese depósito en";
 
-    if (!cliente || !producto || !depositoCantidadQQ || !depositoEn) {
-      setMensaje("Por favor complete todos los campos obligatorios.");
-      return;
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      messageApi.warning("Complete los campos obligatorios correctamente");
+      return false;
     }
+    return true;
+  };
 
+  const handleRegistrarClick = (e) => {
+    e.preventDefault();
+    if (validarDatos()) {
+      messageApi.info("Revisa la previsualización antes de confirmar");
+      setPreviewVisible(true);
+    }
+  };
+
+  const handleConfirmar = async () => {
+    setSubmitting(true);
     const data = {
       clienteID: cliente.value,
       depositoTipoCafe: producto.value,
-      depositoCantidadQQ: parseFloat(depositoCantidadQQ),
+      depositoCantidadQQ: parseInt(depositoCantidadQQ, 10),
       depositoTotalSacos: depositoTotalSacos
-        ? parseFloat(depositoTotalSacos)
+        ? parseInt(depositoTotalSacos, 10)
         : 0,
       depositoEn,
       depositoDescripcion,
@@ -78,82 +109,170 @@ export default function DepositoForm() {
       });
 
       if (res.ok) {
-        setMensaje("Depósito registrado exitosamente");
-        // Reset campos
+        messageApi.success("Depósito registrado exitosamente");
+        setPreviewVisible(false);
         setCliente(null);
         setProducto(null);
         setDepositoCantidadQQ("");
         setDepositoTotalSacos("");
         setDepositoEn("");
         setDepositoDescripcion("");
+        setErrors({});
       } else {
         const err = await res.json();
-        setError("Error: " + (err.error || "No se pudo registrar el depósito"));
+        messageApi.error(err.error || "Error al registrar depósito");
       }
     } catch (error) {
-      setError("Error enviando los datos");
       console.error(error);
+      messageApi.error("Error enviando los datos al servidor");
+    } finally {
+      setSubmitting(false);
     }
   };
 
+  const handleEnteroInput = (setter) => (e) => {
+    const value = e.target.value;
+    if (/^\d*$/.test(value)) setter(value);
+  };
+
   return (
-    <form className="cliente-form" onSubmit={handleSubmit}>
-      <h2 style={{ textAlign: "center", marginBottom: "1rem" }}>Depósito</h2>
-      <label htmlFor="cliente">Cliente:</label>
-      <Select
-        options={clientes}
-        value={cliente}
-        onChange={setCliente}
-        placeholder="Seleccione un cliente"
-        isClearable
-      />
+    <>
+      {contextHolder}
+      <Form layout="vertical" onSubmitCapture={handleRegistrarClick}>
+        <h2 style={{ textAlign: "left", marginBottom: "1rem" }}>Deposito</h2>
 
-      <label htmlFor="producto">Tipo de Café:</label>
-      <Select
-        options={productos}
-        value={producto}
-        onChange={setProducto}
-        placeholder="Seleccione café"
-        isClearable
-      />
+        <Row gutter={16}>
+          <Col xs={24} sm={12}>
+            <Form.Item
+              label="Cliente"
+              required
+              validateStatus={errors.cliente ? "error" : ""}
+              help={errors.cliente}
+            >
+              <Select
+                options={clientes}
+                value={cliente}
+                onChange={setCliente}
+                placeholder="Seleccione un cliente"
+                isClearable
+                styles={{
+                  control: (base) => ({
+                    ...base,
+                    borderColor: errors.cliente ? "red" : base.borderColor,
+                  }),
+                }}
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Form.Item
+              label="Tipo de Café"
+              required
+              validateStatus={errors.producto ? "error" : ""}
+              help={errors.producto}
+            >
+              <Select
+                options={productos}
+                value={producto}
+                onChange={setProducto}
+                placeholder="Seleccione café"
+                isClearable
+                styles={{
+                  control: (base) => ({
+                    ...base,
+                    borderColor: errors.producto ? "red" : base.borderColor,
+                  }),
+                }}
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Form.Item
+              label="Cantidad QQ"
+              required
+              validateStatus={errors.depositoCantidadQQ ? "error" : ""}
+              help={errors.depositoCantidadQQ}
+            >
+              <Input
+                type="text"
+                value={depositoCantidadQQ}
+                onChange={handleEnteroInput(setDepositoCantidadQQ)}
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Form.Item
+              label="Total Sacos"
+              validateStatus={errors.depositoTotalSacos ? "error" : ""}
+              help={errors.depositoTotalSacos}
+            >
+              <Input
+                type="text"
+                value={depositoTotalSacos}
+                onChange={handleEnteroInput(setDepositoTotalSacos)}
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Form.Item
+              label="Depósito en"
+              required
+              validateStatus={errors.depositoEn ? "error" : ""}
+              help={errors.depositoEn}
+            >
+              <Input
+                value={depositoEn}
+                onChange={(e) => setDepositoEn(e.target.value)}
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={24} sm={12}>
+            <Form.Item label="Descripción">
+              <Input.TextArea
+                value={depositoDescripcion}
+                onChange={(e) => setDepositoDescripcion(e.target.value)}
+              />
+            </Form.Item>
+          </Col>
+        </Row>
 
-      <label htmlFor="depositoCantidadQQ">Cantidad QQ:</label>
-      <input
-        type="number"
-        placeholder="Cantidad QQ"
-        value={depositoCantidadQQ}
-        onChange={(e) => setDepositoCantidadQQ(e.target.value)}
-        step="0.01"
-        required
-      />
+        <Button
+          type="primary"
+          onClick={handleRegistrarClick}
+          disabled={submitting}
+        >
+          Registrar Depósito
+        </Button>
 
-      <label htmlFor="depositoTotalSacos">Total Sacos:</label>
-      <input
-        type="number"
-        placeholder="Total Sacos"
-        value={depositoTotalSacos}
-        onChange={(e) => setDepositoTotalSacos(e.target.value)}
-        step="0.01"
-      />
-      <label htmlFor="depositoEn">Depósito en:</label>
-      <input
-        type="text"
-        placeholder="Depósito en"
-        value={depositoEn}
-        onChange={(e) => setDepositoEn(e.target.value)}
-        required
-      />
-
-      <label htmlFor="depositoDescripcion">Descripción:</label>
-      <textarea
-        placeholder="Descripción"
-        value={depositoDescripcion}
-        onChange={(e) => setDepositoDescripcion(e.target.value)}
-      />
-
-      <button type="submit">Registrar Depósito</button>
-      {mensaje && <p className="message">{mensaje}</p>}
-      {error && <p className="error">{error}</p>}
-    </form>
+        <Modal
+          open={previewVisible}
+          title="Previsualización del Depósito"
+          onCancel={() => setPreviewVisible(false)}
+          onOk={handleConfirmar}
+          confirmLoading={submitting}
+          okText="Confirmar"
+          cancelText="Cancelar"
+        >
+          <p>
+            <strong>Cliente:</strong> {cliente?.label}
+          </p>
+          <p>
+            <strong>Café:</strong> {producto?.label}
+          </p>
+          <p>
+            <strong>Cantidad QQ:</strong> {depositoCantidadQQ}
+          </p>
+          <p>
+            <strong>Total Sacos:</strong> {depositoTotalSacos || 0}
+          </p>
+          <p>
+            <strong>Depósito en:</strong> {depositoEn}
+          </p>
+          <p>
+            <strong>Descripción:</strong> {depositoDescripcion || "-"}
+          </p>
+        </Modal>
+      </Form>
+    </>
   );
 }

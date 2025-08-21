@@ -29,3 +29,27 @@ export const formatNumber = (value) => {
   const num = parseFloat(value);
   return isNaN(num) ? "0" : num.toString();
 };
+
+// Valida que sea número entero positivo mayor a 0
+export function validarEnteroPositivo(value) {
+  return /^\d+$/.test(value) && parseInt(value, 10) > 0;
+}
+
+// Valida que sea número entero no negativo (>=0)
+export function validarEnteroNoNegativo(value) {
+  return /^\d+$/.test(value) && parseInt(value, 10) >= 0;
+}
+// 🔹 Función genérica para limpiar formulario
+/**
+ * Limpia un formulario de manera genérica.
+ * @param {Object} campos - Objeto con setters y tipo de campo opcional.
+ *   Ejemplo: { setCliente: { setter: setCliente, type: 'select' }, setNombre: { setter: setNombre } }
+ *   type: 'select' | 'input' (por defecto 'input')
+ */
+export const limpiarFormulario = (campos) => {
+  Object.values(campos).forEach(({ setter, type = "input" }) => {
+    if (typeof setter === "function") {
+      setter(type === "select" ? null : "");
+    }
+  });
+};

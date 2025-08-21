@@ -56,6 +56,7 @@ export default function TablaSaldoDepositos() {
     const mapa = {};
     items.forEach((item) => {
       const key = `${item.clienteID}-${item.tipoCafeNombre}-${item.estado}`;
+
       if (!mapa[key]) {
         mapa[key] = {
           ...item,
@@ -66,11 +67,19 @@ export default function TablaSaldoDepositos() {
           detalles: [],
         };
       }
-      mapa[key].cantidadTotal += item.cantidadTotal;
-      mapa[key].cantidadLiquidada += item.cantidadLiquidada;
-      mapa[key].saldoPendienteQQ += item.saldoPendienteQQ;
+
+      // Convertir a número antes de sumar
+      const total = parseFloat(item.cantidadTotal || 0);
+      const liquidado = parseFloat(item.cantidadLiquidada || 0);
+
+      mapa[key].cantidadTotal += total;
+      mapa[key].cantidadLiquidada += liquidado;
+      mapa[key].saldoPendienteQQ =
+        mapa[key].cantidadTotal - mapa[key].cantidadLiquidada;
+
       mapa[key].detalles.push(item);
     });
+
     return Object.values(mapa);
   };
 
@@ -243,6 +252,7 @@ export default function TablaSaldoDepositos() {
         </Col>
         <Col xs={24} sm={12} md={6}>
           <RangePicker
+            placeholder={["Fecha Inicio", "Fecha Fin"]}
             style={{ width: "100%" }}
             onChange={(values) => setRangoFecha(values || [])}
           />

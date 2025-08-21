@@ -12,17 +12,41 @@ export async function POST(request) {
       depositoDescripcion,
     } = body;
 
+    // 🔹 Validaciones básicas
     if (!clienteID || !depositoTipoCafe || !depositoCantidadQQ || !depositoEn) {
       return new Response(
         JSON.stringify({ error: "Faltan datos obligatorios" }),
         { status: 400 }
       );
     }
-    const cantidadQQ = parseFloat(depositoCantidadQQ);
-    const cantidadSacos = depositoTotalSacos
-      ? parseFloat(depositoTotalSacos)
-      : 0;
 
+    // 🔹 Convertir y validar números
+    const cantidadQQ = parseFloat(depositoCantidadQQ);
+    const cantidadSacos = depositoTotalSacos ? parseFloat(depositoTotalSacos) : 0;
+
+    if (isNaN(cantidadQQ) || cantidadQQ <= 0) {
+      return new Response(
+        JSON.stringify({ error: "La cantidad en QQ debe ser un número mayor que cero" }),
+        { status: 400 }
+      );
+    }
+
+    if (cantidadSacos < 0 || isNaN(cantidadSacos)) {
+      return new Response(
+        JSON.stringify({ error: "La cantidad de sacos no puede ser negativa" }),
+        { status: 400 }
+      );
+    }
+
+    // 🔹 Validar strings
+    if (typeof depositoEn !== "string" || depositoEn.trim() === "") {
+      return new Response(
+        JSON.stringify({ error: "El campo 'depositoEn' es obligatorio" }),
+        { status: 400 }
+      );
+    }
+
+    // 🔹 Crear depósito
     const nuevoDeposito = await prisma.deposito.create({
       data: {
         clienteID: Number(clienteID),
@@ -36,7 +60,8 @@ export async function POST(request) {
         estado: "Pendiente",
       },
     });
-    // 2. Actualizar inventario del cliente
+
+    // 🔹 Actualizar inventario del cliente
     await prisma.inventariocliente.upsert({
       where: {
         clienteID_productoID: {
@@ -56,11 +81,11 @@ export async function POST(request) {
       },
     });
 
-    // 3. Registrar movimiento de inventario
+    // 🔹 Registrar movimiento de inventario
     await prisma.movimientoinventario.create({
       data: {
         tipoInventario: "Cliente",
-        inventarioID: nuevoDeposito.clienteID, // ID del cliente
+        inventarioID: nuevoDeposito.clienteID,
         tipoMovimiento: "Entrada",
         referenciaTipo: "Deposito",
         referenciaID: nuevoDeposito.depositoID,

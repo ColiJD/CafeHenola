@@ -1,8 +1,14 @@
 "use client";
-import { Form, Input, Button, Modal, Row, Col, message } from "antd";
+import { Form, Input, Button, Row, Col, message } from "antd";
 import { useState, useEffect } from "react";
 import Select from "react-select";
 import { obtenerClientesSelect, obtenerProductosSelect } from "@/lib/consultas";
+import {
+  limpiarFormulario,
+  validarEnteroNoNegativo,
+  validarEnteroPositivo,
+} from "@/config/validacionesForm";
+import PreviewModal from "@/components/Modal";
 
 export default function DepositoForm() {
   const [clientes, setClientes] = useState([]);
@@ -19,60 +25,40 @@ export default function DepositoForm() {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
 
-  // Hook para mensajes
   const [messageApi, contextHolder] = message.useMessage();
 
+  // Carga de clientes y productos
   useEffect(() => {
     async function cargarDatos() {
       try {
-        const [resClientes, resProductos] = await Promise.all([
-          fetch("/api/clientes"),
-          fetch("/api/productos"),
-        ]);
-        const clientesData = await resClientes.json();
-        const productosData = await resProductos.json();
-
-        setClientes(
-          clientesData.map((c) => ({
-            value: c.clienteID,
-            label: `${c.clienteNombre} ${c.clienteApellido}`,
-          }))
-        );
-        setProductos(
-          productosData.map((p) => ({
-            value: p.productID,
-            label: p.productName,
-          }))
-        );
-      } catch (error) {
-        console.error("Error cargando datos:", error);
+        const clientesData = await obtenerClientesSelect(messageApi);
+        const productosData = await obtenerProductosSelect(messageApi);
+        setClientes(clientesData);
+        setProductos(productosData);
+      } catch (err) {
+        console.error("Error cargando datos:", err);
         messageApi.error("Error cargando clientes o productos");
       }
     }
     cargarDatos();
   }, [messageApi]);
 
+  // Validación de formulario
   const validarDatos = () => {
     const newErrors = {};
-    if (!cliente) newErrors.cliente = "Seleccione un cliente";
-    if (!producto) newErrors.producto = "Seleccione un tipo de café";
+    if (!cliente?.value) newErrors.cliente = "Seleccione un cliente";
+    if (!producto?.value) newErrors.producto = "Seleccione un tipo de café";
     if (!depositoCantidadQQ)
       newErrors.depositoCantidadQQ = "Ingrese cantidad QQ";
-    else if (
-      !/^\d+$/.test(depositoCantidadQQ) ||
-      parseInt(depositoCantidadQQ, 10) <= 0
-    )
+    else if (!validarEnteroPositivo(depositoCantidadQQ))
       newErrors.depositoCantidadQQ = "Cantidad QQ debe ser entero mayor a 0";
-    if (
-      depositoTotalSacos &&
-      (!/^\d+$/.test(depositoTotalSacos) ||
-        parseInt(depositoTotalSacos, 10) < 0)
-    )
-      newErrors.depositoTotalSacos = "Total sacos debe ser entero positivo";
-    if (!depositoEn) newErrors.depositoEn = "Ingrese depósito en";
+
+    if (depositoTotalSacos && !validarEnteroNoNegativo(depositoTotalSacos))
+      newErrors.depositoTotalSacos = "Total sacos debe ser entero positivo o 0";
+
+    if (!depositoEn.trim()) newErrors.depositoEn = "Ingrese depósito en";
 
     setErrors(newErrors);
-
     if (Object.keys(newErrors).length > 0) {
       messageApi.warning("Complete los campos obligatorios correctamente");
       return false;
@@ -90,6 +76,7 @@ export default function DepositoForm() {
 
   const handleConfirmar = async () => {
     setSubmitting(true);
+
     const data = {
       clienteID: cliente.value,
       depositoTipoCafe: producto.value,
@@ -111,13 +98,17 @@ export default function DepositoForm() {
       if (res.ok) {
         messageApi.success("Depósito registrado exitosamente");
         setPreviewVisible(false);
-        setCliente(null);
-        setProducto(null);
-        setDepositoCantidadQQ("");
-        setDepositoTotalSacos("");
-        setDepositoEn("");
-        setDepositoDescripcion("");
-        setErrors({});
+
+        // Limpiar formulario usando función genérica
+        limpiarFormulario({
+          setCliente,
+          setProducto,
+          setDepositoCantidadQQ,
+          setDepositoTotalSacos,
+          setDepositoEn,
+          setDepositoDescripcion,
+          setErrors,
+        });
       } else {
         const err = await res.json();
         messageApi.error(err.error || "Error al registrar depósito");
@@ -139,7 +130,7 @@ export default function DepositoForm() {
     <>
       {contextHolder}
       <Form layout="vertical" onSubmitCapture={handleRegistrarClick}>
-        <h2 style={{ textAlign: "left", marginBottom: "1rem" }}>Deposito</h2>
+        <h2 style={{ textAlign: "left", marginBottom: "1rem" }}>Depósito</h2>
 
         <Row gutter={16}>
           <Col xs={24} sm={12}>
@@ -151,7 +142,7 @@ export default function DepositoForm() {
             >
               <Select
                 options={clientes}
-                value={cliente}
+                value={clientes.find((c) => c.value === cliente?.value) || null}
                 onChange={setCliente}
                 placeholder="Seleccione un cliente"
                 isClearable
@@ -164,6 +155,7 @@ export default function DepositoForm() {
               />
             </Form.Item>
           </Col>
+
           <Col xs={24} sm={12}>
             <Form.Item
               label="Tipo de Café"
@@ -173,7 +165,9 @@ export default function DepositoForm() {
             >
               <Select
                 options={productos}
-                value={producto}
+                value={
+                  productos.find((p) => p.value === producto?.value) || null
+                }
                 onChange={setProducto}
                 placeholder="Seleccione café"
                 isClearable
@@ -186,6 +180,7 @@ export default function DepositoForm() {
               />
             </Form.Item>
           </Col>
+
           <Col xs={24} sm={12}>
             <Form.Item
               label="Cantidad QQ"
@@ -200,6 +195,7 @@ export default function DepositoForm() {
               />
             </Form.Item>
           </Col>
+
           <Col xs={24} sm={12}>
             <Form.Item
               label="Total Sacos"
@@ -213,6 +209,7 @@ export default function DepositoForm() {
               />
             </Form.Item>
           </Col>
+
           <Col xs={24} sm={12}>
             <Form.Item
               label="Depósito en"
@@ -226,6 +223,7 @@ export default function DepositoForm() {
               />
             </Form.Item>
           </Col>
+
           <Col xs={24} sm={12}>
             <Form.Item label="Descripción">
               <Input.TextArea
@@ -244,34 +242,21 @@ export default function DepositoForm() {
           Registrar Depósito
         </Button>
 
-        <Modal
+        <PreviewModal
           open={previewVisible}
           title="Previsualización del Depósito"
           onCancel={() => setPreviewVisible(false)}
-          onOk={handleConfirmar}
+          onConfirm={handleConfirmar}
           confirmLoading={submitting}
-          okText="Confirmar"
-          cancelText="Cancelar"
-        >
-          <p>
-            <strong>Cliente:</strong> {cliente?.label}
-          </p>
-          <p>
-            <strong>Café:</strong> {producto?.label}
-          </p>
-          <p>
-            <strong>Cantidad QQ:</strong> {depositoCantidadQQ}
-          </p>
-          <p>
-            <strong>Total Sacos:</strong> {depositoTotalSacos || 0}
-          </p>
-          <p>
-            <strong>Depósito en:</strong> {depositoEn}
-          </p>
-          <p>
-            <strong>Descripción:</strong> {depositoDescripcion || "-"}
-          </p>
-        </Modal>
+          fields={[
+            { label: "Cliente", value: cliente?.label },
+            { label: "Café", value: producto?.label },
+            { label: "Cantidad QQ", value: depositoCantidadQQ },
+            { label: "Total Sacos", value: depositoTotalSacos || 0 },
+            { label: "Depósito en", value: depositoEn },
+            { label: "Descripción", value: depositoDescripcion || "-" },
+          ]}
+        />
       </Form>
     </>
   );

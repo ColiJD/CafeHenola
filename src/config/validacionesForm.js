@@ -47,9 +47,13 @@ export function validarEnteroNoNegativo(value) {
  *   type: 'select' | 'input' (por defecto 'input')
  */
 export const limpiarFormulario = (campos) => {
-  Object.values(campos).forEach(({ setter, type = "input" }) => {
-    if (typeof setter === "function") {
-      setter(type === "select" ? null : "");
+  Object.values(campos).forEach((campo) => {
+    if (typeof campo === "function") {
+      // Caso simple: le pasaste el setter directo
+      campo("");
+    } else if (campo && typeof campo.setter === "function") {
+      // Caso avanzado: le pasaste { setter, type }
+      campo.setter(campo.type === "select" ? null : "");
     }
   });
 };

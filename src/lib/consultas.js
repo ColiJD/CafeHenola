@@ -1,43 +1,44 @@
+// utils/clientes.js
 export async function obtenerClientesSelect(messageApi) {
   try {
     const res = await fetch("/api/clientes");
-    if (!res.ok) throw new Error("Error al obtener clientes");
-    const clientesData = await res.json();
+    if (!res.ok) throw new Error("Error en la respuesta del servidor");
 
+    const clientesData = await res.json();
     return clientesData.map((c) => ({
       value: c.clienteID,
-      label: c.clienteNombre + " " + c.clienteApellido,
+      label: `${c.clienteNombre} ${c.clienteApellido}`,
       data: c,
     }));
   } catch (err) {
     console.error("Error al cargar clientes:", err);
-    if (messageApi) messageApi.error("Error al cargar clientes");
+    messageApi.error("⚠️ No se pudieron cargar los clientes.");
     return [];
   }
 }
 
+// lib/consultasProductos.js
 export async function obtenerProductosSelect(messageApi) {
   try {
     const res = await fetch("/api/productos");
-    if (!res.ok) throw new Error("Error al obtener productos");
-    const productosData = await res.json();
+    if (!res.ok) throw new Error("Error en la respuesta del servidor");
 
+    const productosData = await res.json();
     return productosData.map((p) => ({
-      value: p.productoID, // ID correcto
-      label: p.productoNombre, // nombre correcto
-      data: p, // guardamos todo el objeto
+      value: p.productID,
+      label: p.productName,
+      data: p,
     }));
   } catch (err) {
     console.error("Error al cargar productos:", err);
-    if (messageApi) messageApi.error("Error al cargar productos");
+    messageApi.error("⚠️ No se pudieron cargar los productos.");
     return [];
   }
 }
 
-export async function obtenerDepositos(messageApi) {
+export async function obtenerDepositos() {
   try {
     const res = await fetch("/api/deposito");
-    if (!res.ok) throw new Error("Error al obtener depósitos");
     const depositosData = await res.json();
 
     return depositosData.map((d) => ({
@@ -47,7 +48,6 @@ export async function obtenerDepositos(messageApi) {
     }));
   } catch (err) {
     console.error("Error al cargar depósitos:", err);
-    if (messageApi) messageApi.error("Error al cargar depósitos");
     return [];
   }
 }

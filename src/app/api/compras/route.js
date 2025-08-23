@@ -59,7 +59,7 @@ export async function POST(request) {
       : 0;
     const clienteIDNum = Number(clienteID);
 
-    await prisma.inventariocliente.upsert({
+    const inventarioCliente = await prisma.inventariocliente.upsert({
       where: {
         clienteID_productoID: {
           clienteID: clienteIDNum,
@@ -78,11 +78,10 @@ export async function POST(request) {
       },
     });
 
-    // ✅ 3️⃣ Registrar movimiento
-    await prisma.movimientoinventario.create({
+   // ✅ Registrar movimiento usando inventarioClienteID
+     await prisma.movimientoinventario.create({
       data: {
-        tipoInventario: "Cliente",
-        inventarioID: productoID, // referencia al producto
+        inventarioClienteID: inventarioCliente.inventarioClienteID,
         tipoMovimiento: "Entrada",
         referenciaTipo: `Compra directa #${nuevaCompra.compraId}`,
         referenciaID: nuevaCompra.compraId,

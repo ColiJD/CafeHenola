@@ -94,13 +94,14 @@ model detalleliqdeposito {
 }
 
 model inventariocliente {
-  inventarioClienteID Int      @id @default(autoincrement())
-  clienteID           Int
-  productoID          Int
-  cantidadQQ          Decimal  @default(0.00) @db.Decimal(15, 2)
-  cantidadSacos       Decimal  @default(0.00) @db.Decimal(15, 2)
-  cliente             cliente  @relation(fields: [clienteID], references: [clienteID], onUpdate: Restrict, map: "inventariocliente_ibfk_1")
-  producto            producto @relation(fields: [productoID], references: [productID], onUpdate: Restrict, map: "inventariocliente_ibfk_2")
+  inventarioClienteID  Int                    @id @default(autoincrement())
+  clienteID            Int
+  productoID           Int
+  cantidadQQ           Decimal                @default(0.00) @db.Decimal(15, 2)
+  cantidadSacos        Decimal                @default(0.00) @db.Decimal(15, 2)
+  cliente              cliente                @relation(fields: [clienteID], references: [clienteID], onUpdate: Restrict, map: "inventariocliente_ibfk_1")
+  producto             producto               @relation(fields: [productoID], references: [productID], onUpdate: Restrict, map: "inventariocliente_ibfk_2")
+  movimientoinventario movimientoinventario[]
 
   @@unique([clienteID, productoID], map: "uq_cliente_producto")
   @@index([productoID], map: "productoID")
@@ -115,16 +116,18 @@ model inventarioempresa {
 }
 
 model movimientoinventario {
-  movimientoID   Int                                 @id @default(autoincrement())
-  fecha          DateTime                            @default(now()) @db.DateTime(0)
-  tipoInventario movimientoinventario_tipoInventario
-  inventarioID   Int
-  tipoMovimiento movimientoinventario_tipoMovimiento
-  referenciaTipo String?                             @db.VarChar(50)
-  referenciaID   Int?
-  cantidadQQ     Decimal                             @db.Decimal(15, 2)
-  cantidadSacos  Decimal                             @default(0.00) @db.Decimal(15, 2)
-  nota           String?                             @db.VarChar(200)
+  movimientoID        Int                                 @id @default(autoincrement())
+  inventarioClienteID Int
+  fecha               DateTime                            @default(now()) @db.DateTime(0)
+  tipoMovimiento      movimientoinventario_tipoMovimiento
+  referenciaTipo      String?                             @db.VarChar(50)
+  referenciaID        Int?
+  cantidadQQ          Decimal                             @db.Decimal(15, 2)
+  cantidadSacos       Decimal                             @default(0.00) @db.Decimal(15, 2)
+  nota                String?                             @db.VarChar(200)
+  inventariocliente   inventariocliente                   @relation(fields: [inventarioClienteID], references: [inventarioClienteID], onUpdate: Restrict, map: "movimientoinventario_ibfk_1")
+
+  @@index([inventarioClienteID], map: "inventarioClienteID")
 }
 
 model contrato {
@@ -182,11 +185,6 @@ model liqdeposito {
 
   @@index([liqTipoCafe], map: "liqTipoCafe")
   @@index([liqclienteID], map: "liqclienteID")
-}
-
-enum movimientoinventario_tipoInventario {
-  Cliente
-  Empresa
 }
 
 enum movimientoinventario_tipoMovimiento {

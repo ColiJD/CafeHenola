@@ -22,11 +22,15 @@ export async function POST(request) {
 
     // 🔹 Convertir y validar números
     const cantidadQQ = parseFloat(depositoCantidadQQ);
-    const cantidadSacos = depositoTotalSacos ? parseFloat(depositoTotalSacos) : 0;
+    const cantidadSacos = depositoTotalSacos
+      ? parseFloat(depositoTotalSacos)
+      : 0;
 
     if (isNaN(cantidadQQ) || cantidadQQ <= 0) {
       return new Response(
-        JSON.stringify({ error: "La cantidad en QQ debe ser un número mayor que cero" }),
+        JSON.stringify({
+          error: "La cantidad en QQ debe ser un número mayor que cero",
+        }),
         { status: 400 }
       );
     }
@@ -62,7 +66,7 @@ export async function POST(request) {
     });
 
     // 🔹 Actualizar inventario del cliente
-    await prisma.inventariocliente.upsert({
+    const inventarioCliente = await prisma.inventariocliente.upsert({
       where: {
         clienteID_productoID: {
           clienteID: Number(clienteID),
@@ -81,17 +85,16 @@ export async function POST(request) {
       },
     });
 
-    // 🔹 Registrar movimiento de inventario
+    // ✅ Registrar movimiento usando inventarioClienteID
     await prisma.movimientoinventario.create({
       data: {
-        tipoInventario: "Cliente",
-        inventarioID: nuevoDeposito.clienteID,
+        inventarioClienteID: inventarioCliente.inventarioClienteID,
         tipoMovimiento: "Entrada",
-        referenciaTipo: "Deposito",
+        referenciaTipo: `Deposito #${nuevoDeposito.depositoID}`,
         referenciaID: nuevoDeposito.depositoID,
-        cantidadQQ: cantidadQQ,
-        cantidadSacos: cantidadSacos,
-        nota: depositoDescripcion || "",
+        cantidadQQ,
+        cantidadSacos,
+        nota: "Entrada de café por depósito",
       },
     });
 
@@ -115,6 +118,8 @@ export async function GET() {
     return new Response(JSON.stringify(depositos), { status: 200 });
   } catch (error) {
     console.error("Error al obtener vista vw_saldodepositos:", error);
-    return new Response(JSON.stringify({ error: "Error interno" }), { status: 500 });
+    return new Response(JSON.stringify({ error: "Error interno" }), {
+      status: 500,
+    });
   }
 }

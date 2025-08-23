@@ -1,216 +1,262 @@
 "use client";
-import { useEffect, useState } from "react";
-import Select from "react-select"; // Componente para select con búsqueda
-import "@/style/compra.css";
+
+import { useState, useEffect } from "react";
+import { message } from "antd";
+import Formulario from "@/components/Formulario";
+import PreviewModal from "@/components/Modal";
+import { obtenerClientesSelect, obtenerProductosSelect } from "@/lib/consultas";
+import {
+  limpiarFormulario,
+  validarEnteroNoNegativo,
+  validarEnteroPositivo,
+  validarFloatPositivo,
+} from "@/config/validacionesForm";
 
 export default function CompraForm() {
-  // Estados para datos cargados
   const [clientes, setClientes] = useState([]);
   const [productos, setProductos] = useState([]);
 
-  // Estados para los campos del formulario
-  const [cliente, setCliente] = useState(null); // objeto cliente seleccionado
-  const [producto, setProducto] = useState(null); // objeto producto seleccionado
+  const [cliente, setCliente] = useState(null);
+  const [producto, setProducto] = useState(null);
   const [compraTipoDocumento, setCompraTipoDocumento] = useState("");
   const [compraEn, setCompraEn] = useState("");
   const [compraPrecioQQ, setCompraPrecioQQ] = useState("");
-  const [compraCatidadQQ, setCompraCatidadQQ] = useState("");
+  const [compraCantidadQQ, setCompraCantidadQQ] = useState("");
   const [compraTotal, setCompraTotal] = useState(0);
   const [compraRetencio, setCompraRetencio] = useState(0);
-  const [comprarTotalSacos, setComprarTotalSacos] = useState("");
+  const [compraTotalSacos, setCompraTotalSacos] = useState("");
   const [compraDescripcion, setCompraDescripcion] = useState("");
-  const [mensaje, setMensaje] = useState("");
 
-  // Carga clientes y productos al montar componente
+  const [errors, setErrors] = useState({});
+  const [previewVisible, setPreviewVisible] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [messageApi, contextHolder] = message.useMessage();
+
+  // Carga clientes y productos
   useEffect(() => {
     async function cargarDatos() {
       try {
-        const [resClientes, resProductos] = await Promise.all([
-          fetch("/api/clientes"),
-          fetch("/api/productos"),
-        ]);
-        const clientesData = await resClientes.json();
-        const productosData = await resProductos.json();
-
-        // Adaptamos los datos para react-select (value y label)
-        setClientes(
-          clientesData.map((c) => ({
-            value: c.clienteID,
-            label: `${c.clienteNombre} ${c.clienteApellido}`,
-          }))
-        );
-        setProductos(
-          productosData.map((p) => ({
-            value: p.productID,
-            label: p.productName,
-          }))
-        );
-      } catch (error) {
-        console.error("Error cargando datos:", error);
+        const clientesData = await obtenerClientesSelect(messageApi);
+        const productosData = await obtenerProductosSelect(messageApi);
+        setClientes(clientesData);
+        setProductos(productosData);
+      } catch (err) {
+        console.error(err);
+        messageApi.error("Error cargando clientes o productos");
       }
     }
     cargarDatos();
-  }, []);
+  }, [messageApi]);
 
+  const handleRegistrarClick = () => {
+    if (validarDatos()) setPreviewVisible(true);
+  };
   // Calcula total y retención cuando precio o cantidad cambian
   useEffect(() => {
     const precio = parseFloat(compraPrecioQQ) || 0;
-    const cantidad = parseFloat(compraCatidadQQ) || 0;
+    const cantidad = parseFloat(compraCantidadQQ) || 0;
     const total = precio * cantidad;
-    const retencion = cantidad - cantidad * 0.04;
+    const retencion = cantidad - cantidad * 0.04; // ✅ Retención calculada
     setCompraTotal(total.toFixed(2));
     setCompraRetencio(retencion.toFixed(2));
-  }, [compraPrecioQQ, compraCatidadQQ]);
+  }, [compraPrecioQQ, compraCantidadQQ]);
 
-  // Maneja el envío del formulario
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // Validación
+  const validarDatos = () => {
+    const newErrors = {}; // en JS no hace falta tipar nada
 
-    // Validar que todos los campos obligatorios estén llenos
-    if (
-      !cliente ||
-      !producto ||
-      !compraTipoDocumento ||
-      !compraEn ||
-      !compraPrecioQQ ||
-      !compraCatidadQQ
-    ) {
-      setMensaje("Por favor complete todos los campos obligatorios.");
-      return;
+    fields.forEach((f) => {
+      if (typeof f.validator === "function") {
+        const error = f.validator(f.value);
+        if (error) newErrors[f.label] = error;
+      }
+    });
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      messageApi.warning("Complete los campos obligatorios correctamente");
+      return false;
     }
+    return true;
+  };
 
-    // Preparar datos para backend
+  const handleConfirmar = async () => {
+    setSubmitting(true);
     const data = {
-      clienteID: cliente.value, // id real
+      clienteID: cliente.value,
+      compraTipoCafe: producto.value,
       compraTipoDocumento,
-      compraTipoCafe: producto.value, // id real producto
+      compraCantidadQQ: parseInt(compraCantidadQQ, 10),
+      compraTotalSacos: compraTotalSacos ? parseInt(compraTotalSacos, 10) : 0,
       compraPrecioQQ: parseFloat(compraPrecioQQ),
-      compraCatidadQQ: parseFloat(compraCatidadQQ),
-      compraTotal: parseFloat(compraTotal),
-      comprarTotalSacos: comprarTotalSacos ? parseFloat(comprarTotalSacos) : 0,
       compraRetencio: parseFloat(compraRetencio),
-      compraDescripcion,
+      compraTotal: parseFloat(compraTotal),
+      compraEn: compraEn || "Compra Directa",
       compraMovimiento: "Entrada",
-      compraEn,
+      compraDescripcion,
     };
-
+ 
     try {
-      // Enviar datos al backend
       const res = await fetch("/api/compras", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-
       if (res.ok) {
-        setMensaje("Compra registrada exitosamente");
-
-        // Reset campos
-        setCliente(null);
-        setProducto(null);
-        setCompraTipoDocumento("");
-        setCompraEn("");
-        setCompraPrecioQQ("");
-        setCompraCatidadQQ("");
-        setComprarTotalSacos("");
-        setCompraDescripcion("");
+        messageApi.success("Compra Directa registrada exitosamente");
+        setPreviewVisible(false);
+        limpiarFormulario({
+          setCliente,
+          setProducto,
+          setCompraCantidadQQ,
+          setCompraTotalSacos,
+          setCompraEn,
+          setCompraDescripcion,
+          setCompraTipoDocumento,
+          setCompraRetencio,
+          setCompraTotal,
+          setCompraPrecioQQ,
+          setErrors,
+        });
       } else {
         const err = await res.json();
-        setMensaje("Error: " + (err.error || "Error desconocido"));
+        messageApi.error(err.error || "Error al registrar compra directa");
       }
-    } catch (error) {
-      setMensaje("Error enviando los datos");
-      console.error(error);
+    } catch (err) {
+      console.error(err);
+      messageApi.error("Error enviando datos al servidor");
+    } finally {
+      setSubmitting(false);
     }
   };
+  const fields = [
+    {
+      label: "Cliente",
+      value: cliente,
+      setter: setCliente,
+      type: "select",
+      options: clientes,
+      required: true,
+      error: errors["Cliente"],
+      validator: (v) => (!!v ? null : "Seleccione un cliente"),
+    },
+    {
+      label: "Tipo de Café",
+      value: producto,
+      setter: setProducto,
+      type: "select",
+      options: productos,
+      required: true,
+      error: errors["Tipo de Café"],
+      validator: (v) => (!!v ? null : "Seleccione un café"),
+    },
+    {
+      label: "Precio",
+      value: compraPrecioQQ,
+      setter: setCompraPrecioQQ,
+      type: "Float",
+      required: true,
+      error: errors["Precio"],
+      validator: validarFloatPositivo,
+    },
+    {
+      label: "Cantidad QQ",
+      value: compraCantidadQQ,
+      setter: setCompraCantidadQQ,
+      type: "integer",
+      required: true,
+      error: errors["Cantidad QQ"],
+      validator: (v) =>
+        !validarEnteroPositivo(v) ? "Cantidad QQ debe ser un entero > 0" : null,
+    },
 
+    {
+      label: "Total",
+      value: compraTotal,
+      setter: setCompraTotal,
+      type: "Float",
+      required: true,
+      readOnly: true,
+      error: errors["Total"],
+    },
+    {
+      label: "Retencion",
+      value: compraRetencio,
+      setter: setCompraRetencio,
+      type: "Float",
+      required: true,
+      readOnly: true,
+      error: errors["Retencion"],
+    },
+    {
+      label: "Total Sacos",
+      value: compraTotalSacos,
+      setter: setCompraTotalSacos,
+      type: "integer",
+      error: errors["Total Sacos"],
+      validator: (v) =>
+        v && !validarEnteroNoNegativo(v) ? "Total sacos debe ser >= 0" : null,
+    },
+    {
+      label: "Tipo de Documento",
+      value: compraTipoDocumento,
+      setter: setCompraTipoDocumento,
+      required: false,
+      error: errors["Tipo Documento"],
+      validator: (v) =>
+        v && v.trim() === "" ? "Ingrese el tipo de documento" : null,
+    },
+    {
+      label: "Compra en",
+      value: compraEn,
+      setter: setCompraEn,
+      required: false,
+      error: errors["Compra en"],
+      validator: (v) =>
+        v && v.trim() === "" ? "Ingrese dónde se hizo la compra" : null,
+    },
+    {
+      label: "Descripción",
+      value: compraDescripcion,
+      setter: setCompraDescripcion,
+      type: "textarea",
+    },
+  ];
   return (
-    <form className="compra-form" onSubmit={handleSubmit}>
-      <h2>Compra</h2>
-      <div className="form-container">
-        <div className="form-grid">
-          {/* Select con búsqueda para cliente */}
-          <label htmlFor="cliente">Cliente:</label>
-          <Select
-            options={clientes}
-            value={cliente}
-            onChange={setCliente}
-            placeholder="Seleccione un cliente"
-            isClearable
-          />
-
-          {/* Campos de texto normales */}
-          <label htmlFor="tipoDocumento">Documento:</label>
-          <input
-            type="text"
-            placeholder="Tipo de Documento"
-            value={compraTipoDocumento}
-            onChange={(e) => setCompraTipoDocumento(e.target.value)}
-            required
-          />
-          <label htmlFor="compraEn">Compra en:</label>
-          <input
-            type="text"
-            placeholder="Compra en"
-            value={compraEn}
-            onChange={(e) => setCompraEn(e.target.value)}
-            required
-          />
-          <label htmlFor="compraDescripcion">Descripción:</label>
-          <textarea
-            id="compraDescripcion"
-            placeholder="Descripción"
-            value={compraDescripcion}
-            onChange={(e) => setCompraDescripcion(e.target.value)}
-          />
-        </div>
-        <div className="form-grid">
-          {/* Select con búsqueda para tipo de café/producto */}
-          <label htmlFor="producto">Tipo de Café:</label>
-          <Select
-            options={productos}
-            value={producto}
-            onChange={setProducto}
-            placeholder="Seleccione café"
-            isClearable
-          />
-          <label htmlFor="compraPrecioQQ">Precio por QQ:</label>
-          <input
-            type="number"
-            placeholder="Precio por QQ"
-            value={compraPrecioQQ}
-            onChange={(e) => setCompraPrecioQQ(e.target.value)}
-            step="0.01"
-            required
-          />
-          <label htmlFor="compraCatidadQQ">Cantidad QQ:</label>
-          <input
-            type="number"
-            placeholder="Cantidad QQ"
-            value={compraCatidadQQ}
-            onChange={(e) => setCompraCatidadQQ(e.target.value)}
-            step="0.01"
-            required
-          />
-          <label htmlFor="comprarTotalSacos">Total Sacos:</label>
-          <input
-            type="number"
-            placeholder="Total Sacos"
-            value={comprarTotalSacos}
-            onChange={(e) => setComprarTotalSacos(e.target.value)}
-            step="0.01"
-          />
-          <label htmlFor="compraTotal">Total (Lps):</label>
-          <input
-            type="text"
-            value={`L. ${compraTotal}`}
-            readOnly
-            placeholder="Total (Lps)"
-          />
-        </div>
-      </div>
-      <button type="submit">Registrar Compra</button>
-      {mensaje && <p>{mensaje}</p>}
-    </form>
+    <>
+      {contextHolder}
+      <Formulario
+        title="Registrar Compra Directa"
+        fields={fields}
+        onSubmit={handleRegistrarClick}
+        submitting={submitting}
+        button={{
+          text: "Registrar Compra",
+          onClick: handleRegistrarClick,
+          type: "primary",
+        }}
+      />
+      <PreviewModal
+        open={previewVisible}
+        title="Previsualización de la compra "
+        onCancel={() => setPreviewVisible(false)}
+        onConfirm={handleConfirmar}
+        confirmLoading={submitting}
+        fields={fields.map((f) => ({
+          label: f.label,
+          value:
+            f.type === "select"
+              ? f.options?.find((o) => o.value === f.value?.value)?.label
+              : f.value ||
+                (f.label === "Total Sacos"
+                  ? 0
+                  : f.label === "Compra en"
+                  ? "Compra Directa"
+                  : "-"),
+        }))}
+      />
+    </>
   );
 }

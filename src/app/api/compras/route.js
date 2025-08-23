@@ -8,20 +8,20 @@ export async function POST(request) {
       compraTipoDocumento,
       compraTipoCafe,
       compraPrecioQQ,
-      compraCatidadQQ,
+      compraCantidadQQ,
       compraTotal,
-      comprarTotalSacos,
+      compraTotalSacos,
       compraRetencio,
       compraDescripcion,
       compraEn,
     } = body;
 
-    // Validaciones
+    // ✅ Validaciones
     if (
       !clienteID ||
       !compraTipoCafe ||
       !compraPrecioQQ ||
-      !compraCatidadQQ ||
+      !compraCantidadQQ ||
       !compraTipoDocumento ||
       !compraEn
     ) {
@@ -31,6 +31,7 @@ export async function POST(request) {
       );
     }
 
+    // ✅ Crear la compra
     const nuevaCompra = await prisma.compra.create({
       data: {
         clienteID: Number(clienteID),
@@ -39,48 +40,63 @@ export async function POST(request) {
         compraMovimiento: "Entrada",
         compraTipoCafe: Number(compraTipoCafe),
         compraPrecioQQ: parseFloat(compraPrecioQQ),
-        compraCatidadQQ: parseFloat(compraCatidadQQ),
+        compraCantidadQQ: parseFloat(compraCantidadQQ),
         compraTotal: parseFloat(compraTotal),
-        comprarTotalSacos: comprarTotalSacos
-          ? parseFloat(comprarTotalSacos)
+        compraTotalSacos: compraTotalSacos
+          ? parseFloat(compraTotalSacos)
           : 0,
-        compraRetencio: parseFloat(compraRetencio),
+        compraRetencio: compraRetencio ? parseFloat(compraRetencio) : 0,
         compraEn,
         compraDescripcion: compraDescripcion || "",
       },
     });
-    // 2️⃣ Actualizar o crear inventario
-    const productoID = Number(compraTipoCafe);
-    const cantidadQQ = parseFloat(compraCatidadQQ);
-    const cantidadSacos = parseFloat(comprarTotalSacos);
 
-    // 2️⃣ Actualizar o crear inventario empresa
-    await prisma.inventarioempresa.upsert({
-      where: { productoID },
-      update: { cantidadQQ: { increment: cantidadQQ }, cantidadSacos: { increment: cantidadSacos } },
-      create: { productoID, cantidadQQ, cantidadSacos },
+    // ✅ 2️⃣ Actualizar o crear inventario del cliente
+    const productoID = Number(compraTipoCafe);
+    const cantidadQQ = parseFloat(compraCantidadQQ);
+    const cantidadSacos = compraTotalSacos
+      ? parseFloat(compraTotalSacos)
+      : 0;
+    const clienteIDNum = Number(clienteID);
+
+    await prisma.inventariocliente.upsert({
+      where: {
+        clienteID_productoID: {
+          clienteID: clienteIDNum,
+          productoID,
+        },
+      },
+      update: {
+        cantidadQQ: { increment: cantidadQQ },
+        cantidadSacos: { increment: cantidadSacos },
+      },
+      create: {
+        clienteID: clienteIDNum,
+        productoID,
+        cantidadQQ,
+        cantidadSacos,
+      },
     });
 
-    // 3️⃣ Registrar movimiento
+    // ✅ 3️⃣ Registrar movimiento
     await prisma.movimientoinventario.create({
       data: {
-        tipoInventario: "Empresa",
+        tipoInventario: "Cliente",
         inventarioID: productoID, // referencia al producto
         tipoMovimiento: "Entrada",
         referenciaTipo: `Compra directa #${nuevaCompra.compraId}`,
         referenciaID: nuevaCompra.compraId,
         cantidadQQ,
-        cantidadSacos: comprarTotalSacos ? parseFloat(comprarTotalSacos) : 0,
+        cantidadSacos,
         nota: "Entrada de café por compra directa",
       },
     });
 
     return new Response(JSON.stringify(nuevaCompra), { status: 201 });
   } catch (error) {
-    console.error("Error al registrar compra:", error);
-    return new Response(
-      JSON.stringify({ error: "Error al registrar compra" }),
-      { status: 500 }
-    );
+    console.error(error);
+    return new Response(JSON.stringify({ error: "Error al registrar compra" }), {
+      status: 500,
+    });
   }
 }

@@ -163,7 +163,7 @@ export const menuItem = [
         label: "Saldo Disponible",
         route: Ruta + "/deposito/vista",
       },
-      { key: "venta-historial", label: "Historial", route: "/venta/historial" },
+     
     ],
   },
 ];

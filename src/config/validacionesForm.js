@@ -57,3 +57,29 @@ export const limpiarFormulario = (campos) => {
     }
   });
 };
+
+// Enteros positivos (solo dígitos)
+export const handleIntegerChange = (setter) => (e) => {
+  const value = e.target.value;
+  if (/^\d*$/.test(value)) setter(value);
+};
+
+// Floats positivos (permitiendo un solo punto decimal)
+export const handleFloatChange = (setter) => (e) => {
+  const value = e.target.value;
+  // Permite números, vacíos, un solo punto y hasta dos decimales
+  if (/^\d*\.?\d{0,2}$/.test(value)) setter(value);
+};
+
+
+// Validador de float positivo con hasta 2 decimales
+export const validarFloatPositivo = (value) => {
+  if (value === "" || value === null) return "Ingrese un valor";
+
+  // Permite números positivos con hasta 2 decimales
+  if (!/^\d*\.?\d{0,2}$/.test(value)) return "Ingrese un número válido (máx 2 decimales)";
+
+  if (parseFloat(value) < 0) return "El valor debe ser >= 0";
+
+  return null;
+};

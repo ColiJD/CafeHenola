@@ -1,5 +1,9 @@
 import { Form, Input, Button, Row, Col } from "antd";
 import Select from "react-select";
+import {
+  handleIntegerChange,
+  handleFloatChange,
+} from "@/config/validacionesForm";
 
 export default function Formulario({
   title,
@@ -8,11 +12,6 @@ export default function Formulario({
   submitting,
   button,
 }) {
-  const handleIntegerChange = (setter) => (e) => {
-    const value = e.target.value;
-    if (/^\d*$/.test(value)) setter(value);
-  };
-
   return (
     <Form layout="vertical" onSubmitCapture={onSubmit}>
       {title && (
@@ -30,6 +29,7 @@ export default function Formulario({
               {f.type === "select" ? (
                 <Select
                   options={f.options || []}
+                  readOnly={f.readOnly}
                   value={
                     f.options?.find((o) => o.value === f.value?.value) || null
                   }
@@ -47,16 +47,25 @@ export default function Formulario({
                 <Input.TextArea
                   value={f.value}
                   onChange={(e) => f.setter(e.target.value)}
+                  readOnly={f.readOnly}
                 />
               ) : f.type === "integer" ? (
                 <Input
                   value={f.value}
                   onChange={handleIntegerChange(f.setter)}
+                  readOnly={f.readOnly}
+                />
+              ) : f.type === "Float" ? (
+                <Input
+                  value={f.value}
+                  onChange={handleFloatChange(f.setter)}
+                  readOnly={f.readOnly}
                 />
               ) : (
                 <Input
                   value={f.value}
                   onChange={(e) => f.setter(e.target.value)}
+                  readOnly={f.readOnly}
                 />
               )}
             </Form.Item>

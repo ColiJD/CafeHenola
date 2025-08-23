@@ -33,9 +33,9 @@ model compra {
   compraMovimiento    String?   @db.VarChar(20)
   compraTipoCafe      Int?
   compraPrecioQQ      Decimal?  @db.Decimal(15, 2)
-  compraCatidadQQ     Decimal?  @db.Decimal(15, 2)
+  compraCantidadQQ    Decimal?  @db.Decimal(15, 2)
   compraTotal         Decimal?  @db.Decimal(15, 2)
-  comprarTotalSacos   Decimal?  @db.Decimal(15, 2)
+  compraTotalSacos    Decimal?  @db.Decimal(15, 2)
   compraRetencio      Decimal?  @db.Decimal(15, 2)
   compraEn            String?   @db.VarChar(20)
   compraDescripcion   String?   @db.VarChar(200)

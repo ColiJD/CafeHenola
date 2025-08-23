@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { message } from "antd";
+import { message, Tooltip } from "antd";
 import Formulario from "@/components/Formulario";
 import PreviewModal from "@/components/Modal";
 import {
@@ -8,7 +8,11 @@ import {
   validarEnteroPositivo,
 } from "@/config/validacionesForm";
 import { validarDatos } from "@/lib/validacionesForm";
-import { obtenerClientesSelect } from "@/lib/consultas";
+import {
+  obtenerClientesSelect,
+  obtenerSaldoContrato,
+  obtenerContratosPendientes,
+} from "@/lib/consultas";
 
 export default function LiquidacionContratoForm() {
   const [clientes, setClientes] = useState([]);
@@ -23,7 +27,7 @@ export default function LiquidacionContratoForm() {
     saldoDisponibleLps: 0,
     precioQQ: 0,
     cantidadLiquidar: "",
-    totalSacos: "",
+    totalSacos: 0,
     totalLiquidacion: 0,
   });
 
@@ -35,29 +39,21 @@ export default function LiquidacionContratoForm() {
   const handleChange = (key, value) =>
     setFormState((prev) => ({ ...prev, [key]: value }));
 
+  const { cantidadLiquidar, precioQQ, contrato, cliente } = formState;
+
   // ------------------------------
-  // Calcular total automáticamente
+  // Calcular totales automáticamente
   // ------------------------------
   useEffect(() => {
-    const { cantidadLiquidar, precioQQ } = formState;
-
-    // Total en Lps
-    if (cantidadLiquidar && precioQQ) {
-      handleChange(
-        "totalLiquidacion",
-        parseFloat(cantidadLiquidar) * parseFloat(precioQQ)
-      );
-    } else {
-      handleChange("totalLiquidacion", 0);
-    }
-
-    // Total de sacos (1 QQ = 2 sacos)
-    if (cantidadLiquidar) {
-      handleChange("totalSacos", parseInt(cantidadLiquidar) * 2);
-    } else {
-      handleChange("totalSacos", 0);
-    }
-  }, [formState.cantidadLiquidar, formState.precioQQ]);
+    setFormState((prev) => ({
+      ...prev,
+      totalLiquidacion:
+        cantidadLiquidar && precioQQ
+          ? parseFloat(cantidadLiquidar) * parseFloat(precioQQ)
+          : 0,
+      totalSacos: cantidadLiquidar ? parseInt(cantidadLiquidar) * 2 : 0,
+    }));
+  }, [cantidadLiquidar, precioQQ]);
 
   // ------------------------------
   // Cargar clientes
@@ -77,74 +73,54 @@ export default function LiquidacionContratoForm() {
   // Cargar contratos pendientes al cambiar cliente
   // ------------------------------
   useEffect(() => {
-    async function cargarContratos(clienteID) {
-      try {
-        const res = await fetch(
-          `/api/contratos/pendientes/${formState.cliente.value}`
-        );
-        const data = await res.json();
-        setContratos(
-          data.map((c) => ({
-            value: c.contratoID,
-            label: `Contrato #${c.contratoID} - ${c.contratoCantidadQQ} QQ`,
-            tipoCafeID: c.tipoCafeID,
-            tipoCafeNombre: c.tipoCafeNombre,
-          }))
-        );
-        handleChange("contrato", null);
-      } catch {
-        messageApi.error("Error cargando contratos pendientes");
+    async function cargar() {
+      if (cliente) {
+        const contratosData = await obtenerContratosPendientes(cliente.value);
+        setContratos(contratosData);
+        setFormState((prev) => ({ ...prev, contrato: null }));
+      } else {
+        setContratos([]);
+        setFormState((prev) => ({ ...prev, contrato: null }));
       }
     }
 
-    if (formState.cliente) {
-      cargarContratos(formState.cliente.value);
-    } else {
-      setContratos([]);
-      handleChange("contrato", null);
-    }
-  }, [formState.cliente]);
+    cargar();
+  }, [cliente]);
 
   // ------------------------------
   // Cargar saldo al cambiar contrato
   // ------------------------------
   useEffect(() => {
-    async function cargarSaldo() {
-      if (!formState.contrato) {
-        handleChange("saldoDisponibleQQ", 0);
-        handleChange("saldoDisponibleLps", 0);
-        handleChange("tipoCafeID", 0);
-        handleChange("tipoCafeNombre", "");
-        handleChange("precioQQ", 0);
-        handleChange("totalLiquidacion", 0);
+    async function cargar() {
+      if (!contrato) {
+        setFormState((prev) => ({
+          ...prev,
+          saldoDisponibleQQ: 0,
+          saldoDisponibleLps: 0,
+          tipoCafeID: 0,
+          tipoCafeNombre: "",
+          precioQQ: 0,
+          totalLiquidacion: 0,
+          totalSacos: 0,
+        }));
         return;
       }
 
-      try {
-        const res = await fetch(
-          `/api/contratos/saldoDisponible/${formState.contrato.value}`
-        );
-        const data = await res.json();
+      const saldoData = await obtenerSaldoContrato(contrato.value);
 
-        if (!data || data.saldoDisponibleQQ === undefined) {
-          messageApi.error(
-            "No se encontró saldo disponible para este contrato"
-          );
-          return;
-        }
-
-        handleChange("saldoDisponibleQQ", data.saldoDisponibleQQ);
-        handleChange("saldoDisponibleLps", data.saldoDisponibleLps);
-        handleChange("tipoCafeID", data.tipoCafeID || 0);
-        handleChange("tipoCafeNombre", data.tipoCafeNombre || "");
-        handleChange("precioQQ", data.precioQQ || 0);
-        handleChange("totalLiquidacion", 0);
-      } catch {
-        messageApi.error("Error cargando saldo disponible");
+      if (!saldoData) {
+        messageApi.error("No se encontró saldo disponible para este contrato");
+        return;
       }
+
+      setFormState((prev) => ({
+        ...prev,
+        ...saldoData,
+      }));
     }
-    cargarSaldo();
-  }, [formState.contrato]);
+
+    cargar();
+  }, [contrato, messageApi]);
 
   // ------------------------------
   // Abrir modal de previsualización
@@ -160,7 +136,7 @@ export default function LiquidacionContratoForm() {
     e.preventDefault();
     setSubmitting(true);
 
-    const cantidad = parseFloat(formState.cantidadLiquidar);
+    const cantidad = parseFloat(cantidadLiquidar);
 
     if (cantidad > formState.saldoDisponibleQQ) {
       messageApi.error(
@@ -171,8 +147,8 @@ export default function LiquidacionContratoForm() {
     }
 
     const data = {
-      contratoID: formState.contrato.value,
-      clienteID: formState.cliente.value,
+      contratoID: contrato.value,
+      clienteID: cliente.value,
       tipoCafe: formState.tipoCafeID,
       cantidadQQ: cantidad,
       precioQQ: formState.precioQQ,
@@ -273,12 +249,15 @@ export default function LiquidacionContratoForm() {
     },
     {
       key: "totalSacos",
-      label: "Total de Sacos",
+      label: (
+        <Tooltip title="Se calculan 2 sacos por cada QQ">
+          Total de Sacos
+        </Tooltip>
+      ),
       type: "integer",
       readOnly: true,
       value: formState.totalSacos,
     },
-
     {
       key: "totalLiquidacion",
       label: "Total a pagar (Lps)",
@@ -293,9 +272,13 @@ export default function LiquidacionContratoForm() {
     value:
       f.key === "totalLiquidacion"
         ? formState.totalLiquidacion
+        : f.key === "totalSacos"
+        ? formState.totalSacos
         : formState[f.key],
     setter:
-      f.key !== "totalLiquidacion" ? (v) => handleChange(f.key, v) : () => {},
+      f.key !== "totalLiquidacion" && f.key !== "totalSacos"
+        ? (v) => handleChange(f.key, v)
+        : () => {},
     error: errors[f.label] || null,
   }));
 

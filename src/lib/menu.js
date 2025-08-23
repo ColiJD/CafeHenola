@@ -163,6 +163,11 @@ export const menuItem = [
         label: "Saldo Disponible",
         route: Ruta + "/deposito/vista",
       },
+       {
+        key: "SaldoContratoDisponible",
+        label: "Saldo Contrato Disponible",
+        route: Ruta + "/contrato/vista",
+      },
      
     ],
   },

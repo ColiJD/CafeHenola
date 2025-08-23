@@ -51,3 +51,50 @@ export async function obtenerDepositos() {
     return [];
   }
 }
+
+// archivo lib/consultas.js (o donde prefieras)
+export async function obtenerContratosPendientes(clienteID) {
+  if (!clienteID) return []; // previene llamadas innecesarias
+
+  try {
+    const res = await fetch(`/api/contratos/pendientes/${clienteID}`);
+    const data = await res.json();
+
+    return data.map((c) => ({
+      value: c.contratoID,
+      label: `Contrato #${c.contratoID} - ${c.contratoCantidadQQ} QQ`,
+      tipoCafeID: c.tipoCafeID,
+      tipoCafeNombre: c.tipoCafeNombre,
+    }));
+  } catch (err) {
+    console.error("Error al cargar contratos pendientes:", err);
+    return [];
+  }
+}
+
+// archivo lib/consultas.js (o donde prefieras)
+export async function obtenerSaldoContrato(contratoID) {
+  if (!contratoID) return null;
+
+  try {
+    const res = await fetch(`/api/contratos/saldoDisponible/${contratoID}`);
+    const data = await res.json();
+
+    if (!data || data.saldoDisponibleQQ === undefined) {
+      return null; // indicamos que no hay saldo
+    }
+
+    return {
+      saldoDisponibleQQ: data.saldoDisponibleQQ,
+      saldoDisponibleLps: data.saldoDisponibleLps,
+      tipoCafeID: data.tipoCafeID || 0,
+      tipoCafeNombre: data.tipoCafeNombre || "",
+      precioQQ: data.precioQQ || 0,
+      totalLiquidacion: 0,
+      totalSacos: 0,
+    };
+  } catch (err) {
+    console.error("Error cargando saldo disponible:", err);
+    return null;
+  }
+}

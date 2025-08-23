@@ -7,7 +7,7 @@ export async function POST(request) {
       contratoclienteID,
       contratoTipoCafe,
       contratoPrecio,
-      contratoCatidadQQ,
+      contratoCantidadQQ,
       contratoTotalLps,
       contratoEn,
       contratoDescripcion,
@@ -18,7 +18,7 @@ export async function POST(request) {
       !contratoclienteID ||
       !contratoTipoCafe ||
       !contratoPrecio ||
-      !contratoCatidadQQ ||
+      !contratoCantidadQQ ||
       !contratoTotalLps
     ) {
       return new Response(
@@ -35,7 +35,7 @@ export async function POST(request) {
         contratoMovimiento: "Contrato",
         contratoTipoCafe: Number(contratoTipoCafe),
         contratoPrecio: parseFloat(contratoPrecio),
-        contratoCatidadQQ: parseFloat(contratoCatidadQQ),
+        contratoCantidadQQ: parseFloat(contratoCantidadQQ),
         contratoTotalLps: parseFloat(contratoTotalLps),
         contratoEn,
         contratoDescripcion: contratoDescripcion || "",

@@ -137,7 +137,7 @@ model contrato {
   contratoMovimiento  String?           @db.VarChar(20)
   contratoTipoCafe    Int?
   contratoPrecio      Decimal?          @db.Decimal(15, 2)
-  contratoCatidadQQ   Decimal?          @db.Decimal(15, 2)
+  contratoCantidadQQ  Decimal?          @db.Decimal(15, 2)
   contratoTotalLps    Decimal?          @db.Decimal(15, 2)
   contratoEn          String?           @db.VarChar(20)
   contratoDescripcion String?           @db.VarChar(200)

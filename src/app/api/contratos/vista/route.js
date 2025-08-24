@@ -1,3 +1,5 @@
+import prisma from "@/lib/prisma";
+
 export async function GET() {
   try {
     // Usamos query raw para traer todo de la vista

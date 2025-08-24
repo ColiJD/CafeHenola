@@ -67,11 +67,16 @@ export const menuItems = [
     subItems: [
       {
         id: 401,
-        name: "Saldo Disponible",
+        name: "Saldo Por Deposito",
         href: Ruta + "/deposito/vista",
         image: deposito,
       },
-      { id: 402, name: "Reporte", href: "/ventas/reporte", image: deposito },
+      {
+        id: 402,
+        name: "Saldo Por Contrato",
+        href: Ruta + "/contrato/vista",
+        image: deposito,
+      },
     ],
   },
 
@@ -82,6 +87,12 @@ export const menuItems = [
     subItems: [
       { id: 501, name: "Productos", href: Ruta + "/producto", image: deposito },
       { id: 502, name: "Clientes", href: Ruta + "/cliente", image: deposito },
+      {
+        id: 503,
+        name: "Registros de clientes",
+        href: Ruta + "/cliente/Registros",
+        image: deposito,
+      },
     ],
   },
   // resto de items...
@@ -160,15 +171,14 @@ export const menuItem = [
     children: [
       {
         key: "SaldoDisponible",
-        label: "Saldo Disponible",
+        label: "Saldo Por Deposito",
         route: Ruta + "/deposito/vista",
       },
-       {
+      {
         key: "SaldoContratoDisponible",
-        label: "Saldo Contrato Disponible",
+        label: "Saldo Por Contrato",
         route: Ruta + "/contrato/vista",
       },
-     
     ],
   },
 ];

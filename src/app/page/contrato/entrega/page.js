@@ -286,12 +286,12 @@ export default function LiquidacionContratoForm() {
     <>
       {contextHolder}
       <Formulario
-        title="Liquidación de Contrato"
+        title="Entrega de Contrato"
         fields={fields}
         onSubmit={handleRegistrarClick}
         submitting={submitting}
         button={{
-          text: "Registrar Liquidación",
+          text: "Registrar Entrega",
           onClick: handleRegistrarClick,
           type: "primary",
           disabled: submitting || formState.saldoDisponibleQQ <= 0,

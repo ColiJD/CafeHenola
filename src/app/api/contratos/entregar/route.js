@@ -20,39 +20,21 @@ export async function POST(request) {
       FROM vw_SaldoPorContrato
       WHERE contratoID = ${contratoID} 
         AND clienteID = ${clienteID} 
+        AND tipoCafeID = ${tipoCafe}
     `;
 
-    // 2️⃣ Validación: si no hay resultados
     if (!saldoResult || saldoResult.length === 0) {
-      console.log("⚠️ No se encontró saldo en la vista para:", {
-        contratoID,
-        clienteID,
-      });
       return new Response(
-        JSON.stringify({
-          error: "No se encontró saldo disponible para este contrato",
-        }),
+        JSON.stringify({ error: "No se encontró saldo disponible para este contrato" }),
         { status: 400 }
       );
     }
 
     const saldoDisponibleQQ = parseFloat(saldoResult[0].saldoDisponibleQQ || 0);
-    const saldoDisponibleLps = parseFloat(
-      saldoResult[0].saldoDisponibleLps || 0
-    );
+    const saldoDisponibleLps = parseFloat(saldoResult[0].saldoDisponibleLps || 0);
     const precioContrato = parseFloat(saldoResult[0].precioQQ || precioQQ);
 
-    // console.log([
-    //   { label: "contratoID", value: contratoID },
-    //   { label: "clienteID", value: clienteID },
-    //   { label: "tipoCafe", value: tipoCafe },
-    //   { label: "cantidadQQ", value: cantidadQQ },
-    //   { label: "precioQQ enviado", value: precioQQ },
-    //   { label: "sacos", value: totalSacos },
-
-    // ]);
-
-    // 3️⃣ Validación de cantidad a liquidar
+    // 2️⃣ Validación de cantidad a liquidar
     if (parseFloat(cantidadQQ) > saldoDisponibleQQ) {
       return new Response(
         JSON.stringify({
@@ -62,80 +44,97 @@ export async function POST(request) {
       );
     }
 
-    // 4️⃣ Llamar al stored procedure para entregar el contrato
-    try {
-      await prisma.$executeRawUnsafe(
-        `CALL EntregarContrato(?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        Number(contratoID),
-        Number(clienteID),
-        Number(tipoCafe),
-        Number(cantidadQQ),
-        Number(precioContrato),
-        Number(totalSacos),
-        tipoDocumento,
-        descripcion,
-        liqEn
-      );
-    } catch (err) {
-      // Manejar error del stored procedure
-      if (
-        err.code === "1644" &&
-        err.message.includes("No hay depósitos pendientes")
-      ) {
-        return new Response(
-          JSON.stringify({
-            error:
-              "No hay depósitos pendientes para este cliente y tipo de café",
-          }),
-          { status: 400 }
+    // 3️⃣ Ejecutar todo dentro de una transacción
+    const resultado = await prisma.$transaction(async (tx) => {
+      // a) Llamar al stored procedure para entregar el contrato
+      try {
+        await tx.$executeRawUnsafe(
+          `CALL EntregarContrato(?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          Number(contratoID),
+          Number(clienteID),
+          Number(tipoCafe),
+          Number(cantidadQQ),
+          Number(precioContrato),
+          Number(totalSacos),
+          tipoDocumento,
+          descripcion,
+          liqEn
         );
+      } catch (err) {
+        if (err.code === "1644" && err.message.includes("No hay depósitos pendientes")) {
+          throw new Error("No hay depósitos pendientes para este cliente y tipo de café");
+        }
+        throw err;
       }
-      throw err; // cualquier otro error
-    }
 
-    // 5️⃣ Consultar nuevo saldo después de la liquidación
-    const nuevoSaldoResult = await prisma.$queryRaw`
-      SELECT saldoDisponibleQQ, saldoDisponibleLps
-      FROM vw_SaldoPorContrato
-      WHERE contratoID = ${contratoID} 
-        AND clienteID = ${clienteID} 
-        AND tipoCafeID = ${tipoCafe}
-    `;
+      // b) Actualizar inventario del cliente
+      const inventarioCliente = await tx.inventariocliente.upsert({
+        where: {
+          clienteID_productoID: {
+            clienteID: Number(clienteID),
+            productoID: Number(tipoCafe),
+          },
+        },
+        update: {
+          cantidadQQ: { increment: Number(cantidadQQ) },
+          cantidadSacos: { increment: Number(totalSacos) },
+        },
+        create: {
+          clienteID: Number(clienteID),
+          productoID: Number(tipoCafe),
+          cantidadQQ: Number(cantidadQQ),
+          cantidadSacos: Number(totalSacos),
+        },
+      });
 
-    const nuevoSaldoQQ = parseFloat(
-      nuevoSaldoResult[0]?.saldoDisponibleQQ || 0
-    );
-    const nuevoSaldoLps = parseFloat(
-      nuevoSaldoResult[0]?.saldoDisponibleLps || 0
-    );
+      // c) Registrar movimiento de inventario
+      await tx.movimientoinventario.create({
+        data: {
+          inventarioClienteID: inventarioCliente.inventarioClienteID,
+          tipoMovimiento: "Entrada",
+          referenciaTipo: `Contrato #${contratoID}`,
+          referenciaID: contratoID,
+          cantidadQQ: Number(cantidadQQ),
+          cantidadSacos: Number(totalSacos),
+          nota: "Entrada de café por liquidación de contrato",
+        },
+      });
 
-    // 6️⃣ Retornar información al frontend
-    return new Response(
-      JSON.stringify({
-        message: "Liquidación del contrato realizada correctamente",
+      // d) Consultar nuevo saldo después de la liquidación
+      const nuevoSaldoResult = await tx.$queryRaw`
+        SELECT saldoDisponibleQQ, saldoDisponibleLps
+        FROM vw_SaldoPorContrato
+        WHERE contratoID = ${contratoID} 
+          AND clienteID = ${clienteID} 
+          AND tipoCafeID = ${tipoCafe}
+      `;
+
+      const nuevoSaldoQQ = parseFloat(nuevoSaldoResult[0]?.saldoDisponibleQQ || 0);
+      const nuevoSaldoLps = parseFloat(nuevoSaldoResult[0]?.saldoDisponibleLps || 0);
+
+      return {
         saldoAntesQQ: saldoDisponibleQQ,
         saldoAntesLps: saldoDisponibleLps,
         cantidadLiquidadaQQ: cantidadQQ,
         totalLiquidacionLps: cantidadQQ * precioContrato,
         saldoDespuesQQ: nuevoSaldoQQ,
         saldoDespuesLps: nuevoSaldoLps,
+      };
+    });
+
+    // 4️⃣ Retornar resultado
+    return new Response(
+      JSON.stringify({
+        message: "Liquidación del contrato realizada correctamente",
+        ...resultado,
       }),
       { status: 201 }
     );
   } catch (error) {
-    // console.error("Error al entregar contrato:", error);
-
     let msg = "Error interno";
     if (error?.message) {
-      if (error.message.includes("No hay depósitos pendientes")) {
-        msg = "No hay depósitos pendientes para este cliente y tipo de café";
-      } else if (error.message.includes("saldo insuficiente")) {
-        msg = "Saldo insuficiente para liquidar";
-      } else {
-        msg = error.message;
-      }
+      msg = error.message;
     }
-
     return new Response(JSON.stringify({ error: msg }), { status: 500 });
   }
 }

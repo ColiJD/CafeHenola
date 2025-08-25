@@ -1,7 +1,7 @@
 "use client"; // Indica que este archivo se ejecuta en el cliente (Next.js)
 
 import { useEffect, useState } from "react"; // Hooks de React
-import { message } from "antd"; // Componente de mensajes de Ant Design
+import { message,Button } from "antd"; // Componente de mensajes de Ant Design
 import Formulario from "@/components/Formulario"; // Componente genérico de formulario
 import PreviewModal from "@/components/Modal"; // Modal para previsualización
 import { obtenerClientesSelect, obtenerProductosSelect } from "@/lib/consultas"; // Funciones para traer clientes/productos
@@ -11,6 +11,8 @@ import {
   validarEnteroPositivo,
 } from "@/config/validacionesForm"; // Utilidades de validación
 import { validarDatos } from "@/lib/validacionesForm"; // Validación general del formulario
+
+import { generarContratoDoc } from "@/components/ContratoDoc";
 
 export default function ContratoForm() {
   // 🔹 Estados de datos seleccionables
@@ -27,6 +29,19 @@ export default function ContratoForm() {
     contratoEn: "",
     contratoDescripcion: "",
   });
+
+  const handleGenerarDoc = () => {
+    // Genera el documento usando los datos actuales del formulario
+    generarContratoDoc({
+      clienteNombre: formState.cliente?.label,
+      productoNombre: formState.producto?.label,
+      contratoPrecio: formState.contratoPrecio,
+      contratoCantidadQQ: formState.contratoCantidadQQ,
+      contratoTotalLps: formState.contratoTotalLps,
+      contratoEn: formState.contratoEn,
+      contratoDescripcion: formState.contratoDescripcion,
+    });
+  };
 
   // 🔹 Estado para errores de validación
   const [errors, setErrors] = useState({});
@@ -206,6 +221,15 @@ export default function ContratoForm() {
         onCancel={() => setPreviewVisible(false)}
         onConfirm={handleConfirmar}
         confirmLoading={submitting}
+        extraButtons={[
+          <Button
+            key="generate"
+            type="dashed"
+            onClick={() => generarContratoDoc(formState)}
+          >
+            Generar Documento
+          </Button>,
+        ]}
         fields={fields.map((f) => ({
           label: f.label,
           value:

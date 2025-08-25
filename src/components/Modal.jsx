@@ -1,5 +1,5 @@
 "use client";
-import { Modal } from "antd";
+import { Modal, Button } from "antd";
 
 export default function PreviewModal({
   open,
@@ -10,6 +10,7 @@ export default function PreviewModal({
   confirmLoading = false,
   okText = "Confirmar",
   cancelText = "Cancelar",
+  extraButtons = [],
 }) {
   return (
     <Modal
@@ -20,6 +21,20 @@ export default function PreviewModal({
       confirmLoading={confirmLoading}
       okText={okText}
       cancelText={cancelText}
+      footer={[
+        <Button key="cancel" onClick={onCancel}>
+          {cancelText}
+        </Button>,
+        ...extraButtons,
+        <Button
+          key="confirm"
+          type="primary"
+          loading={confirmLoading}
+          onClick={onConfirm}
+        >
+          {okText}
+        </Button>,
+      ]}
     >
       {fields.map((field, index) => (
         <p key={index}>

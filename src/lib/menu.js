@@ -3,9 +3,16 @@ import producto from "@/img/cliente.png";
 import cliente from "@/img/product.png";
 import deposito from "@/img/deposito.png";
 import money from "@/img/money.png";
-import prestamo from "@/img/co.png";
+
 // import contrato from "@/img/co.png";
 import contrato from "@/img/contrato.png";
+
+import Compras from "@/img/Compras.png";
+import Depo from "@/img/depo.png";
+import LiqDepo from "@/img/liqD.png";
+import prestamo from "@/img/co.png";
+import Contrato from "@/img/Contratos.png";
+import Reportes from "@/img/Reportes.png";
 import {
   UserOutlined,
   HomeOutlined,
@@ -23,42 +30,40 @@ export const menuItems = [
   {
     id: 1,
     name: "Compra",
-    image: money,
+    image: Compras,
     subItems: [
-      { id: 101, name: "Nueva Compra", href: Ruta + "/compra/", image: money },
-      { id: 102, name: "Deposito", href: Ruta + "/deposito", image: deposito },
+      {
+        id: 101,
+        name: "Nueva Compra",
+        href: Ruta + "/compra/",
+        image: Compras,
+      },
+      { id: 102, name: "Deposito", href: Ruta + "/deposito", image: Depo },
       {
         id: 103,
         name: "Liquidar Deposito",
         href: Ruta + "/liqDeposito",
-        image: deposito,
+        image: LiqDepo,
       },
-      { id: 104, name: "Contrato", href: Ruta + "/contrato", image: contrato },
+      { id: 104, name: "Contrato", href: Ruta + "/contrato", image: prestamo },
       {
         id: 105,
         name: "Entregar Contrato",
         href: Ruta + "/contrato/entrega",
-        image: contrato,
+        image: Contrato,
       },
     ],
   },
   {
     id: 2,
     name: "Ventas",
-    image: deposito,
-    subItems: [
-      { id: 201, name: "Nueva Venta", href: "/ventas/nueva", image: deposito },
-      { id: 202, name: "Reporte", href: "/ventas/reporte", image: deposito },
-    ],
+    image: deposito
   },
   {
     id: 3,
     name: "Inventario",
     image: producto,
-    subItems: [
-      { id: 201, name: "Nueva Venta", href: "/ventas/nueva", image: deposito },
-      { id: 202, name: "Reporte", href: "/ventas/reporte", image: deposito },
-    ],
+    href: Ruta + "/inventario",
   },
   {
     id: 4,
@@ -69,29 +74,29 @@ export const menuItems = [
         id: 401,
         name: "Saldo Por Deposito",
         href: Ruta + "/deposito/vista",
-        image: deposito,
+        image: contrato,
       },
       {
         id: 402,
         name: "Saldo Por Contrato",
         href: Ruta + "/contrato/vista",
-        image: deposito,
+        image: prestamo,
       },
     ],
   },
 
   {
     id: 5,
-    name: "Configuración",
-    image: money,
+    name: "Registros",
+    image: Reportes,
     subItems: [
-      { id: 501, name: "Productos", href: Ruta + "/producto", image: deposito },
-      { id: 502, name: "Clientes", href: Ruta + "/cliente", image: deposito },
+      { id: 501, name: "Productos", href: Ruta + "/producto", image: cliente },
+      { id: 502, name: "Clientes", href: Ruta + "/cliente", image: producto },
       {
         id: 503,
         name: "Registros de clientes",
         href: Ruta + "/cliente/Registros",
-        image: deposito,
+        image: Reportes,
       },
     ],
   },
@@ -144,12 +149,17 @@ export const menuItem = [
     ],
   },
   {
-    key: "configuracion",
+    key: "Registros",
     icon: <SettingOutlined />,
-    label: "Configuración",
+    label: "Registros",
     children: [
       { key: "cliente", label: "Cliente", route: Ruta + "/cliente" },
       { key: "producto", label: "Producto", route: Ruta + "/producto" },
+      {
+        key: "registroCliente",
+        label: "Registros de Clientes",
+        route: Ruta + "/cliente/Registros",
+      },
     ],
   },
   // {
@@ -162,7 +172,7 @@ export const menuItem = [
     key: "inventario",
     icon: <AppstoreOutlined />,
     label: "Inventario",
-    route: "/inventario",
+    route: Ruta + "/inventario",
   },
   {
     key: "informe",

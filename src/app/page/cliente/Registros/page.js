@@ -1,36 +1,52 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Table, message, Input, Space, Card, Row, Col, Grid } from "antd";
+import {
+  Table,
+  message,
+  Input,
+  Space,
+  Card,
+  Row,
+  Col,
+  Grid,
+  Button,
+} from "antd";
 import { SearchOutlined } from "@ant-design/icons";
+import { obtenerClientesSelect } from "@/lib/consultas";
 
 const { useBreakpoint } = Grid;
 
 export default function ClientesPage() {
   const [data, setData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState("");
-  const [filteredData, setFilteredData] = useState([]);
-  const screens = useBreakpoint(); // detecta si es móvil o no
+
+  const screens = useBreakpoint();
+  const isMobile = !screens.md;
+
+  // 🔹 Cargar clientes usando la función exportada
+  const cargarClientes = async () => {
+    setLoading(true);
+    try {
+      const clientesSelect = await obtenerClientesSelect(message);
+      // Transformar al formato original de cliente
+      const clientes = clientesSelect.map((c) => c.data);
+      setData(clientes);
+      setFilteredData(clientes);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function fetchClientes() {
-      try {
-        const res = await fetch("/api/clientes");
-        if (!res.ok) throw new Error("Error al obtener clientes");
-        const clientes = await res.json();
-        setData(clientes);
-        setFilteredData(clientes);
-      } catch (error) {
-        message.error(error.message);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchClientes();
+    cargarClientes();
   }, []);
 
-  // 🔎 Filtrar por nombre + apellido
+  // 🔎 Filtrar por nombre y apellido
   const handleSearch = (value) => {
     setSearchText(value);
     if (value) {
@@ -45,15 +61,12 @@ export default function ClientesPage() {
     }
   };
 
-  // Municipios y departamentos únicos para filtros
-  const municipios = [
-    ...new Set(data.map((c) => c.clienteMunicipio).filter(Boolean)),
-  ];
+  // Departamentos únicos para filtros de tabla
   const departamentos = [
     ...new Set(data.map((c) => c.clienteDepartament).filter(Boolean)),
   ];
 
-  // 👀 Columnas principales (para desktop/tablet)
+  // 👀 Columnas principales
   const columns = [
     { title: "ID", dataIndex: "clienteID", key: "id", width: 70 },
     {
@@ -71,11 +84,7 @@ export default function ClientesPage() {
         (a.clienteApellido || "").localeCompare(b.clienteApellido || ""),
     },
     { title: "Teléfono", dataIndex: "clienteTelefono", key: "telefono" },
-    {
-      title: "Cédula",
-      dataIndex: "clienteCedula",
-      key: "cedula",
-    },
+    { title: "Cédula", dataIndex: "clienteCedula", key: "cedula" },
     {
       title: "Departamento",
       dataIndex: "clienteDepartament",
@@ -91,21 +100,27 @@ export default function ClientesPage() {
         Lista de Clientes
       </h2>
 
-      {/* 🔎 Barra de búsqueda */}
-      <Space style={{ marginBottom: 16 }} wrap>
-        <Input.Search
-          placeholder="Buscar por nombre o apellido"
-          allowClear
-          enterButton={<SearchOutlined />}
-          onSearch={handleSearch}
-          onChange={(e) => handleSearch(e.target.value)}
-          style={{ width: screens.xs ? "100%" : 300 }}
-          value={searchText}
-        />
-      </Space>
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }} align="middle">
+        <Col xs={24} sm={12} md={6}>
+          <Input.Search
+            placeholder="Buscar por nombre o apellido"
+            allowClear
+            enterButton={<SearchOutlined />}
+            onSearch={handleSearch}
+            onChange={(e) => handleSearch(e.target.value)}
+            style={{ width: "100%" }}
+            value={searchText}
+          />
+        </Col>
+        <Col xs={24} sm={12} md={4}>
+          <Button onClick={cargarClientes} block>
+            Refrescar
+          </Button>
+        </Col>
+      </Row>
 
-      {/* 👀 Vista en móviles → Tarjetas */}
-      {screens.xs ? (
+      {/* 👀 Vista móvil → tarjetas */}
+      {isMobile ? (
         <Row gutter={[16, 16]}>
           {filteredData.map((cliente) => (
             <Col span={24} key={cliente.clienteID}>
@@ -149,7 +164,7 @@ export default function ClientesPage() {
           ))}
         </Row>
       ) : (
-        // 👀 Vista en tablets/desktop → Tabla con expandibles
+        // 👀 Vista tablet/desktop → tabla con expandibles
         <Table
           columns={columns}
           dataSource={filteredData}
@@ -159,11 +174,7 @@ export default function ClientesPage() {
           pagination={{ pageSize: 5 }}
           expandable={{
             expandedRowRender: (record) => (
-              <Card
-                size="small"
-                title="Detalles del Cliente"
-                type="inner"
-              >
+              <Card size="small" title="Detalles del Cliente" type="inner">
                 <Row gutter={[16, 8]}>
                   <Col xs={24} sm={12}>
                     <p>

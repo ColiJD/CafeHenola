@@ -10,25 +10,31 @@ import {
 import { validarDatos } from "@/lib/validacionesForm";
 import {
   obtenerClientesSelect,
+  obtenerProductosSelect,
   obtenerSaldoContrato,
   obtenerContratosPendientes,
 } from "@/lib/consultas";
+import { calcularCafeDesdeProducto } from "@/lib/calculoCafe";
 
 export default function LiquidacionContratoForm() {
   const [clientes, setClientes] = useState([]);
   const [contratos, setContratos] = useState([]);
+  const [productos, setProductos] = useState([]);
 
   const [formState, setFormState] = useState({
     cliente: null,
     contrato: null,
-    tipoCafeID: 0,
+    tipoCafeID: "",
     tipoCafeNombre: "",
-    saldoDisponibleQQ: 0,
-    saldoDisponibleLps: 0,
-    precioQQ: 0,
+    saldoDisponibleQQ: "",
+    saldoDisponibleLps: "",
+    precioQQ: "",
     cantidadLiquidar: "",
-    totalSacos: 0,
-    totalLiquidacion: 0,
+    totalSacos: "",
+    totalLiquidacion: "0.00",
+    oro: "0.00",
+    retencion: "0.00",
+    producto: null,
   });
 
   const [errors, setErrors] = useState({});
@@ -39,31 +45,21 @@ export default function LiquidacionContratoForm() {
   const handleChange = (key, value) =>
     setFormState((prev) => ({ ...prev, [key]: value }));
 
-  const { cantidadLiquidar, precioQQ, contrato, cliente } = formState;
+  const { cantidadLiquidar, contrato, cliente } = formState;
 
   // ------------------------------
-  // Calcular totales automáticamente
-  // ------------------------------
-  useEffect(() => {
-    setFormState((prev) => ({
-      ...prev,
-      totalLiquidacion:
-        cantidadLiquidar && precioQQ
-          ? parseFloat(cantidadLiquidar) * parseFloat(precioQQ)
-          : 0,
-      totalSacos: cantidadLiquidar ? parseInt(cantidadLiquidar) * 2 : 0,
-    }));
-  }, [cantidadLiquidar, precioQQ]);
-
-  // ------------------------------
-  // Cargar clientes
+  // Cargar clientes y productos
   // ------------------------------
   useEffect(() => {
     async function cargarDatos() {
       try {
-        setClientes(await obtenerClientesSelect(messageApi));
-      } catch {
-        messageApi.error("Error cargando clientes");
+        const clientesData = await obtenerClientesSelect(messageApi);
+        const productosData = await obtenerProductosSelect(messageApi);
+        setClientes(clientesData);
+        setProductos(productosData);
+      } catch (err) {
+        console.error(err);
+        messageApi.error("⚠️ Error cargando clientes o productos.");
       }
     }
     cargarDatos();
@@ -100,8 +96,11 @@ export default function LiquidacionContratoForm() {
           tipoCafeID: 0,
           tipoCafeNombre: "",
           precioQQ: 0,
-          totalLiquidacion: 0,
-          totalSacos: 0,
+          totalLiquidacion: "0.00",
+          totalSacos: "",
+          oro: "0.00",
+          retencion: "0.00",
+          producto: null,
         }));
         return;
       }
@@ -113,14 +112,46 @@ export default function LiquidacionContratoForm() {
         return;
       }
 
+      // buscar el producto asociado al tipo de café
+      const productoSeleccionado = productos.find(
+        (p) => p.value === saldoData.tipoCafeID
+      );
+
       setFormState((prev) => ({
         ...prev,
         ...saldoData,
+        producto: productoSeleccionado || null,
       }));
     }
 
     cargar();
-  }, [contrato, messageApi]);
+  }, [contrato, messageApi, productos]);
+
+  // ------------------------------
+  // Recalcular valores cuando cambia cantidad/precio
+  // ------------------------------
+  useEffect(() => {
+    if (!formState.producto) return;
+
+    const resultado = calcularCafeDesdeProducto(
+      formState.cantidadLiquidar,
+      formState.totalSacos,
+      formState.producto,
+      formState.precioQQ
+    );
+
+    setFormState((prev) => ({
+      ...prev,
+      oro: resultado.oro,
+      retencion: resultado.retencion,
+      totalLiquidacion: resultado.total,
+    }));
+  }, [
+    formState.cantidadLiquidar,
+    formState.precioQQ,
+    formState.totalSacos,
+    formState.producto,
+  ]);
 
   // ------------------------------
   // Abrir modal de previsualización
@@ -136,11 +167,10 @@ export default function LiquidacionContratoForm() {
     e.preventDefault();
     setSubmitting(true);
 
-    const cantidad = parseFloat(cantidadLiquidar);
 
-    if (cantidad > formState.saldoDisponibleQQ) {
+    if (formState.oro > formState.saldoDisponibleQQ) {
       messageApi.error(
-        `La cantidad (${cantidad}) supera el saldo disponible (${formState.saldoDisponibleQQ})`
+        `La cantidad (${formState.oro}) supera el saldo disponible (${formState.saldoDisponibleQQ})`
       );
       setSubmitting(false);
       return;
@@ -150,7 +180,7 @@ export default function LiquidacionContratoForm() {
       contratoID: contrato.value,
       clienteID: cliente.value,
       tipoCafe: formState.tipoCafeID,
-      cantidadQQ: cantidad,
+      cantidadQQ: formState.oro ? parseFloat(formState.oro) : 0,
       precioQQ: formState.precioQQ,
       totalSacos: parseInt(formState.totalSacos),
       tipoDocumento: "EntregaContrato",
@@ -237,26 +267,33 @@ export default function LiquidacionContratoForm() {
     },
     {
       key: "cantidadLiquidar",
-      label: "Cantidad a liquidar (QQ)",
-      type: "integer",
+      label: "Peso Bruto (Kg)",
+      type: "Float",
       required: true,
-      validator: (v) => {
-        if (!validarEnteroPositivo(v)) return "Debe ser un entero > 0";
-        if (Number(v) > formState.saldoDisponibleQQ)
-          return "No puede ser mayor al saldo disponible";
-        return null;
-      },
+      error: errors["Peso Bruto"],
+      validator: (v) => (v > 0 ? null : "Ingrese un peso válido"),
     },
     {
       key: "totalSacos",
-      label: (
-        <Tooltip title="Se calculan 2 sacos por cada QQ">
-          Total de Sacos
-        </Tooltip>
-      ),
+      label: "Total de Sacos",
       type: "integer",
-      readOnly: true,
       value: formState.totalSacos,
+      error: errors["Total de Sacos"],
+      validator: (v) => (v > 0 ? null : "Ingrese un total de sacos válido"),
+    },
+    {
+      key: "oro",
+      label: "Quintales Oro",
+      type: "Float",
+      readOnly: true,
+      value: formState.oro,
+    },
+    {
+      key: "retencion",
+      label: "Retención (QQ)",
+      type: "Float",
+      readOnly: true,
+      value: formState.retencion,
     },
     {
       key: "totalLiquidacion",
@@ -269,16 +306,8 @@ export default function LiquidacionContratoForm() {
 
   const fields = fieldsConfig.map((f) => ({
     ...f,
-    value:
-      f.key === "totalLiquidacion"
-        ? formState.totalLiquidacion
-        : f.key === "totalSacos"
-        ? formState.totalSacos
-        : formState[f.key],
-    setter:
-      f.key !== "totalLiquidacion" && f.key !== "totalSacos"
-        ? (v) => handleChange(f.key, v)
-        : () => {},
+    value: formState[f.key],
+    setter: f.readOnly ? () => {} : (v) => handleChange(f.key, v),
     error: errors[f.label] || null,
   }));
 

@@ -9,7 +9,9 @@ import {
   limpiarFormulario,
   validarEnteroPositivo,
   validarEnteroNoNegativo,
+  validarFloatPositivo,
 } from "@/config/validacionesForm";
+import { calcularCafeDesdeProducto } from "@/lib/calculoCafe";
 
 export default function FormDeposito() {
   const [clientes, setClientes] = useState([]);
@@ -21,6 +23,7 @@ export default function FormDeposito() {
   const [depositoTotalSacos, setDepositoTotalSacos] = useState("");
   const [depositoEn, setDepositoEn] = useState("");
   const [depositoDescripcion, setDepositoDescripcion] = useState("");
+  const [pesoBruto, setPesoBruto] = useState("");
 
   const [errors, setErrors] = useState({});
   const [previewVisible, setPreviewVisible] = useState(false);
@@ -44,23 +47,30 @@ export default function FormDeposito() {
     cargarDatos();
   }, [messageApi]);
 
+  useEffect(() => {
+    if (!producto) return;
+
+    const resultado = calcularCafeDesdeProducto(
+      pesoBruto,
+      depositoTotalSacos,
+      producto // objeto con value, label y data
+    );
+    setDepositoCantidadQQ(resultado.oro);
+  }, [pesoBruto, depositoTotalSacos, producto]);
+
   // Validación
   const validarDatos = () => {
-    const newErrors = {};
+    const newErrors = {}; // en JS no hace falta tipar nada
 
-    if (!cliente) newErrors["Cliente"] = "Seleccione un cliente";
-    if (!producto) newErrors["Tipo de Café"] = "Seleccione un café";
-
-    if (!validarEnteroPositivo(depositoCantidadQQ))
-      newErrors["Cantidad QQ"] = "Cantidad QQ debe ser un entero > 0";
-
-    if (depositoTotalSacos && !validarEnteroNoNegativo(depositoTotalSacos))
-      newErrors["Total Sacos"] = "Total sacos debe ser >= 0";
-
-    if (depositoEn && depositoEn.trim() === "")
-      newErrors["Depósito en"] = "Ingrese depósito";
+    fields.forEach((f) => {
+      if (typeof f.validator === "function") {
+        const error = f.validator(f.value);
+        if (error) newErrors[f.label] = error;
+      }
+    });
 
     setErrors(newErrors);
+
     if (Object.keys(newErrors).length > 0) {
       messageApi.warning("Complete los campos obligatorios correctamente");
       return false;
@@ -77,7 +87,7 @@ export default function FormDeposito() {
     const data = {
       clienteID: cliente.value,
       depositoTipoCafe: producto.value,
-      depositoCantidadQQ: parseInt(depositoCantidadQQ, 10),
+      depositoCantidadQQ: parseFloat(depositoCantidadQQ),
       depositoTotalSacos: depositoTotalSacos
         ? parseInt(depositoTotalSacos, 10)
         : 0,
@@ -96,6 +106,7 @@ export default function FormDeposito() {
         limpiarFormulario({
           setCliente,
           setProducto,
+          setPesoBruto,
           setDepositoCantidadQQ,
           setDepositoTotalSacos,
           setDepositoEn,
@@ -123,6 +134,7 @@ export default function FormDeposito() {
       options: clientes,
       required: true,
       error: errors["Cliente"],
+      validator: (v) => (v ? null : "Seleccione un cliente"),
     },
     {
       label: "Tipo de Café",
@@ -132,28 +144,39 @@ export default function FormDeposito() {
       options: productos,
       required: true,
       error: errors["Tipo de Café"],
+      validator: (v) => (v ? null : "Seleccione un café"),
     },
     {
-      label: "Cantidad QQ",
-      value: depositoCantidadQQ,
-      setter: setDepositoCantidadQQ,
-      type: "integer",
+      label: "Peso Bruto",
+      value: pesoBruto,
+      setter: setPesoBruto,
+      type: "Float",
       required: true,
-      error: errors["Cantidad QQ"],
+      error: errors["Peso Bruto"],
+      validator: validarFloatPositivo,
     },
     {
       label: "Total Sacos",
       value: depositoTotalSacos,
       setter: setDepositoTotalSacos,
       type: "integer",
+      required: true,
       error: errors["Total Sacos"],
+      validator: (v) =>
+        v === "" || v === null || v === undefined
+          ? "Ingrese total de sacos"
+          : validarEnteroNoNegativo(v)
+          ? null
+          : "Total sacos debe ser >= 0",
     },
     {
-      label: "Depósito en",
-      value: depositoEn,
-      setter: setDepositoEn,
-      required: false,
-      error: errors["Depósito en"],
+      label: "Quintales Oro",
+      value: depositoCantidadQQ,
+      setter: setDepositoCantidadQQ,
+      type: "Float",
+      required: true,
+      readOnly: true,
+      error: errors["Quintales Oro"],
     },
     {
       label: "Descripción",

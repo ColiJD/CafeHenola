@@ -13,7 +13,7 @@ export async function POST(request) {
     } = body;
 
     // 🔹 Validaciones básicas
-    if (!clienteID || !depositoTipoCafe || !depositoCantidadQQ || !depositoEn) {
+    if (!clienteID || !depositoTipoCafe || !depositoCantidadQQ || !depositoTotalSacos) {
       return new Response(
         JSON.stringify({ error: "Faltan datos obligatorios" }),
         { status: 400 }

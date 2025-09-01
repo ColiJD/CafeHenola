@@ -183,10 +183,10 @@ export default function DepositoForm() {
     {
       key: "depositoCantidadQQ",
       label: "Cantidad a liquidar (QQ)",
-      type: "integer",
+      type: "Float",
       required: true,
       validator: (v) => {
-        if (!validarEnteroPositivo(v)) return "Debe ser un entero > 0";
+        if (validarFloatPositivo(v)) return "Debe ser un número mayor a 0";
         if (Number(v) > formState.saldoPendiente)
           return "No puede ser mayor al saldo disponible";
         return null;
@@ -201,8 +201,6 @@ export default function DepositoForm() {
       readOnly: true,
       value: totalLiquidacion,
     },
-    { key: "depositoTipoDocumento", label: "Tipo de Documento" },
-    { key: "depositoEn", label: "Liquidado en" },
     { key: "depositoDescripcion", label: "Descripción", type: "textarea" },
   ];
 

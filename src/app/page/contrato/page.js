@@ -1,7 +1,7 @@
 "use client"; // Indica que este archivo se ejecuta en el cliente (Next.js)
 
 import { useEffect, useState } from "react"; // Hooks de React
-import { message,Button } from "antd"; // Componente de mensajes de Ant Design
+import { message, Button } from "antd"; // Componente de mensajes de Ant Design
 import Formulario from "@/components/Formulario"; // Componente genérico de formulario
 import PreviewModal from "@/components/Modal"; // Modal para previsualización
 import { obtenerClientesSelect, obtenerProductosSelect } from "@/lib/consultas"; // Funciones para traer clientes/productos
@@ -110,10 +110,9 @@ export default function ContratoForm() {
     {
       key: "contratoCantidadQQ",
       label: "Cantidad QQ",
-      type: "integer",
+      type: "Float",
       required: true,
-      validator: (v) =>
-        !validarEnteroPositivo(v) ? "Cantidad QQ debe ser un entero > 0" : null,
+      validator: validarFloatPositivo,
     },
     {
       key: "contratoTotalLps",
@@ -122,7 +121,6 @@ export default function ContratoForm() {
       required: true,
       readOnly: true,
     },
-    { key: "contratoEn", label: "Contrato en", required: false },
     {
       key: "contratoDescripcion",
       label: "Descripción",

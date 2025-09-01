@@ -42,7 +42,7 @@ export const menuItems = [
       {
         id: 103,
         name: "Liquidar Deposito",
-        href: Ruta + "/liqDeposito",
+        href: Ruta + "deposito/liqDeposito",
         image: LiqDepo,
       },
       { id: 104, name: "Contrato", href: Ruta + "/contrato", image: prestamo },
@@ -142,7 +142,7 @@ export const menuItem = [
       {
         key: "compraLiqDeposito",
         label: "Liquidacion de Deposito",
-        route: Ruta + "/liqDeposito",
+        route: Ruta + "/deposito/liqDeposito",
       },
       {
         key: "compraContrato",

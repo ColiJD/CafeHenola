@@ -27,6 +27,7 @@ export default function CompraForm() {
   const [compraRetencio, setCompraRetencio] = useState(0);
   const [compraTotalSacos, setCompraTotalSacos] = useState("");
   const [compraDescripcion, setCompraDescripcion] = useState("");
+  const [compraOro, setCompraOro] = useState("0.00");
 
   const [errors, setErrors] = useState({});
   const [previewVisible, setPreviewVisible] = useState(false);
@@ -66,7 +67,7 @@ export default function CompraForm() {
 
     setCompraTotal(resultado.total);
     setCompraRetencio(resultado.retencion);
-    setProducto((prev) => ({ ...prev, oro: resultado.oro })); // actualizar oro
+    setCompraOro(resultado.oro); // ✅ lo guardas aparte
   }, [compraCantidadQQ, compraTotalSacos, compraPrecioQQ, producto]);
 
   // Validación
@@ -95,7 +96,7 @@ export default function CompraForm() {
       clienteID: cliente.value,
       compraTipoCafe: producto.value,
       compraTipoDocumento,
-      compraCantidadQQ: parseFloat(producto?.oro),
+      compraCantidadQQ: parseFloat(compraOro),
       compraTotalSacos: compraTotalSacos ? parseInt(compraTotalSacos, 10) : 0,
       compraPrecioQQ: parseFloat(compraPrecioQQ),
       compraRetencio: parseFloat(compraRetencio),
@@ -125,6 +126,7 @@ export default function CompraForm() {
           setCompraRetencio,
           setCompraTotal,
           setCompraPrecioQQ,
+          setCompraOro,
           setErrors,
         });
       } else {
@@ -205,8 +207,8 @@ export default function CompraForm() {
 
     {
       label: "Quintales Oro",
-      value: producto?.oro || 0,
-      setter: setProducto,
+      value: compraOro,
+      setter: setCompraOro,
       type: "Float",
       required: true,
       readOnly: true,

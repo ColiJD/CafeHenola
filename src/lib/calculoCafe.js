@@ -1,0 +1,36 @@
+function truncarDosDecimalesSinRedondear(numero) {
+  const truncado = Math.floor(numero * 100) / 100;
+  return truncado.toFixed(2); // devuelve string con 2 decimales
+}
+
+export function calcularCafeDesdeProducto(
+  pesoBruto,
+  sacosTotales,
+  productoSeleccionado,
+  precioQQ
+) {
+  if (!productoSeleccionado || !productoSeleccionado.data) {
+    return { oro: "0.00", total: "0.00", retencion: "0.00" };
+  }
+
+  const { tara = 0, descuento = 0, factorOro = 1 } = productoSeleccionado.data;
+
+  pesoBruto = Math.max(parseFloat(pesoBruto) || 0, 0);
+  sacosTotales = Math.max(parseFloat(sacosTotales) || 0, 0);
+  precioQQ = Math.max(parseFloat(precioQQ) || 0, 0);
+
+  const sacos = sacosTotales * tara;
+  let pesoNeto = Math.max(pesoBruto - sacos, 0);
+
+  if (descuento) pesoNeto = Math.max(pesoNeto * (1 - descuento), 0);
+
+  let oro = pesoNeto / factorOro;
+
+  // Truncar y formatear a string con 2 decimales
+  const oroStr = truncarDosDecimalesSinRedondear(oro);
+
+  const total = (precioQQ * parseFloat(oroStr)).toFixed(2);
+  const retencion = (Math.max(parseFloat(oroStr) - parseFloat(oroStr) * 0.04, 0)).toFixed(2);
+
+  return { oro: oroStr, total, retencion };
+}

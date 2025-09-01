@@ -22,8 +22,7 @@ export async function POST(request) {
       !compraTipoCafe ||
       !compraPrecioQQ ||
       !compraCantidadQQ ||
-      !compraTipoDocumento ||
-      !compraEn
+      !compraTotalSacos
     ) {
       return new Response(
         JSON.stringify({ error: "Faltan datos obligatorios" }),
@@ -42,9 +41,7 @@ export async function POST(request) {
         compraPrecioQQ: parseFloat(compraPrecioQQ),
         compraCantidadQQ: parseFloat(compraCantidadQQ),
         compraTotal: parseFloat(compraTotal),
-        compraTotalSacos: compraTotalSacos
-          ? parseFloat(compraTotalSacos)
-          : 0,
+        compraTotalSacos: compraTotalSacos ? parseFloat(compraTotalSacos) : 0,
         compraRetencio: compraRetencio ? parseFloat(compraRetencio) : 0,
         compraEn,
         compraDescripcion: compraDescripcion || "",
@@ -54,9 +51,7 @@ export async function POST(request) {
     // ✅ 2️⃣ Actualizar o crear inventario del cliente
     const productoID = Number(compraTipoCafe);
     const cantidadQQ = parseFloat(compraCantidadQQ);
-    const cantidadSacos = compraTotalSacos
-      ? parseFloat(compraTotalSacos)
-      : 0;
+    const cantidadSacos = compraTotalSacos ? parseFloat(compraTotalSacos) : 0;
     const clienteIDNum = Number(clienteID);
 
     const inventarioCliente = await prisma.inventariocliente.upsert({
@@ -78,8 +73,8 @@ export async function POST(request) {
       },
     });
 
-   // ✅ Registrar movimiento usando inventarioClienteID
-     await prisma.movimientoinventario.create({
+    // ✅ Registrar movimiento usando inventarioClienteID
+    await prisma.movimientoinventario.create({
       data: {
         inventarioClienteID: inventarioCliente.inventarioClienteID,
         tipoMovimiento: "Entrada",
@@ -94,8 +89,11 @@ export async function POST(request) {
     return new Response(JSON.stringify(nuevaCompra), { status: 201 });
   } catch (error) {
     console.error(error);
-    return new Response(JSON.stringify({ error: "Error al registrar compra" }), {
-      status: 500,
-    });
+    return new Response(
+      JSON.stringify({ error: "Error al registrar compra" }),
+      {
+        status: 500,
+      }
+    );
   }
 }

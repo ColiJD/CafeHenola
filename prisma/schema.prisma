@@ -71,6 +71,9 @@ model deposito {
 model producto {
   productID         Int                 @id @default(autoincrement())
   productName       String              @db.VarChar(50)
+  tara              Decimal?            @default(0.00) @db.Decimal(5, 2)
+  descuento         Decimal?            @default(0.00) @db.Decimal(5, 2)
+  factorOro         Decimal?            @default(1.00) @db.Decimal(10, 2)
   compra            compra[]
   contrato          contrato[]
   deposito          deposito[]

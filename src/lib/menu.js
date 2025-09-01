@@ -57,7 +57,7 @@ export const menuItems = [
   {
     id: 2,
     name: "Ventas",
-    image: deposito
+    image: deposito,
   },
   {
     id: 3,
@@ -106,6 +106,23 @@ export const menuItems = [
 // Diccionario de menú con rutas y submenus
 export const menuItem = [
   { key: "inicio", icon: <HomeOutlined />, label: "Inicio", route: "/" },
+  {
+    key: "informe",
+    icon: <FileTextOutlined />,
+    label: "Informe",
+    children: [
+      {
+        key: "SaldoDisponible",
+        label: "Saldo Por Deposito",
+        route: Ruta + "/deposito/vista",
+      },
+      {
+        key: "SaldoContratoDisponible",
+        label: "Saldo Por Contrato",
+        route: Ruta + "/contrato/vista",
+      },
+    ],
+  },
   {
     key: "compras",
     icon: <ShoppingCartOutlined />,
@@ -173,22 +190,5 @@ export const menuItem = [
     icon: <AppstoreOutlined />,
     label: "Inventario",
     route: Ruta + "/inventario",
-  },
-  {
-    key: "informe",
-    icon: <FileTextOutlined />,
-    label: "Informe",
-    children: [
-      {
-        key: "SaldoDisponible",
-        label: "Saldo Por Deposito",
-        route: Ruta + "/deposito/vista",
-      },
-      {
-        key: "SaldoContratoDisponible",
-        label: "Saldo Por Contrato",
-        route: Ruta + "/contrato/vista",
-      },
-    ],
   },
 ];

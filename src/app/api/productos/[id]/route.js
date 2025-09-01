@@ -6,7 +6,9 @@ export async function DELETE(req, context) {
   const id = parseInt(params.id);
 
   if (isNaN(id) || id <= 0) {
-    return new Response(JSON.stringify({ error: "ID inválido" }), { status: 400 });
+    return new Response(JSON.stringify({ error: "ID inválido" }), {
+      status: 400,
+    });
   }
 
   try {
@@ -27,6 +29,16 @@ export async function DELETE(req, context) {
     });
   } catch (error) {
     console.error("Error eliminando producto:", error);
+    // Validación especial para errores de FK (P2003)
+    if (error.code === "P2003") {
+      return new Response(
+        JSON.stringify({
+          error:
+            "No se puede eliminar el producto porque está asociado a otras transacciones (liqTipoCafe).",
+        }),
+        { status: 400 }
+      );
+    }
     return new Response(
       JSON.stringify({ error: "Error interno del servidor: " + error.message }),
       { status: 500 }
@@ -40,7 +52,9 @@ export async function PUT(req, context) {
   const id = parseInt(params.id);
 
   if (isNaN(id) || id <= 0) {
-    return new Response(JSON.stringify({ error: "ID inválido" }), { status: 400 });
+    return new Response(JSON.stringify({ error: "ID inválido" }), {
+      status: 400,
+    });
   }
 
   try {

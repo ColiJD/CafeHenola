@@ -90,8 +90,8 @@ export default function ClienteForm() {
     if (!values.clienteNombre) newErrors.clienteNombre = "Ingrese el nombre";
     if (!values.clienteApellido)
       newErrors.clienteApellido = "Ingrese el apellido";
-    if (!validarCedula(values.clienteCedula))
-      newErrors.clienteCedula = "Cédula inválida, formato: 0000-0000-00000";
+    // if (!validarCedula(values.clienteCedula))
+    //   newErrors.clienteCedula = "Cédula inválida, formato: 0000-0000-00000";
     if (!values.clienteDirecion)
       newErrors.clienteDirecion = "Ingrese la dirección";
     if (!values.clienteDepartament)
@@ -100,8 +100,8 @@ export default function ClienteForm() {
       newErrors.clienteMunicipio = "Seleccione municipio";
     if (!validarTelefono(values.clienteTelefono))
       newErrors.clienteTelefono = "Teléfono inválido, solo números";
-    if (!validarRTN(values.clienteRTN))
-      newErrors.clienteRTN = "RTN inválido, formato: 0000-0000-0000000";
+    // if (!validarRTN(values.clienteRTN))
+    //   newErrors.clienteRTN = "RTN inválido, formato: 0000-0000-0000000";
 
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) {

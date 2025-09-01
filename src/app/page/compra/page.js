@@ -5,6 +5,7 @@ import { message } from "antd";
 import Formulario from "@/components/Formulario";
 import PreviewModal from "@/components/Modal";
 import { obtenerClientesSelect, obtenerProductosSelect } from "@/lib/consultas";
+import { calcularCafeDesdeProducto } from "@/lib/calculoCafe";
 import {
   limpiarFormulario,
   validarEnteroNoNegativo,
@@ -52,15 +53,21 @@ export default function CompraForm() {
   const handleRegistrarClick = () => {
     if (validarDatos()) setPreviewVisible(true);
   };
-  // Calcula total y retención cuando precio o cantidad cambian
+
   useEffect(() => {
-    const precio = parseFloat(compraPrecioQQ) || 0;
-    const cantidad = parseFloat(compraCantidadQQ) || 0;
-    const total = precio * cantidad;
-    const retencion = cantidad - cantidad * 0.04; // ✅ Retención calculada
-    setCompraTotal(total.toFixed(2));
-    setCompraRetencio(retencion.toFixed(2));
-  }, [compraPrecioQQ, compraCantidadQQ]);
+    if (!producto) return;
+
+    const resultado = calcularCafeDesdeProducto(
+      compraCantidadQQ,
+      compraTotalSacos,
+      producto, // objeto con value, label y data
+      compraPrecioQQ
+    );
+
+    setCompraTotal(resultado.total);
+    setCompraRetencio(resultado.retencion);
+    setProducto((prev) => ({ ...prev, oro: resultado.oro })); // actualizar oro
+  }, [compraCantidadQQ, compraTotalSacos, compraPrecioQQ, producto]);
 
   // Validación
   const validarDatos = () => {
@@ -88,7 +95,7 @@ export default function CompraForm() {
       clienteID: cliente.value,
       compraTipoCafe: producto.value,
       compraTipoDocumento,
-      compraCantidadQQ: parseInt(compraCantidadQQ, 10),
+      compraCantidadQQ: parseFloat(producto?.oro),
       compraTotalSacos: compraTotalSacos ? parseInt(compraTotalSacos, 10) : 0,
       compraPrecioQQ: parseFloat(compraPrecioQQ),
       compraRetencio: parseFloat(compraRetencio),
@@ -97,7 +104,7 @@ export default function CompraForm() {
       compraMovimiento: "Entrada",
       compraDescripcion,
     };
- 
+
     try {
       const res = await fetch("/api/compras", {
         method: "POST",
@@ -152,6 +159,30 @@ export default function CompraForm() {
       error: errors["Tipo de Café"],
       validator: (v) => (!!v ? null : "Seleccione un café"),
     },
+
+    {
+      label: "Peso Bruto",
+      value: compraCantidadQQ,
+      setter: setCompraCantidadQQ,
+      type: "Float",
+      required: true,
+      error: errors["Peso Bruto"],
+      validator: validarFloatPositivo,
+    },
+    {
+      label: "Total Sacos",
+      value: compraTotalSacos,
+      setter: setCompraTotalSacos,
+      type: "integer",
+      required: true,
+      error: errors["Total Sacos"],
+      validator: (v) =>
+        v === "" || v === null || v === undefined
+          ? "Ingrese total de sacos"
+          : validarEnteroNoNegativo(v)
+          ? null
+          : "Total sacos debe ser >= 0",
+    },
     {
       label: "Precio",
       value: compraPrecioQQ,
@@ -160,16 +191,6 @@ export default function CompraForm() {
       required: true,
       error: errors["Precio"],
       validator: validarFloatPositivo,
-    },
-    {
-      label: "Cantidad QQ",
-      value: compraCantidadQQ,
-      setter: setCompraCantidadQQ,
-      type: "integer",
-      required: true,
-      error: errors["Cantidad QQ"],
-      validator: (v) =>
-        !validarEnteroPositivo(v) ? "Cantidad QQ debe ser un entero > 0" : null,
     },
 
     {
@@ -181,6 +202,17 @@ export default function CompraForm() {
       readOnly: true,
       error: errors["Total"],
     },
+
+    {
+      label: "Quintales Oro",
+      value: producto?.oro || 0,
+      setter: setProducto,
+      type: "Float",
+      required: true,
+      readOnly: true,
+      error: errors["Quintales Oro"],
+    },
+
     {
       label: "Retencion",
       value: compraRetencio,
@@ -189,33 +221,6 @@ export default function CompraForm() {
       required: true,
       readOnly: true,
       error: errors["Retencion"],
-    },
-    {
-      label: "Total Sacos",
-      value: compraTotalSacos,
-      setter: setCompraTotalSacos,
-      type: "integer",
-      error: errors["Total Sacos"],
-      validator: (v) =>
-        v && !validarEnteroNoNegativo(v) ? "Total sacos debe ser >= 0" : null,
-    },
-    {
-      label: "Tipo de Documento",
-      value: compraTipoDocumento,
-      setter: setCompraTipoDocumento,
-      required: false,
-      error: errors["Tipo Documento"],
-      validator: (v) =>
-        v && v.trim() === "" ? "Ingrese el tipo de documento" : null,
-    },
-    {
-      label: "Compra en",
-      value: compraEn,
-      setter: setCompraEn,
-      required: false,
-      error: errors["Compra en"],
-      validator: (v) =>
-        v && v.trim() === "" ? "Ingrese dónde se hizo la compra" : null,
     },
     {
       label: "Descripción",
@@ -249,12 +254,7 @@ export default function CompraForm() {
           value:
             f.type === "select"
               ? f.options?.find((o) => o.value === f.value?.value)?.label
-              : f.value ||
-                (f.label === "Total Sacos"
-                  ? 0
-                  : f.label === "Compra en"
-                  ? "Compra Directa"
-                  : "-"),
+              : f.value || (f.label === "Compra en" ? "Compra Directa" : "-"),
         }))}
       />
     </>

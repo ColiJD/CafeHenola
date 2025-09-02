@@ -12,7 +12,7 @@
     "@ant-design/icons": "^6.0.0",
     "@prisma/client": "^6.13.0",
     "antd": "^5.27.0",
-    "dayjs": "^1.11.13",
+    "dayjs": "^1.11.18",
     "docx": "^9.5.1",
     "file-saver": "^2.0.5",
     "jspdf": "^3.0.1",

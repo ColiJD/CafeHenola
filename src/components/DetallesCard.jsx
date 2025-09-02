@@ -1,31 +1,37 @@
-import { Card, Row, Col } from "antd";
+import { Row, Col, Card, Statistic } from "antd";
 
-/**
- * Componente genérico para mostrar detalles en tarjetas.
- *
- * @param {string} title → Título de la tarjeta
- * @param {Array<{ label: string, value: any }>} fields → Campos a mostrar
- * @param {number} cols → Número de columnas en desktop/tablet (móvil siempre apilado)
- */
-export default function DetalleCard({ title, fields, cols = 2 }) {
+export default function TarjetasDeTotales({ title, cards }) {
   return (
-    <Card
-      title={title}
-      bordered
-      style={{
-        borderRadius: "8px",
-        boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-      }}
-    >
-      <Row gutter={[16, 16]}>
-        {fields.map((field, index) => (
-          <Col key={index} xs={24} sm={24 / cols}>
-            <p>
-              <b>{field.label}:</b> {field.value || "N/A"}
-            </p>
-          </Col>
-        ))}
-      </Row>
-    </Card>
+    <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
+      {title && (
+        <Col span={24}>
+          <h3 style={{ marginBottom: 8, fontWeight: 600, color: "#333" }}>
+            {title}
+          </h3>
+        </Col>
+      )}
+
+      {cards.map((c, idx) => (
+        <Col key={idx} xs={24} sm={12} md={8} lg={6}>
+          <Card
+            size="small"
+            style={{
+              borderRadius: 10,
+              border: "1.5px solid #d9d9d9", // borde más visible
+              background: "#f9f9f9",
+              boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
+              padding: "12px 16px",
+            }}
+          >
+            <Statistic
+              title={<span style={{ fontSize: 12, color: "#666" }}>{c.title}</span>}
+              value={c.value}
+              precision={c.precision || 2}
+              valueStyle={{ fontSize: 20, fontWeight: 500, color: "#111" }}
+            />
+          </Card>
+        </Col>
+      ))}
+    </Row>
   );
 }

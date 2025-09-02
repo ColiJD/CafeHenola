@@ -1,22 +1,20 @@
 "use client";
 import { useEffect, useState } from "react";
-import {
-  Table,
-  Input,
-  Select,
-  DatePicker,
-  Row,
-  Col,
-  message,
-  Button,
-  Card,
-  Statistic,
-  Grid,
-} from "antd";
+import { Table, Row, Col, message, Button, Grid } from "antd";
 import { truncarDosDecimalesSinRedondear } from "@/lib/calculoCafe";
+import TarjetasDeTotales from "@/components/DetallesCard";
+import Filtros from "@/components/Filtros";
+import { FiltrosTarjetas } from "@/lib/FiltrosTarjetas";
+import TarjetaMobile from "@/components/TarjetaMobile";
+import dayjs from "dayjs";
 
-const { RangePicker } = DatePicker;
-const { Option } = Select;
+// 🔹 IMPORTAR PLUGINS NECESARIOS PARA FILTROS DE FECHAS
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+
+dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
+
 const { useBreakpoint } = Grid;
 
 export default function TablaSaldoDepositos() {
@@ -29,7 +27,8 @@ export default function TablaSaldoDepositos() {
 
   const [nombreFiltro, setNombreFiltro] = useState("");
   const [tipoCafeFiltro, setTipoCafeFiltro] = useState("");
-  const [rangoFecha, setRangoFecha] = useState([]);
+  const [rangoFecha, setRangoFecha] = useState([dayjs(), dayjs()]);
+
   const [estadoFiltro, setEstadoFiltro] = useState("Pendiente");
 
   // 🔹 Cargar datos desde API
@@ -103,25 +102,15 @@ export default function TablaSaldoDepositos() {
   }, [estadoFiltro]);
 
   // 🔹 Aplicar filtros adicionales
+  // 🔹 Aplicar filtros adicionales incluyendo fecha
   const aplicarFiltros = () => {
-    let filtrados = [...data];
-    if (nombreFiltro)
-      filtrados = filtrados.filter((item) =>
-        item.clienteNombre.toLowerCase().includes(nombreFiltro.toLowerCase())
-      );
-    if (tipoCafeFiltro)
-      filtrados = filtrados.filter(
-        (item) => item.tipoCafeNombre === tipoCafeFiltro
-      );
-    if (rangoFecha.length === 2) {
-      const [inicio, fin] = rangoFecha;
-      filtrados = filtrados.filter((item) =>
-        item.detalles.some((d) => {
-          const fecha = new Date(d.depositoFecha);
-          return fecha >= new Date(inicio) && fecha <= new Date(fin);
-        })
-      );
-    }
+    const filtrados = FiltrosTarjetas(
+      data,
+      nombreFiltro,
+      tipoCafeFiltro,
+      rangoFecha
+    );
+
     setFilteredData(filtrados);
   };
 
@@ -237,74 +226,53 @@ export default function TablaSaldoDepositos() {
   return (
     <div>
       {/* Tarjetas */}
-      <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
-        <Col span={24}>
-          <h2>Registro de Depósitos</h2>
-        </Col>
-        <Col xs={24} sm={12}>
-          <Card
-            title={
-              estadoFiltro === "Pendiente" ? "Total (QQ)" : "Liquidado (QQ)"
-            }
-          >
-            <Statistic value={truncarDosDecimalesSinRedondear(totalQQ)} />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12}>
-          <Card
-            title={
+      <TarjetasDeTotales
+        title="Registro de Depósitos"
+        cards={[
+          {
+            title:
+              estadoFiltro === "Pendiente" ? "Total (QQ)" : "Liquidado (QQ)",
+            value: truncarDosDecimalesSinRedondear(totalQQ),
+          },
+          {
+            title:
               estadoFiltro === "Pendiente"
                 ? "Saldo Pendiente (QQ)"
-                : "Total (Lps)"
-            }
-          >
-            <Statistic value={truncarDosDecimalesSinRedondear(totalSaldo)} />
-          </Card>
-        </Col>
-      </Row>
+                : "Total (Lps)",
+            value: truncarDosDecimalesSinRedondear(totalSaldo),
+          },
+        ]}
+      />
 
       {/* Filtros */}
-      <Row gutter={[8, 8]} style={{ marginBottom: 16 }}>
-        <Col xs={24} sm={12} md={6}>
-          <Input
-            placeholder="Buscar por nombre"
-            value={nombreFiltro}
-            onChange={(e) => setNombreFiltro(e.target.value)}
-          />
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Select
-            placeholder="Tipo de café"
-            value={tipoCafeFiltro || undefined}
-            onChange={setTipoCafeFiltro}
-            allowClear
-            style={{ width: "100%" }}
-          >
-            {[...new Set(data.map((d) => d.tipoCafeNombre))].map((tipo) => (
-              <Option key={tipo} value={tipo}>
-                {tipo}
-              </Option>
-            ))}
-          </Select>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Select
-            value={estadoFiltro}
-            onChange={setEstadoFiltro}
-            style={{ width: "100%" }}
-          >
-            <Option value="Pendiente">Pendiente</Option>
-            <Option value="Liquidado">Liquidado</Option>
-          </Select>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <RangePicker
-            style={{ width: "100%" }}
-            onChange={(v) => setRangoFecha(v || [])}
-          />
-        </Col>
-      </Row>
-
+      <Filtros
+        fields={[
+          {
+            type: "input",
+            placeholder: "Buscar por nombre",
+            value: nombreFiltro,
+            setter: setNombreFiltro,
+          },
+          {
+            type: "select",
+            placeholder: "Tipo de café",
+            value: tipoCafeFiltro || undefined,
+            setter: setTipoCafeFiltro,
+            allowClear: true,
+            options: [...new Set(data.map((d) => d.tipoCafeNombre))],
+          },
+          {
+            type: "select",
+            value: estadoFiltro,
+            setter: setEstadoFiltro,
+            options: [
+              { value: "Pendiente", label: "Pendiente" },
+              { value: "Liquidado", label: "Liquidado" },
+            ],
+          },
+          { type: "date", value: rangoFecha, setter: setRangoFecha },
+        ]}
+      />
       <Row style={{ marginBottom: 16 }}>
         <Col xs={24} sm={6} md={4}>
           <Button onClick={cargarDatos} block>
@@ -312,111 +280,80 @@ export default function TablaSaldoDepositos() {
           </Button>
         </Col>
       </Row>
-
       {/* 🔹 Tabla responsive */}
       {isMobile ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {filteredData.map((row) => (
-            <div
-              key={`${row.clienteID}-${row.tipoCafeNombre}`}
-              style={{
-                border: "1px solid #ddd",
-                borderRadius: 8,
-                padding: 12,
-                background: "#fff",
-              }}
-            >
-              <div>
-                <strong>Cliente:</strong> {row.clienteNombre}
-              </div>
-              <div>
-                <strong>Tipo Café:</strong> {row.tipoCafeNombre}
-              </div>
-              {estadoFiltro === "Pendiente" ? (
-                <>
-                  <div>
-                    <strong>Total (QQ):</strong>{" "}
-                    {truncarDosDecimalesSinRedondear(row.cantidadTotal)}
-                  </div>
-                  <div>
-                    <strong>Saldo Pendiente (QQ):</strong>{" "}
-                    <span
-                      style={{
-                        color: row.saldoPendienteQQ > 0 ? "red" : "green",
-                      }}
-                    >
-                      {truncarDosDecimalesSinRedondear(row.saldoPendienteQQ)}
-                    </span>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div>
-                    <strong>Liquidado (QQ):</strong>{" "}
-                    {truncarDosDecimalesSinRedondear(row.cantidadLiquidada)}
-                  </div>
-                  <div>
-                    <strong>Total (Lps):</strong>{" "}
-                    {truncarDosDecimalesSinRedondear(row.liquidadoValor)}
-                  </div>
-                </>
-              )}
-              <div>
-                <strong>Estado:</strong> {estadoFiltro}
-              </div>
-
-              {/* Detalles */}
-              {row.detalles.length > 1 && (
-                <details style={{ marginTop: 8 }}>
-                  <summary>Ver depósitos individuales</summary>
-                  {row.detalles.map((d) => (
-                    <div
-                      key={d.depositoID}
-                      style={{ borderTop: "1px dashed #ccc", padding: 4 }}
-                    >
-                      <div>Depósito ID: {d.depositoID}</div>
-                      <div>
-                        Fecha:{" "}
-                        {new Date(d.depositoFecha).toLocaleDateString("es-HN")}
-                      </div>
-                      {estadoFiltro === "Pendiente" ? (
-                        <>
-                          <div>
-                            Total (QQ):{" "}
-                            {truncarDosDecimalesSinRedondear(d.cantidadTotal)}
-                          </div>
-                          <div>
-                            Saldo (QQ):{" "}
-                            {truncarDosDecimalesSinRedondear(
-                              d.saldoPendienteQQ
-                            )}
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div>
-                            Liquidado (QQ):{" "}
-                            {truncarDosDecimalesSinRedondear(
-                              d.cantidadLiquidada
-                            )}
-                          </div>
-                          <div>
-                            Precio (Lps/QQ):{" "}
-                            {truncarDosDecimalesSinRedondear(d.precioPromedio)}
-                          </div>
-                          <div>
-                            Total (Lps):{" "}
-                            {truncarDosDecimalesSinRedondear(d.liquidadoValor)}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </details>
-              )}
-            </div>
-          ))}
-        </div>
+        <TarjetaMobile
+          data={filteredData}
+          columns={[
+            { label: "Cliente", key: "clienteNombre" },
+            { label: "Tipo Café", key: "tipoCafeNombre" },
+            {
+              label: "Total (QQ)",
+              key: "cantidadTotal",
+              render: truncarDosDecimalesSinRedondear,
+              visible: estadoFiltro === "Pendiente",
+            },
+            {
+              label: "Saldo Pendiente (QQ)",
+              key: "saldoPendienteQQ",
+              render: truncarDosDecimalesSinRedondear,
+              visible: estadoFiltro === "Pendiente",
+              color: (val) => (val > 0 ? "red" : "green"),
+            },
+            {
+              label: "Liquidado (QQ)",
+              key: "cantidadLiquidada",
+              render: truncarDosDecimalesSinRedondear,
+              visible: estadoFiltro !== "Pendiente",
+            },
+            {
+              label: "Total (Lps)",
+              key: "liquidadoValor",
+              render: truncarDosDecimalesSinRedondear,
+              visible: estadoFiltro !== "Pendiente",
+            },
+            { label: "Estado", key: () => estadoFiltro },
+          ]}
+          detailsKey="detalles"
+          detailsColumns={[
+            { label: "Depósito ID", key: "depositoID" },
+            {
+              label: "Fecha",
+              key: "depositoFecha",
+              render: (val) => new Date(val).toLocaleDateString("es-HN"),
+            },
+            {
+              label: "Total (QQ)",
+              key: "cantidadTotal",
+              render: truncarDosDecimalesSinRedondear,
+              visible: estadoFiltro === "Pendiente",
+            },
+            {
+              label: "Saldo (QQ)",
+              key: "saldoPendienteQQ",
+              render: truncarDosDecimalesSinRedondear,
+              visible: estadoFiltro === "Pendiente",
+            },
+            {
+              label: "Liquidado (QQ)",
+              key: "cantidadLiquidada",
+              render: truncarDosDecimalesSinRedondear,
+              visible: estadoFiltro !== "Pendiente",
+            },
+            {
+              label: "Precio (Lps/QQ)",
+              key: "precioPromedio",
+              render: truncarDosDecimalesSinRedondear,
+              visible: estadoFiltro !== "Pendiente",
+            },
+            {
+              label: "Total (Lps)",
+              key: "liquidadoValor",
+              render: truncarDosDecimalesSinRedondear,
+              visible: estadoFiltro !== "Pendiente",
+            },
+          ]}
+        />
       ) : (
         <Table
           columns={columns}

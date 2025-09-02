@@ -10,67 +10,72 @@ export default function Filtros({ fields }) {
 
   return (
     <Row gutter={[8, 8]} style={{ marginBottom: 16 }}>
-      {fields.map((f, idx) => (
-        <Col key={idx} xs={24} sm={12} md={6}>
-          {f.type === "input" ? (
-            <Input
-              placeholder={f.placeholder}
-              value={f.value}
-              onChange={(e) => f.setter(e.target.value)}
-            />
-          ) : f.type === "select" ? (
-            <Select
-              placeholder={f.placeholder}
-              value={f.value}
-              onChange={f.setter}
-              allowClear={f.allowClear}
-              style={{ width: "100%" }}
-            >
-              {f.options?.map((o) =>
-                typeof o === "string" ? (
-                  <Option key={o} value={o}>
-                    {o}
-                  </Option>
-                ) : (
-                  <Option key={o.value} value={o.value}>
-                    {o.label}
-                  </Option>
-                )
-              )}
-            </Select>
-          ) : f.type === "date" ? (
-            isMobile ? (
-              <Row gutter={8}>
-                <Col xs={12}>
-                  <DatePicker
-                    placeholder="Fecha inicio"
-                    value={f.value[0]}
-                    onChange={(date) => f.setter([date, f.value[1]])}
-                    style={{ width: "100%" }}
-                    size="small"
-                  />
-                </Col>
-                <Col xs={12}>
-                  <DatePicker
-                    placeholder="Fecha fin"
-                    value={f.value[1]}
-                    onChange={(date) => f.setter([f.value[0], date])}
-                    style={{ width: "100%" }}
-                    size="small"
-                  />
-                </Col>
-              </Row>
-            ) : (
-              <RangePicker
-                style={{ width: "100%" }}
+      {fields.map((f, idx) => {
+        const fechaInicio = f.value?.[0] || null;
+        const fechaFin = f.value?.[1] || null;
+
+        return (
+          <Col key={idx} xs={24} sm={12} md={6}>
+            {f.type === "input" ? (
+              <Input
+                placeholder={f.placeholder}
                 value={f.value}
-                allowEmpty={[true, true]}
-                onChange={f.setter}
+                onChange={(e) => f.setter(e.target.value)}
               />
-            )
-          ) : null}
-        </Col>
-      ))}
+            ) : f.type === "select" ? (
+              <Select
+                placeholder={f.placeholder}
+                value={f.value}
+                onChange={f.setter}
+                allowClear={f.allowClear}
+                style={{ width: "100%" }}
+              >
+                {f.options?.map((o) =>
+                  typeof o === "string" ? (
+                    <Option key={o} value={o}>
+                      {o}
+                    </Option>
+                  ) : (
+                    <Option key={o.value} value={o.value}>
+                      {o.label}
+                    </Option>
+                  )
+                )}
+              </Select>
+            ) : f.type === "date" ? (
+              isMobile ? (
+                <Row gutter={8}>
+                  <Col xs={12}>
+                    <DatePicker
+                      placeholder="Fecha inicio"
+                      value={fechaInicio}
+                      onChange={(date) => f.setter([date, fechaFin])}
+                      style={{ width: "100%" }}
+                      size="small"
+                    />
+                  </Col>
+                  <Col xs={12}>
+                    <DatePicker
+                      placeholder="Fecha fin"
+                      value={fechaFin}
+                      onChange={(date) => f.setter([fechaInicio, date])}
+                      style={{ width: "100%" }}
+                      size="small"
+                    />
+                  </Col>
+                </Row>
+              ) : (
+                <RangePicker
+                  style={{ width: "100%" }}
+                  value={f.value}
+                  allowEmpty={[true, true]}
+                  onChange={f.setter}
+                />
+              )
+            ) : null}
+          </Col>
+        );
+      })}
     </Row>
   );
 }

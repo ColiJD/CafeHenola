@@ -98,7 +98,10 @@ export default function TablaResumenContrato() {
       rangoFecha,
       "fechaDetalle", // campo de fecha dentro de los detalles
       "detalles" // propiedad que contiene los detalles
-    );
+    ).map((item) => ({
+      ...item,
+      detalles: item.detalles || [], // ✅ fuerza que nunca sea null
+    }));
 
     setFilteredData(agruparDatos(filtrados));
   }, [data, nombreFiltro, tipoCafeFiltro, estadoFiltro, rangoFecha]);
@@ -129,7 +132,7 @@ export default function TablaResumenContrato() {
           (acc, item) => acc + (item.totalEntregadoLps || 0),
           0
         )
-      : [];
+      : 0;
 
   // 🔹 Columnas para desktop
   const columns = [
@@ -315,7 +318,10 @@ export default function TablaResumenContrato() {
       {/* Tabla o tarjetas según dispositivo */}
       {isMobile ? (
         <TarjetaMobile
-          data={filteredData}
+          data={filteredData.map((item) => ({
+            ...item,
+            detalles: item.detalles || [],
+          }))}
           columns={[
             { label: "Cliente", key: "clienteNombreCompleto" },
             { label: "Contrato", key: "contratoID" },

@@ -1,4 +1,4 @@
-function truncarDosDecimalesSinRedondear(numero) {
+export function truncarDosDecimalesSinRedondear(numero) {
   const truncado = Math.floor(numero * 100) / 100;
   return truncado.toFixed(2); // devuelve string con 2 decimales
 }

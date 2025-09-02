@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import {
   Table,
   Input,
@@ -9,10 +9,11 @@ import {
   Col,
   message,
   Button,
-  Space,
+  Card,
+  Statistic,
   Grid,
 } from "antd";
-import { formatNumber } from "@/config/validacionesForm";
+import { truncarDosDecimalesSinRedondear } from "@/lib/calculoCafe";
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
@@ -20,7 +21,7 @@ const { useBreakpoint } = Grid;
 
 export default function TablaSaldoDepositos() {
   const screens = useBreakpoint();
-  const isMobile = !screens.md; // true si pantalla < 768px
+  const isMobile = !screens.md;
 
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
@@ -31,14 +32,64 @@ export default function TablaSaldoDepositos() {
   const [rangoFecha, setRangoFecha] = useState([]);
   const [estadoFiltro, setEstadoFiltro] = useState("Pendiente");
 
-  // 🔹 Cargar datos de la API
+  // 🔹 Cargar datos desde API
   const cargarDatos = async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/deposito");
       if (!res.ok) throw new Error("Error al cargar los datos");
       const data = await res.json();
-      setData(data);
+
+      // 🔹 Filtrar según estadoFiltro, incluyendo parcialmente liquidados
+      const dataFiltrada = data.filter((item) => {
+        if (estadoFiltro === "Liquidado") {
+          return parseFloat(item.cantidadLiquidada || 0) > 0;
+        } else if (estadoFiltro === "Pendiente") {
+          return (
+            parseFloat(item.cantidadTotal || 0) -
+              parseFloat(item.cantidadLiquidada || 0) >
+            0
+          );
+        }
+        return true;
+      });
+
+      // 🔹 Agrupar datos por cliente, tipo de café y estado
+      const mapa = {};
+      dataFiltrada.forEach((item) => {
+        const key = `${item.clienteID}-${item.tipoCafeNombre}`;
+        if (!mapa[key]) {
+          mapa[key] = {
+            clienteID: item.clienteID,
+            clienteNombre: item.clienteNombre,
+            tipoCafeNombre: item.tipoCafeNombre,
+            cantidadTotal: 0,
+            cantidadLiquidada: 0,
+            saldoPendienteQQ: 0,
+            precioPromedio: item.precioPromedio,
+            liquidadoValor: 0,
+            saldoPendienteValor: 0,
+            detalles: [],
+          };
+        }
+
+        const cantidadTotal = parseFloat(item.cantidadTotal || 0);
+        const cantidadLiquidada = parseFloat(item.cantidadLiquidada || 0);
+        const saldoPendienteQQ = cantidadTotal - cantidadLiquidada;
+        const liquidadoValor = parseFloat(item.liquidadoValor || 0);
+        const saldoPendienteValor = parseFloat(item.saldoPendienteValor || 0);
+
+        mapa[key].cantidadTotal += cantidadTotal;
+        mapa[key].cantidadLiquidada += cantidadLiquidada;
+        mapa[key].saldoPendienteQQ += saldoPendienteQQ;
+        mapa[key].liquidadoValor += liquidadoValor;
+        mapa[key].saldoPendienteValor += saldoPendienteValor;
+        mapa[key].detalles.push({ ...item, saldoPendienteQQ });
+      });
+
+      const groupedData = Object.values(mapa);
+      setData(groupedData);
+      setFilteredData(groupedData);
     } catch (error) {
       console.error(error);
       message.error("No se pudieron cargar los saldos de depósitos");
@@ -49,174 +100,170 @@ export default function TablaSaldoDepositos() {
 
   useEffect(() => {
     cargarDatos();
-  }, []);
+  }, [estadoFiltro]);
 
-  // 🔹 Agrupar depósitos por cliente, café y estado
-  const agruparDatos = (items) => {
-    const mapa = {};
-    items.forEach((item) => {
-      const key = `${item.clienteID}-${item.tipoCafeNombre}-${item.estado}`;
-
-      if (!mapa[key]) {
-        mapa[key] = {
-          ...item,
-          depositoID: key,
-          cantidadTotal: 0,
-          cantidadLiquidada: 0,
-          saldoPendienteQQ: 0,
-          detalles: [],
-        };
-      }
-
-      // Convertir a número antes de sumar
-      const total = parseFloat(item.cantidadTotal || 0);
-      const liquidado = parseFloat(item.cantidadLiquidada || 0);
-
-      mapa[key].cantidadTotal += total;
-      mapa[key].cantidadLiquidada += liquidado;
-      mapa[key].saldoPendienteQQ =
-        mapa[key].cantidadTotal - mapa[key].cantidadLiquidada;
-
-      mapa[key].detalles.push(item);
-    });
-
-    return Object.values(mapa);
+  // 🔹 Aplicar filtros adicionales
+  const aplicarFiltros = () => {
+    let filtrados = [...data];
+    if (nombreFiltro)
+      filtrados = filtrados.filter((item) =>
+        item.clienteNombre.toLowerCase().includes(nombreFiltro.toLowerCase())
+      );
+    if (tipoCafeFiltro)
+      filtrados = filtrados.filter(
+        (item) => item.tipoCafeNombre === tipoCafeFiltro
+      );
+    if (rangoFecha.length === 2) {
+      const [inicio, fin] = rangoFecha;
+      filtrados = filtrados.filter((item) =>
+        item.detalles.some((d) => {
+          const fecha = new Date(d.depositoFecha);
+          return fecha >= new Date(inicio) && fecha <= new Date(fin);
+        })
+      );
+    }
+    setFilteredData(filtrados);
   };
 
-  // 🔹 Aplicar filtros
-  const aplicarFiltros = useCallback(
-    (items) => {
-      let filtrados = [...items];
-
-      if (nombreFiltro) {
-        filtrados = filtrados.filter((item) =>
-          item.clienteNombre.toLowerCase().includes(nombreFiltro.toLowerCase())
-        );
-      }
-      if (tipoCafeFiltro) {
-        filtrados = filtrados.filter(
-          (item) => item.tipoCafeNombre === tipoCafeFiltro
-        );
-      }
-      if (estadoFiltro) {
-        filtrados = filtrados.filter((item) => item.estado === estadoFiltro);
-      }
-      if (rangoFecha.length === 2) {
-        const [inicio, fin] = rangoFecha;
-        filtrados = filtrados.filter((item) => {
-          const fecha = new Date(item.depositoFecha);
-          return fecha >= new Date(inicio) && fecha <= new Date(fin);
-        });
-      }
-
-      return agruparDatos(filtrados);
-    },
-    [nombreFiltro, tipoCafeFiltro, estadoFiltro, rangoFecha]
-  );
-
-  // 🔹 Reaplicar filtros cada vez que cambian los datos o filtros
   useEffect(() => {
-    setFilteredData(aplicarFiltros(data));
-  }, [data, aplicarFiltros]);
+    aplicarFiltros();
+  }, [nombreFiltro, tipoCafeFiltro, rangoFecha, data]);
 
-  // 🔹 Columnas principales para desktop/tablet
-  const columns = [
-    {
-      title: "ID",
-      dataIndex: "clienteID",
-      key: "clienteID",
-      width: 60,
-      responsive: ["md"],
-    },
-    {
-      title: "Cliente",
-      dataIndex: "clienteNombre",
-      key: "clienteNombre",
-      width: 120,
-    },
-    {
-      title: "Tipo Café",
-      dataIndex: "tipoCafeNombre",
-      key: "tipoCafeNombre",
-      width: 100,
-    },
-    {
-      title: "Total (QQ)",
-      dataIndex: "cantidadTotal",
-      key: "cantidadTotal",
-      width: 90,
-      render: (value) => formatNumber(value),
-    },
-    {
-      title: "Liquidado (QQ)",
-      dataIndex: "cantidadLiquidada",
-      key: "cantidadLiquidada",
-      width: 90,
-      render: (value) => formatNumber(value),
-    },
-    {
-      title: "Saldo (QQ)",
-      dataIndex: "saldoPendienteQQ",
-      key: "saldoPendienteQQ",
-      width: 90,
-      render: (value) => {
-        const num = parseFloat(value);
-        return (
-          <span style={{ color: num > 0 ? "red" : "green", fontWeight: 600 }}>
-            {formatNumber(value)}
-          </span>
+  // 🔹 Totales
+  const totalQQ =
+    estadoFiltro === "Pendiente"
+      ? filteredData.reduce((acc, item) => acc + (item.cantidadTotal || 0), 0)
+      : filteredData.reduce(
+          (acc, item) => acc + (item.cantidadLiquidada || 0),
+          0
         );
-      },
-    },
-    { title: "Estado", dataIndex: "estado", key: "estado", width: 80 },
+
+  const totalSaldo =
+    estadoFiltro === "Pendiente"
+      ? filteredData.reduce(
+          (acc, item) => acc + (item.saldoPendienteQQ || 0),
+          0
+        )
+      : filteredData.reduce((acc, item) => acc + (item.liquidadoValor || 0), 0);
+
+  // 🔹 Columnas
+  const columns = [
+    { title: "Cliente", dataIndex: "clienteNombre", key: "clienteNombre" },
+    { title: "Tipo Café", dataIndex: "tipoCafeNombre", key: "tipoCafeNombre" },
+    ...(estadoFiltro === "Pendiente"
+      ? [
+          {
+            title: "Total (QQ)",
+            dataIndex: "cantidadTotal",
+            key: "cantidadTotal",
+            render: truncarDosDecimalesSinRedondear,
+          },
+          {
+            title: "Saldo (QQ)",
+            dataIndex: "saldoPendienteQQ",
+            key: "saldoPendienteQQ",
+            render: (v) => (
+              <span style={{ color: v > 0 ? "red" : "green", fontWeight: 600 }}>
+                {truncarDosDecimalesSinRedondear(v)}
+              </span>
+            ),
+          },
+        ]
+      : [
+          {
+            title: "Liquidado (QQ)",
+            dataIndex: "cantidadLiquidada",
+            key: "cantidadLiquidada",
+            render: truncarDosDecimalesSinRedondear,
+          },
+          {
+            title: "Total (Lps)",
+            dataIndex: "liquidadoValor",
+            key: "liquidadoValor",
+            render: truncarDosDecimalesSinRedondear,
+          },
+        ]),
   ];
 
-  // 🔹 Columnas de detalle expandible
   const detalleColumns = [
+    { title: "Depósito ID", dataIndex: "depositoID", key: "depositoID" },
     {
-      title: "Depósito ID",
-      dataIndex: "depositoID",
-      key: "depositoID",
-      width: 80,
-    },
-    {
-      title: "Fecha Depósito",
+      title: "Fecha",
       dataIndex: "depositoFecha",
       key: "depositoFecha",
-      width: 100,
-      render: (date) =>
-        new Date(date).toLocaleDateString("es-HN", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        }),
+      render: (d) => new Date(d).toLocaleDateString("es-HN"),
     },
-    {
-      title: "Total (QQ)",
-      dataIndex: "cantidadTotal",
-      key: "cantidadTotal",
-      width: 80,
-      render: (value) => formatNumber(value),
-    },
-    {
-      title: "Liquidado (QQ)",
-      dataIndex: "cantidadLiquidada",
-      key: "cantidadLiquidada",
-      width: 80,
-      render: (value) => formatNumber(value),
-    },
-    {
-      title: "Saldo (QQ)",
-      dataIndex: "saldoPendienteQQ",
-      key: "saldoPendienteQQ",
-      width: 80,
-      render: (value) => formatNumber(value),
-    },
+    ...(estadoFiltro === "Pendiente"
+      ? [
+          {
+            title: "Total (QQ)",
+            dataIndex: "cantidadTotal",
+            key: "cantidadTotal",
+            render: truncarDosDecimalesSinRedondear,
+          },
+          {
+            title: "Saldo (QQ)",
+            dataIndex: "saldoPendienteQQ",
+            key: "saldoPendienteQQ",
+            render: (v) => (
+              <span style={{ color: v > 0 ? "red" : "green" }}>
+                {truncarDosDecimalesSinRedondear(v)}
+              </span>
+            ),
+          },
+        ]
+      : [
+          {
+            title: "Liquidado (QQ)",
+            dataIndex: "cantidadLiquidada",
+            key: "cantidadLiquidada",
+            render: truncarDosDecimalesSinRedondear,
+          },
+          {
+            title: "Precio (Lps/QQ)",
+            dataIndex: "precioPromedio",
+            key: "precioPromedio",
+            render: truncarDosDecimalesSinRedondear,
+          },
+          {
+            title: "Total (Lps)",
+            dataIndex: "liquidadoValor",
+            key: "liquidadoValor",
+            render: truncarDosDecimalesSinRedondear,
+          },
+        ]),
   ];
 
   return (
     <div>
-      {/* 🔹 Filtros y botón refrescar */}
+      {/* Tarjetas */}
+      <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
+        <Col span={24}>
+          <h2>Registro de Depósitos</h2>
+        </Col>
+        <Col xs={24} sm={12}>
+          <Card
+            title={
+              estadoFiltro === "Pendiente" ? "Total (QQ)" : "Liquidado (QQ)"
+            }
+          >
+            <Statistic value={truncarDosDecimalesSinRedondear(totalQQ)} />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12}>
+          <Card
+            title={
+              estadoFiltro === "Pendiente"
+                ? "Saldo Pendiente (QQ)"
+                : "Total (Lps)"
+            }
+          >
+            <Statistic value={truncarDosDecimalesSinRedondear(totalSaldo)} />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Filtros */}
       <Row gutter={[8, 8]} style={{ marginBottom: 16 }}>
         <Col xs={24} sm={12} md={6}>
           <Input
@@ -228,7 +275,7 @@ export default function TablaSaldoDepositos() {
         <Col xs={24} sm={12} md={6}>
           <Select
             placeholder="Tipo de café"
-            value={tipoCafeFiltro}
+            value={tipoCafeFiltro || undefined}
             onChange={setTipoCafeFiltro}
             allowClear
             style={{ width: "100%" }}
@@ -252,30 +299,26 @@ export default function TablaSaldoDepositos() {
         </Col>
         <Col xs={24} sm={12} md={6}>
           <RangePicker
-            placeholder={["Fecha Inicio", "Fecha Fin"]}
             style={{ width: "100%" }}
-            onChange={(values) => setRangoFecha(values || [])}
+            onChange={(v) => setRangoFecha(v || [])}
           />
         </Col>
       </Row>
 
-      <Row
-        gutter={[8, 8]}
-        style={{ marginBottom: 16, justifyContent: "flex-end" }}
-      >
-        <Col xs={24} sm={12} md={4}>
+      <Row style={{ marginBottom: 16 }}>
+        <Col xs={24} sm={6} md={4}>
           <Button onClick={cargarDatos} block>
             Refrescar
           </Button>
         </Col>
       </Row>
 
-      {/* 🔹 Tabla o tarjetas según pantalla */}
+      {/* 🔹 Tabla responsive */}
       {isMobile ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {filteredData.map((row) => (
             <div
-              key={row.depositoID}
+              key={`${row.clienteID}-${row.tipoCafeNombre}`}
               style={{
                 border: "1px solid #ddd",
                 borderRadius: 8,
@@ -289,26 +332,40 @@ export default function TablaSaldoDepositos() {
               <div>
                 <strong>Tipo Café:</strong> {row.tipoCafeNombre}
               </div>
+              {estadoFiltro === "Pendiente" ? (
+                <>
+                  <div>
+                    <strong>Total (QQ):</strong>{" "}
+                    {truncarDosDecimalesSinRedondear(row.cantidadTotal)}
+                  </div>
+                  <div>
+                    <strong>Saldo Pendiente (QQ):</strong>{" "}
+                    <span
+                      style={{
+                        color: row.saldoPendienteQQ > 0 ? "red" : "green",
+                      }}
+                    >
+                      {truncarDosDecimalesSinRedondear(row.saldoPendienteQQ)}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <strong>Liquidado (QQ):</strong>{" "}
+                    {truncarDosDecimalesSinRedondear(row.cantidadLiquidada)}
+                  </div>
+                  <div>
+                    <strong>Total (Lps):</strong>{" "}
+                    {truncarDosDecimalesSinRedondear(row.liquidadoValor)}
+                  </div>
+                </>
+              )}
               <div>
-                <strong>Total:</strong> {formatNumber(row.cantidadTotal)}
-              </div>
-              <div>
-                <strong>Liquidado:</strong>{" "}
-                {formatNumber(row.cantidadLiquidada)}
-              </div>
-              <div>
-                <strong>Saldo:</strong>{" "}
-                <span
-                  style={{ color: row.saldoPendienteQQ > 0 ? "red" : "green" }}
-                >
-                  {formatNumber(row.saldoPendienteQQ)}
-                </span>
-              </div>
-              <div>
-                <strong>Estado:</strong> {row.estado}
+                <strong>Estado:</strong> {estadoFiltro}
               </div>
 
-              {/* Detalles expandibles opcionales */}
+              {/* Detalles */}
               {row.detalles.length > 1 && (
                 <details style={{ marginTop: 8 }}>
                   <summary>Ver depósitos individuales</summary>
@@ -322,9 +379,37 @@ export default function TablaSaldoDepositos() {
                         Fecha:{" "}
                         {new Date(d.depositoFecha).toLocaleDateString("es-HN")}
                       </div>
-                      <div>Total: {formatNumber(d.cantidadTotal)}</div>
-                      <div>Liquidado: {formatNumber(d.cantidadLiquidada)}</div>
-                      <div>Saldo: {formatNumber(d.saldoPendienteQQ)}</div>
+                      {estadoFiltro === "Pendiente" ? (
+                        <>
+                          <div>
+                            Total (QQ):{" "}
+                            {truncarDosDecimalesSinRedondear(d.cantidadTotal)}
+                          </div>
+                          <div>
+                            Saldo (QQ):{" "}
+                            {truncarDosDecimalesSinRedondear(
+                              d.saldoPendienteQQ
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                            Liquidado (QQ):{" "}
+                            {truncarDosDecimalesSinRedondear(
+                              d.cantidadLiquidada
+                            )}
+                          </div>
+                          <div>
+                            Precio (Lps/QQ):{" "}
+                            {truncarDosDecimalesSinRedondear(d.precioPromedio)}
+                          </div>
+                          <div>
+                            Total (Lps):{" "}
+                            {truncarDosDecimalesSinRedondear(d.liquidadoValor)}
+                          </div>
+                        </>
+                      )}
                     </div>
                   ))}
                 </details>
@@ -336,16 +421,18 @@ export default function TablaSaldoDepositos() {
         <Table
           columns={columns}
           dataSource={filteredData}
-          rowKey="depositoID"
+          rowKey={(row) => `${row.clienteID}-${row.tipoCafeNombre}`}
           loading={loading}
           bordered
           size="middle"
+          pagination={{ pageSize: 6 }}
+          scroll={{ x: "max-content" }}
           expandable={{
             expandedRowRender: (record) => (
               <Table
                 columns={detalleColumns}
                 dataSource={record.detalles}
-                rowKey={(r) => r.depositoID}
+                rowKey="depositoID"
                 pagination={false}
                 size="small"
                 bordered
@@ -353,8 +440,6 @@ export default function TablaSaldoDepositos() {
               />
             ),
           }}
-          pagination={{ pageSize: 6 }}
-          scroll={{ x: "max-content" }}
         />
       )}
     </div>

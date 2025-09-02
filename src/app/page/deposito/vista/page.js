@@ -101,14 +101,19 @@ export default function TablaSaldoDepositos() {
     cargarDatos();
   }, [estadoFiltro]);
 
-  // 🔹 Aplicar filtros adicionales
-  // 🔹 Aplicar filtros adicionales incluyendo fecha
+  // 🔹 Aplicar filtros
   const aplicarFiltros = () => {
+    // ✅ Creamos un objeto con los filtros
+    const filtros = {
+      clienteNombre: nombreFiltro,
+      tipoCafeNombre: tipoCafeFiltro,
+    };
+
     const filtrados = FiltrosTarjetas(
       data,
-      nombreFiltro,
-      tipoCafeFiltro,
-      rangoFecha
+      filtros,
+      rangoFecha,
+      "depositoFecha", // campo de fecha principal
     );
 
     setFilteredData(filtrados);

@@ -1,4 +1,3 @@
-// utils/filtrarDepositos.js
 import dayjs from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
@@ -7,50 +6,58 @@ dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 
 /**
- * Filtra los depósitos según nombre, tipo de café y rango de fechas
- * @param {Array} data - Array de datos originales
- * @param {string} nombreFiltro - Filtrar por nombre de cliente
- * @param {string} tipoCafeFiltro - Filtrar por tipo de café
- * @param {Array} rangoFecha - Array [fechaInicio, fechaFin] de dayjs
- * @returns {Array} - Datos filtrados
+ * Filtra un array de objetos según filtros de texto, exactos y rango de fechas.
  */
-export function FiltrosTarjetas(data, nombreFiltro, tipoCafeFiltro, rangoFecha) {
-  let filtrados = [...data];
+export function FiltrosTarjetas(
+  data,
+  filtros = {},
+  rangoFecha = [null, null],
+  fechaKey = "fechaDetalle",
+  detallesKey = "detalles"
+) {
+  const [inicio, fin] = Array.isArray(rangoFecha) ? rangoFecha : [null, null];
 
-  // Filtro por nombre
-  if (nombreFiltro) {
-    filtrados = filtrados.filter((item) =>
-      item.clienteNombre.toLowerCase().includes(nombreFiltro.toLowerCase())
-    );
-  }
+  const inicioDay = inicio ? dayjs(inicio).startOf("day") : null;
+  const finDay = fin ? dayjs(fin).endOf("day") : null;
 
-  // Filtro por tipo de café
-  if (tipoCafeFiltro) {
-    filtrados = filtrados.filter((item) => item.tipoCafeNombre === tipoCafeFiltro);
-  }
+  return data.filter((item) => {
+    // 🔹 Filtros de texto
+    for (const [campo, valor] of Object.entries(filtros)) {
+      if (!valor) continue;
+      const campoValor = item[campo] ?? "";
+      if (
+        typeof campoValor === "string" &&
+        !campoValor.toLowerCase().includes(valor.toLowerCase())
+      ) {
+        return false;
+      }
+      if (typeof campoValor !== "string" && campoValor !== valor) {
+        return false;
+      }
+    }
 
-  // Filtro por rango de fechas
-  if (
-    rangoFecha &&
-    Array.isArray(rangoFecha) &&
-    rangoFecha.length === 2 &&
-    rangoFecha[0] &&
-    rangoFecha[1]
-  ) {
-    filtrados = filtrados
-      .map((item) => {
-        const detallesFiltrados = item.detalles.filter((d) => {
-          const fechaDep = dayjs(d.depositoFecha);
-          if (!fechaDep.isValid()) return false;
-          return (
-            fechaDep.isSameOrAfter(rangoFecha[0], "day") &&
-            fechaDep.isSameOrBefore(rangoFecha[1], "day")
-          );
-        });
-        return { ...item, detalles: detallesFiltrados };
-      })
-      .filter((item) => item.detalles.length > 0);
-  }
+    // 🔹 Filtrar por rango de fechas
+    if (item[detallesKey]?.length) {
+      const detalleDentroRango = item[detallesKey].some((det) => {
+        const fecha = dayjs(det[fechaKey]).startOf("day"); // 🔹 startOf("day") agregado
+        return (
+          (!inicioDay || fecha.isSameOrAfter(inicioDay)) &&
+          (!finDay || fecha.isSameOrBefore(finDay))
+        );
+      });
+      if (!detalleDentroRango) return false;
+    } else {
+      if (item[fechaKey]) {
+        const fecha = dayjs(item[fechaKey]).startOf("day"); // 🔹 startOf("day") agregado
+        if (
+          (inicioDay && fecha.isBefore(inicioDay)) ||
+          (finDay && fecha.isAfter(finDay))
+        ) {
+          return false;
+        }
+      }
+    }
 
-  return filtrados;
+    return true;
+  });
 }

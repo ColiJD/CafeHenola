@@ -1,21 +1,22 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
-import {
-  Table,
-  Input,
-  Select,
-  DatePicker,
-  Row,
-  Col,
-  message,
-  Button,
-  Grid,
-} from "antd";
-import { formatNumber } from "@/config/validacionesForm";
+import { useEffect, useState } from "react";
+import { Table, Row, Col, message, Button, Grid } from "antd";
+import TarjetasDeTotales from "@/components/DetallesCard";
+import { truncarDosDecimalesSinRedondear } from "@/lib/calculoCafe";
+import Filtros from "@/components/Filtros";
+import TarjetaMobile from "@/components/TarjetaMobile";
+import dayjs from "dayjs";
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 
-const { RangePicker } = DatePicker;
-const { Option } = Select;
+// 🔹 Plugins necesarios para filtros de fechas
+dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
+
 const { useBreakpoint } = Grid;
+
+// 🔹 NUEVO: filtro genérico
+import { FiltrosTarjetas } from "@/lib/FiltrosTarjetas";
 
 export default function TablaResumenContrato() {
   const screens = useBreakpoint();
@@ -28,13 +29,14 @@ export default function TablaResumenContrato() {
   const [nombreFiltro, setNombreFiltro] = useState("");
   const [tipoCafeFiltro, setTipoCafeFiltro] = useState("");
   const [estadoFiltro, setEstadoFiltro] = useState("Pendiente");
-  const [rangoFecha, setRangoFecha] = useState([]);
+  // 🔹 Inicializamos rangoFecha con el día de hoy
+  const [rangoFecha, setRangoFecha] = useState([dayjs(), dayjs()]);
 
   // 🔹 Cargar datos de la API
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/contratos/vista"); // tu endpoint
+      const res = await fetch("/api/contratos/vista");
       if (!res.ok) throw new Error("Error al cargar los datos");
       const data = await res.json();
       setData(data);
@@ -60,10 +62,13 @@ export default function TablaResumenContrato() {
           ...item,
           resumenID: key,
           detalles: [],
-          totalEntregadoLps: 0, // inicializar total entregado
-          totalContratoLps: parseFloat(item.totalContratoLps || 0), // 🔹 agregar total contratado
+          totalEntregadoLps: 0,
+          totalEntregadoQQ: 0,
+          totalContratoLps: parseFloat(item.totalContratoLps || 0),
         };
       }
+
+      // Agregar detalle
       mapa[key].detalles.push({
         detalleID: item.detalleID,
         fechaDetalle: item.fechaDetalle,
@@ -72,115 +77,114 @@ export default function TablaResumenContrato() {
         totalDetalleLps: item.totalDetalleLps,
       });
 
-      // 🔹 sumar total de Lps de los detalles
+      // Sumar totales
       mapa[key].totalEntregadoLps += parseFloat(item.totalDetalleLps || 0);
+      mapa[key].totalEntregadoQQ += parseFloat(item.cantidadDetalleQQ || 0);
     });
     return Object.values(mapa);
   };
 
-  // 🔹 Aplicar filtros
-  const aplicarFiltros = useCallback(
-    (items) => {
-      let filtrados = [...items];
-
-      if (nombreFiltro) {
-        filtrados = filtrados.filter((item) =>
-          item.clienteNombreCompleto
-            .toLowerCase()
-            .includes(nombreFiltro.toLowerCase())
-        );
-      }
-
-      if (tipoCafeFiltro) {
-        filtrados = filtrados.filter(
-          (item) => item.tipoCafe === tipoCafeFiltro
-        );
-      }
-
-      if (estadoFiltro) {
-        filtrados = filtrados.filter(
-          (item) => item.contratoEstado === estadoFiltro
-        );
-      }
-
-      if (rangoFecha.length === 2) {
-        const [inicio, fin] = rangoFecha;
-        filtrados = filtrados.filter((item) => {
-          // consideramos la fecha del primer detalle como referencia
-          const fecha = new Date(
-            item.fechaDetalle || item.detalles[0]?.fechaDetalle
-          );
-          return fecha >= new Date(inicio) && fecha <= new Date(fin);
-        });
-      }
-
-      return agruparDatos(filtrados);
-    },
-    [nombreFiltro, tipoCafeFiltro, estadoFiltro, rangoFecha]
-  );
-
+  // 🔹 Aplicar filtros genéricos
   useEffect(() => {
-    setFilteredData(aplicarFiltros(data));
-  }, [data, aplicarFiltros]);
+    const filtros = {
+      clienteNombreCompleto: nombreFiltro,
+      tipoCafe: tipoCafeFiltro,
+      contratoEstado: estadoFiltro,
+    };
+
+    const filtrados = FiltrosTarjetas(
+      data,
+      filtros,
+      rangoFecha,
+      "fechaDetalle", // campo de fecha dentro de los detalles
+      "detalles" // propiedad que contiene los detalles
+    );
+
+    setFilteredData(agruparDatos(filtrados));
+  }, [data, nombreFiltro, tipoCafeFiltro, estadoFiltro, rangoFecha]);
+
+  // 🔹 Totales
+  const totalQQ =
+    estadoFiltro === "Pendiente"
+      ? filteredData.reduce(
+          (acc, item) => acc + (item.cantidadContratoQQ || 0),
+          0
+        )
+      : filteredData.reduce(
+          (acc, item) => acc + (item.totalEntregadoQQ || 0),
+          0
+        );
+
+  const totalSaldo =
+    estadoFiltro === "Pendiente"
+      ? filteredData.reduce((acc, item) => acc + (item.saldoRestanteQQ || 0), 0)
+      : filteredData.reduce(
+          (acc, item) => acc + (item.totalEntregadoLps || 0),
+          0
+        );
+
+  const totalEntregado =
+    estadoFiltro === "Pendiente"
+      ? filteredData.reduce(
+          (acc, item) => acc + (item.totalEntregadoLps || 0),
+          0
+        )
+      : [];
 
   // 🔹 Columnas para desktop
   const columns = [
-    {
-      title: "Cliente",
-      dataIndex: "clienteNombreCompleto",
-      key: "cliente",
-      width: 120,
-    },
-    { title: "Contrato", dataIndex: "contratoID", key: "contrato", width: 80 },
-    { title: "Café", dataIndex: "tipoCafe", key: "tipoCafe", width: 100 },
-    {
-      title: "Cant. QQ",
-      dataIndex: "cantidadContratoQQ",
-      key: "cantidadContratoQQ",
-      render: (v) => formatNumber(v),
-    },
-    {
-      title: "Precio",
-      dataIndex: "precioQQ",
-      key: "precioQQ",
-      render: (v) => formatNumber(v),
-    },
-    {
-      title: "T. Contratado",
-      dataIndex: "totalContratoLps",
-      key: "totalContratoLps",
-      render: (v) => formatNumber(v),
-    },
-    {
-      title: "T. Entregado",
-      dataIndex: "totalEntregadoLps",
-      key: "totalEntregadoLps",
-      render: (v) => formatNumber(v),
-    },
-    {
-      title: "Saldo QQ",
-      dataIndex: "saldoRestanteQQ",
-      key: "saldoRestanteQQ",
-      render: (v) => (
-        <span style={{ color: v > 0 ? "red" : "green", fontWeight: 600 }}>
-          {formatNumber(v)}
-        </span>
-      ),
-    },
-    {
-      title: "Saldo L.",
-      dataIndex: "saldoRestanteLps",
-      key: "saldoRestanteLps",
-      render: (v) => (
-        <span style={{ color: v > 0 ? "red" : "green", fontWeight: 600 }}>
-          {formatNumber(v)}
-        </span>
-      ),
-    },
-    { title: "Estado", dataIndex: "contratoEstado", key: "estado", width: 100 },
+    { title: "Cliente", dataIndex: "clienteNombreCompleto", key: "cliente" },
+    { title: "Contrato", dataIndex: "contratoID", key: "contrato" },
+    { title: "Café", dataIndex: "tipoCafe", key: "tipoCafe" },
+    ...(estadoFiltro === "Pendiente"
+      ? [
+          {
+            title: "Cant. QQ",
+            dataIndex: "cantidadContratoQQ",
+            key: "cantidadContratoQQ",
+            render: truncarDosDecimalesSinRedondear,
+          },
+
+          {
+            title: "Total Lps",
+            dataIndex: "totalContratoLps",
+            key: "totalContratoLps",
+            render: truncarDosDecimalesSinRedondear,
+          },
+          {
+            title: "Entregado Lps",
+            dataIndex: "totalEntregadoLps",
+            key: "totalEntregadoLps",
+            render: truncarDosDecimalesSinRedondear,
+          },
+          {
+            title: "Saldo QQ",
+            dataIndex: "saldoRestanteQQ",
+            key: "saldoRestanteQQ",
+            render: (v) => (
+              <span style={{ color: v > 0 ? "red" : "green", fontWeight: 600 }}>
+                {truncarDosDecimalesSinRedondear(v)}
+              </span>
+            ),
+          },
+        ]
+      : [
+          {
+            title: "T. Entregado QQ",
+            dataIndex: "totalEntregadoQQ",
+            key: "totalEntregadoQQ",
+            render: truncarDosDecimalesSinRedondear,
+          },
+          {
+            title: "T. Entregado Lps",
+            dataIndex: "totalEntregadoLps",
+            key: "totalEntregadoLps",
+            render: truncarDosDecimalesSinRedondear,
+          },
+        ]),
   ];
 
-  // 🔹 Columnas detalle
+  // 🔹 Columnas detalle para desktop
   const detalleColumns = [
     {
       title: "Detalle ID",
@@ -192,173 +196,183 @@ export default function TablaResumenContrato() {
       title: "Fecha",
       dataIndex: "fechaDetalle",
       key: "fechaDetalle",
-      render: (fecha) =>
-        new Date(fecha).toLocaleDateString("es-HN", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        }),
+      render: (val) => new Date(val).toLocaleDateString("es-HN"),
     },
-    {
-      title: "Cantidad (QQ)",
-      dataIndex: "cantidadDetalleQQ",
-      key: "cantidadDetalleQQ",
-      render: (v) => formatNumber(v),
-    },
-    {
-      title: "Precio QQ",
-      dataIndex: "precioDetalleQQ",
-      key: "precioDetalleQQ",
-      render: (v) => formatNumber(v),
-    },
-    {
-      title: "Total (Lps)",
-      dataIndex: "totalDetalleLps",
-      key: "totalDetalleLps",
-      render: (v) => formatNumber(v),
-    },
+    ...(estadoFiltro === "Pendiente"
+      ? [
+          {
+            title: "Cantidad (QQ)",
+            dataIndex: "cantidadDetalleQQ",
+            key: "cantidadDetalleQQ",
+            render: truncarDosDecimalesSinRedondear,
+          },
+          {
+            title: "Precio QQ",
+            dataIndex: "precioDetalleQQ",
+            key: "precioDetalleQQ",
+            render: truncarDosDecimalesSinRedondear,
+          },
+          {
+            title: "Total (Lps)",
+            dataIndex: "totalDetalleLps",
+            key: "totalDetalleLps",
+            render: truncarDosDecimalesSinRedondear,
+          },
+        ]
+      : [
+          {
+            title: "Cantidad (QQ)",
+            dataIndex: "cantidadDetalleQQ",
+            key: "cantidadDetalleQQ",
+            render: truncarDosDecimalesSinRedondear,
+          },
+          {
+            title: "Precio QQ",
+            dataIndex: "precioDetalleQQ",
+            key: "precioDetalleQQ",
+            render: truncarDosDecimalesSinRedondear,
+          },
+          {
+            title: "Total (Lps)",
+            dataIndex: "totalDetalleLps",
+            key: "totalDetalleLps",
+            render: truncarDosDecimalesSinRedondear,
+          },
+        ]),
   ];
 
   return (
     <div>
-      {/* Filtros */}
-      <Row gutter={[8, 8]} style={{ marginBottom: 16 }}>
-        <Col xs={24} sm={12} md={6}>
-          <Input
-            placeholder="Buscar por nombre"
-            value={nombreFiltro}
-            onChange={(e) => setNombreFiltro(e.target.value)}
-          />
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Select
-            placeholder="Tipo de café"
-            value={tipoCafeFiltro}
-            onChange={setTipoCafeFiltro}
-            allowClear
-            style={{ width: "100%" }}
-          >
-            {[...new Set(data.map((d) => d.tipoCafe))].map((tipo) => (
-              <Option key={tipo} value={tipo}>
-                {tipo}
-              </Option>
-            ))}
-          </Select>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Select
-            value={estadoFiltro}
-            onChange={setEstadoFiltro}
-            style={{ width: "100%" }}
-          >
-            <Option value="Pendiente">Pendiente</Option>
-            <Option value="Liquidado">Liquidado</Option>
-          </Select>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <RangePicker
-            placeholder={["Fecha Inicio", "Fecha Fin"]}
-            style={{ width: "100%" }}
-            onChange={(values) => setRangoFecha(values || [])}
-          />
-        </Col>
-      </Row>
+      {/* Tarjetas de totales */}
+      <TarjetasDeTotales
+        title="Registro de Contrato"
+        cards={[
+          {
+            title:
+              estadoFiltro === "Pendiente" ? "Total (QQ)" : "Liquidado (QQ)",
+            value: truncarDosDecimalesSinRedondear(totalQQ),
+          },
+          {
+            title:
+              estadoFiltro === "Pendiente"
+                ? "Saldo Pendiente (QQ)"
+                : "Total (Lps)",
+            value: truncarDosDecimalesSinRedondear(totalSaldo),
+          },
+          // 🔹 Solo mostrar “Total Entregado” cuando es Pendiente
+          ...(estadoFiltro === "Pendiente"
+            ? [
+                {
+                  title: "Total Entregado Lps",
+                  value: truncarDosDecimalesSinRedondear(totalEntregado),
+                },
+              ]
+            : []),
+        ]}
+      />
 
-      <Row
-        gutter={[8, 8]}
-        style={{ marginBottom: 16, justifyContent: "flex-end" }}
-      >
-        <Col xs={24} sm={12} md={4}>
+      {/* Filtros */}
+      <Filtros
+        fields={[
+          {
+            type: "input",
+            placeholder: "Buscar por nombre",
+            value: nombreFiltro,
+            setter: setNombreFiltro,
+          },
+          {
+            type: "select",
+            placeholder: "Tipo de café",
+            value: tipoCafeFiltro || undefined,
+            setter: setTipoCafeFiltro,
+            allowClear: true,
+            options: [...new Set(data.map((d) => d.tipoCafe))].map((cafe) => ({
+              value: cafe,
+              label: cafe,
+            })),
+          },
+          {
+            type: "select",
+            value: estadoFiltro,
+            setter: setEstadoFiltro,
+            options: [
+              { value: "Pendiente", label: "Pendiente" },
+              { value: "Liquidado", label: "Liquidado" },
+            ],
+          },
+          { type: "date", value: rangoFecha, setter: setRangoFecha },
+        ]}
+      />
+
+      <Row style={{ marginBottom: 16 }}>
+        <Col xs={24} sm={6} md={4}>
           <Button onClick={cargarDatos} block>
             Refrescar
           </Button>
         </Col>
       </Row>
 
-      {/* Tabla o tarjetas */}
+      {/* Tabla o tarjetas según dispositivo */}
       {isMobile ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {filteredData.map((row) => (
-            <div
-              key={row.resumenID}
-              style={{
-                border: "1px solid #ddd",
-                borderRadius: 8,
-                padding: 12,
-                background: "#fff",
-              }}
-            >
-              <div>
-                <strong>Cliente:</strong> {row.clienteNombreCompleto}
-              </div>
-              <div>
-                <strong>Contrato:</strong> {row.contratoID}
-              </div>
-              <div>
-                <strong>Tipo Café:</strong> {row.tipoCafe}
-              </div>
-              <div>
-                <strong>Cantidad Contrato (QQ):</strong>{" "}
-                {formatNumber(row.cantidadContratoQQ)}
-              </div>
-              <div>
-                <strong>Precio QQ:</strong> {formatNumber(row.precioQQ)}
-              </div>
-              <div>
-                <strong>Total Contratado (Lps):</strong>{" "}
-                {formatNumber(row.totalContratoLps)}
-              </div>
-              <div>
-                <strong>Total Entregado (Lps):</strong>{" "}
-                {formatNumber(row.totalEntregadoLps)}
-              </div>
-              <div>
-                <strong>Saldo Restante (QQ):</strong>{" "}
-                <span
-                  style={{ color: row.saldoRestanteQQ > 0 ? "red" : "green" }}
-                >
-                  {formatNumber(row.saldoRestanteQQ)}
-                </span>
-              </div>
-              <div>
-                <strong>Estado:</strong> {row.contratoEstado}
-              </div>
-
-              {/* Detalles expandibles */}
-              {row.detalles.length > 0 && (
-                <details style={{ marginTop: 8 }}>
-                  <summary>Ver detalle de entregas</summary>
-                  {row.detalles.map((d) => (
-                    <div
-                      key={d.detalleID}
-                      style={{ borderTop: "1px dashed #ccc", padding: 4 }}
-                    >
-                      <div>
-                        <strong>Detalle ID:</strong> {d.detalleID}
-                      </div>
-                      <div>
-                        <strong>Fecha:</strong>{" "}
-                        {new Date(d.fechaDetalle).toLocaleDateString("es-HN")}
-                      </div>
-                      <div>
-                        <strong>Cantidad (QQ):</strong>{" "}
-                        {formatNumber(d.cantidadDetalleQQ)}
-                      </div>
-                      <div>
-                        <strong>Precio QQ:</strong>{" "}
-                        {formatNumber(d.precioDetalleQQ)}
-                      </div>
-                      <div>
-                        <strong>Total (Lps):</strong>{" "}
-                        {formatNumber(d.totalDetalleLps)}
-                      </div>
-                    </div>
-                  ))}
-                </details>
-              )}
-            </div>
-          ))}
-        </div>
+        <TarjetaMobile
+          data={filteredData}
+          columns={[
+            { label: "Cliente", key: "clienteNombreCompleto" },
+            { label: "Contrato", key: "contratoID" },
+            { label: "Tipo Café", key: "tipoCafe" },
+            {
+              label: "Cantidad Contrato (QQ)",
+              key: "cantidadContratoQQ",
+              render: truncarDosDecimalesSinRedondear,
+            },
+            {
+              label: "Precio QQ",
+              key: "precioQQ",
+              render: truncarDosDecimalesSinRedondear,
+            },
+            {
+              label: "Total Contratado (Lps)",
+              key: "totalContratoLps",
+              render: truncarDosDecimalesSinRedondear,
+            },
+            {
+              label: "Total Entregado (Lps)",
+              key: "totalEntregadoLps",
+              render: truncarDosDecimalesSinRedondear,
+            },
+            {
+              label: "Saldo Restante (QQ)",
+              key: "saldoRestanteQQ",
+              render: truncarDosDecimalesSinRedondear,
+              color: (val) => (val > 0 ? "red" : "green"),
+            },
+            { label: "Estado", key: "contratoEstado" },
+          ]}
+          detailsKey="detalles"
+          detailsColumns={[
+            { label: "Detalle ID", key: "detalleID" },
+            {
+              label: "Fecha",
+              key: "fechaDetalle",
+              render: (val) => new Date(val).toLocaleDateString("es-HN"),
+            },
+            {
+              label: "Cantidad (QQ)",
+              key: "cantidadDetalleQQ",
+              render: truncarDosDecimalesSinRedondear,
+            },
+            {
+              label: "Precio QQ",
+              key: "precioDetalleQQ",
+              render: truncarDosDecimalesSinRedondear,
+            },
+            {
+              label: "Total (Lps)",
+              key: "totalDetalleLps",
+              render: truncarDosDecimalesSinRedondear,
+            },
+          ]}
+        />
       ) : (
         <Table
           columns={columns}
@@ -371,7 +385,7 @@ export default function TablaResumenContrato() {
               <Table
                 columns={detalleColumns}
                 dataSource={record.detalles}
-                rowKey={(r) => r.detalleID}
+                rowKey="detalleID"
                 pagination={false}
                 size="small"
                 bordered
@@ -379,8 +393,6 @@ export default function TablaResumenContrato() {
               />
             ),
           }}
-          pagination={{ pageSize: 6 }}
-          scroll={{ x: "max-content" }}
         />
       )}
     </div>

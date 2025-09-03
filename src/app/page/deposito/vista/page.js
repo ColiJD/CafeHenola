@@ -113,7 +113,7 @@ export default function TablaSaldoDepositos() {
       data,
       filtros,
       rangoFecha,
-      "depositoFecha", // campo de fecha principal
+      "depositoFecha" // campo de fecha principal
     );
 
     setFilteredData(filtrados);
@@ -289,6 +289,7 @@ export default function TablaSaldoDepositos() {
       {isMobile ? (
         <TarjetaMobile
           data={filteredData}
+          loading={loading}
           columns={[
             { label: "Cliente", key: "clienteNombre" },
             { label: "Tipo Café", key: "tipoCafeNombre" },

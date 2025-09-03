@@ -121,6 +121,11 @@ export const menuItem = [
         label: "Saldo Por Contrato",
         route: Ruta + "/contrato/vista",
       },
+      {
+        key: "detalleCompras",
+        label: "Detalle de Compras",
+        route: Ruta + "/compra/vista",
+      },
     ],
   },
   {

@@ -15,15 +15,15 @@ export async function POST(req) {
     const body = await req.json();
 
     // Verificar si ya existe un cliente con la misma cédula
-    const existingCedula = await prisma.cliente.findUnique({
-      where: { clienteCedula: body.clienteCedula },
-    });
-    if (existingCedula) {
-      return new Response(
-        JSON.stringify({ error: "Ya existe un cliente con esa cédula" }),
-        { status: 400 }
-      );
-    }
+    // const existingCedula = await prisma.cliente.findUnique({
+    //   where: { clienteCedula: body.clienteCedula },
+    // });
+    // if (existingCedula) {
+    //   return new Response(
+    //     JSON.stringify({ error: "Ya existe un cliente con esa cédula" }),
+    //     { status: 400 }
+    //   );
+    // }
 
     // Crear el cliente
     const cliente = await prisma.cliente.create({

@@ -14,6 +14,7 @@ import {
 } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import { obtenerClientesSelect } from "@/lib/consultas";
+import TarjetaMobile from "@/components/TarjetaMobile";
 
 const { useBreakpoint } = Grid;
 
@@ -32,7 +33,16 @@ export default function ClientesPage() {
     try {
       const clientesSelect = await obtenerClientesSelect(message);
       // Transformar al formato original de cliente
-      const clientes = clientesSelect.map((c) => c.data);
+      const clientes = clientesSelect.map((c) => {
+        const cliente = c.data;
+        return {
+          ...cliente,
+          clienteNombreCompleto: `${cliente.clienteNombre || ""} ${
+            cliente.clienteApellido || ""
+          }`,
+          detalles: [cliente], // 🔹 todos los demás campos se mostrarán en detalles
+        };
+      });
       setData(clientes);
       setFilteredData(clientes);
     } catch (err) {
@@ -121,48 +131,53 @@ export default function ClientesPage() {
 
       {/* 👀 Vista móvil → tarjetas */}
       {isMobile ? (
-        <Row gutter={[16, 16]}>
-          {filteredData.map((cliente) => (
-            <Col span={24} key={cliente.clienteID}>
-              <Card
-                title={`${cliente.clienteNombre || ""} ${
-                  cliente.clienteApellido || ""
-                }`}
-                type="inner"
-                style={{
-                  borderRadius: "8px",
-                  boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-                }}
-              >
-                <p>
-                  <b>ID:</b> {cliente.clienteID}
-                </p>
-                <p>
-                  <b>Teléfono:</b> {cliente.clienteTelefono || "N/A"}
-                </p>
-                <p>
-                  <b>Municipio:</b> {cliente.clienteMunicipio || "N/A"}
-                </p>
-                <p>
-                  <b>Departamento:</b> {cliente.clienteDepartament || "N/A"}
-                </p>
-                <hr />
-                <p>
-                  <b>Cédula:</b> {cliente.clienteCedula || "N/A"}
-                </p>
-                <p>
-                  <b>RTN:</b> {cliente.clienteRTN || "N/A"}
-                </p>
-                <p>
-                  <b>Clave IHCAFE:</b> {cliente.claveIHCAFE || "N/A"}
-                </p>
-                <p>
-                  <b>Dirección:</b> {cliente.clienteDirecion || "N/A"}
-                </p>
-              </Card>
-            </Col>
-          ))}
-        </Row>
+        <TarjetaMobile
+          data={filteredData}
+          loading={loading} // 🔹 Spinner mientras carga
+          columns={[
+            {
+              label: "Nombre",
+              key: "clienteNombreCompleto",
+              render: (v, item) =>
+                `${item.clienteNombre || ""} ${item.clienteApellido || ""}`,
+            },
+            { label: "ID", key: "clienteID" },
+          ]}
+          detailsKey="detalles"
+          detailsColumns={[
+            {
+              label: "Teléfono",
+              key: "clienteTelefono",
+              render: (v) => v || "N/A",
+            },
+            {
+              label: "Municipio",
+              key: "clienteMunicipio",
+              render: (v) => v || "N/A",
+            },
+            {
+              label: "Departamento",
+              key: "clienteDepartament",
+              render: (v) => v || "N/A",
+            },
+            {
+              label: "Cédula",
+              key: "clienteCedula",
+              render: (v) => v || "N/A",
+            },
+            { label: "RTN", key: "clienteRTN", render: (v) => v || "N/A" },
+            {
+              label: "Clave IHCAFE",
+              key: "claveIHCAFE",
+              render: (v) => v || "N/A",
+            },
+            {
+              label: "Dirección",
+              key: "clienteDirecion",
+              render: (v) => v || "N/A",
+            },
+          ]}
+        />
       ) : (
         // 👀 Vista tablet/desktop → tabla con expandibles
         <Table

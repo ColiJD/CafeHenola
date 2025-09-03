@@ -318,6 +318,7 @@ export default function TablaResumenContrato() {
       {/* Tabla o tarjetas según dispositivo */}
       {isMobile ? (
         <TarjetaMobile
+          loading={loading}
           data={filteredData.map((item) => ({
             ...item,
             detalles: item.detalles || [],

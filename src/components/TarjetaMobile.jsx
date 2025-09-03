@@ -1,4 +1,4 @@
-import { Card, Row, Col } from "antd";
+import { Card, Row, Col, Spin } from "antd";
 
 /**
  * ListadoCards - componente genérico de tarjetas
@@ -14,7 +14,20 @@ import { Card, Row, Col } from "antd";
  *  - detailsKey: clave en el objeto que contiene un array de detalles
  *  - detailsColumns: columnas para los detalles
  */
-export default function TarjetaMobile({ data, columns, detailsKey, detailsColumns }) {
+export default function TarjetaMobile({
+  data,
+  columns,
+  detailsKey,
+  detailsColumns,
+  loading = false,
+}) {
+  if (loading) {
+    return (
+      <div style={{ textAlign: "center", padding: 24 }}>
+        <Spin size="large" />
+      </div>
+    );
+  }
   return (
     <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
       {data.map((item, idx) => (
@@ -22,8 +35,12 @@ export default function TarjetaMobile({ data, columns, detailsKey, detailsColumn
           <Card>
             {columns.map((col, i) => {
               if (col.visible === false) return null;
-              const value = col.render ? col.render(item[col.key], item) : item[col.key];
-              const color = col.color ? col.color(item[col.key], item) : undefined;
+              const value = col.render
+                ? col.render(item[col.key], item)
+                : item[col.key];
+              const color = col.color
+                ? col.color(item[col.key], item)
+                : undefined;
 
               return (
                 <div key={i} style={{ marginBottom: 4, color }}>
@@ -39,11 +56,19 @@ export default function TarjetaMobile({ data, columns, detailsKey, detailsColumn
                 {item[detailsKey].map((d, j) => (
                   <div
                     key={j}
-                    style={{ borderTop: "1px dashed #ccc", padding: 4, marginTop: 4 }}
+                    style={{
+                      borderTop: "1px dashed #ccc",
+                      padding: 4,
+                      marginTop: 4,
+                    }}
                   >
                     {detailsColumns.map((dc, k) => {
-                      const val = dc.render ? dc.render(d[dc.key], d) : d[dc.key];
-                      const color = dc.color ? dc.color(d[dc.key], d) : undefined;
+                      const val = dc.render
+                        ? dc.render(d[dc.key], d)
+                        : d[dc.key];
+                      const color = dc.color
+                        ? dc.color(d[dc.key], d)
+                        : undefined;
                       if (dc.visible === false) return null;
 
                       return (

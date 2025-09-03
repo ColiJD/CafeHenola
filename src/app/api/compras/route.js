@@ -97,3 +97,23 @@ export async function POST(request) {
     );
   }
 }
+
+/**
+ * Handles GET requests to fetch all compras from the database
+ * @returns {Response} - A Response object containing either the list of compras or an error message
+ */
+export async function GET() {
+  try {
+    // Usamos query raw para traer todo de la vista
+    const depositos = await prisma.$queryRawUnsafe(`
+      SELECT * FROM vw_comprascondetalle
+    `);
+
+    return new Response(JSON.stringify(depositos), { status: 200 });
+  } catch (error) {
+    console.error("Error al obtener vista vw_comprascondetalle:", error);
+    return new Response(JSON.stringify({ error: "Error interno" }), {
+      status: 500,
+    });
+  }
+}

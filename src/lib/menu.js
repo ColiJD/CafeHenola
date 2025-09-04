@@ -58,6 +58,14 @@ export const menuItems = [
     id: 2,
     name: "Ventas",
     image: deposito,
+    subItems: [
+      {
+        id: 201,
+        name: "Venta Directa",
+        href: Ruta + "Venta/venta",
+        image: Compras,
+      },
+    ],
   },
   {
     id: 3,
@@ -166,8 +174,11 @@ export const menuItem = [
     icon: <DollarOutlined />,
     label: "Venta",
     children: [
-      { key: "venta-nueva", label: "Nueva Venta", route: "/venta/nueva" },
-      { key: "venta-historial", label: "Historial", route: "/venta/historial" },
+      {
+        key: "venta-directa",
+        label: "Venta Directa",
+        route: Ruta + "Venta/venta",
+      },
     ],
   },
   {

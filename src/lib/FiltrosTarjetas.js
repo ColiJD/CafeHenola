@@ -17,8 +17,8 @@ export function FiltrosTarjetas(
 ) {
   const [inicio, fin] = Array.isArray(rangoFecha) ? rangoFecha : [null, null];
 
-  const inicioDay = inicio ? dayjs(inicio).startOf("day") : null;
-  const finDay = fin ? dayjs(fin).endOf("day") : null;
+  const inicioDay = inicio ? dayjs(inicio, "YYYY-MM-DD").startOf("day") : null;
+  const finDay = fin ? dayjs(fin, "YYYY-MM-DD").endOf("day") : null;
 
   return data.filter((item) => {
     // 🔹 Filtros de texto
@@ -39,7 +39,7 @@ export function FiltrosTarjetas(
     // 🔹 Filtrar por rango de fechas
     if (item[detallesKey]?.length) {
       const detalleDentroRango = item[detallesKey].some((det) => {
-        const fecha = dayjs(det[fechaKey]).startOf("day"); // 🔹 startOf("day") agregado
+        const fecha = dayjs(det[fechaKey], "YYYY-MM-DD").startOf("day"); // 🔹 startOf("day") agregado
         return (
           (!inicioDay || fecha.isSameOrAfter(inicioDay)) &&
           (!finDay || fecha.isSameOrBefore(finDay))
@@ -50,8 +50,8 @@ export function FiltrosTarjetas(
       if (item[fechaKey]) {
         const fecha = dayjs(item[fechaKey]).startOf("day"); // 🔹 startOf("day") agregado
         if (
-          (inicioDay && fecha.isBefore(inicioDay)) ||
-          (finDay && fecha.isAfter(finDay))
+          (inicioDay && fecha.isBefore(inicioDay, "day")) ||
+          (finDay && fecha.isAfter(finDay, "day"))
         ) {
           return false;
         }

@@ -30,11 +30,17 @@ export async function POST(request) {
       );
     }
 
+    console.log(new Date());
+    const hoy = new Date();
+    const fechaSolo = new Date(
+      Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())
+    );
+
     // ✅ Crear la compra
     const nuevaCompra = await prisma.compra.create({
       data: {
         clienteID: Number(clienteID),
-        compraFecha: new Date(), // Fecha automática
+        compraFecha: fechaSolo, // Fecha automática
         compraTipoDocumento,
         compraMovimiento: "Entrada",
         compraTipoCafe: Number(compraTipoCafe),

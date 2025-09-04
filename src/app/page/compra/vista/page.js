@@ -14,6 +14,8 @@ import useClientAndDesktop from "@/hook/useClientAndDesktop";
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
+import customParseFormat from "dayjs/plugin/customParseFormat";
+dayjs.extend(customParseFormat);
 
 export default function TablaCompras() {
   const { mounted, isDesktop } = useClientAndDesktop();
@@ -144,7 +146,7 @@ export default function TablaCompras() {
       title: "Fecha",
       dataIndex: "compraFecha",
       key: "compraFecha",
-      render: (d) => new Date(d).toLocaleDateString("es-HN"),
+      render: (val) => dayjs(val, "YYYY-MM-DD").format("DD/MM/YYYY"),
     },
     {
       title: "Cantidad (QQ)",
@@ -257,7 +259,7 @@ export default function TablaCompras() {
             {
               label: "Fecha",
               key: "compraFecha",
-              render: (val) => new Date(val).toLocaleDateString("es-HN"),
+              render: (val) => dayjs(val, "YYYY-MM-DD").format("DD/MM/YYYY"),
             },
             {
               label: "Cantidad (QQ)",

@@ -1,50 +1,61 @@
 "use client";
+import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Table, Row, Col, message, Button, Grid } from "antd";
-import { truncarDosDecimalesSinRedondear } from "@/lib/calculoCafe";
-import TarjetasDeTotales from "@/components/DetallesCard";
+import dynamic from "next/dynamic"; // 🔹 para lazy load
+import TarjetasDeTotales from "@/components/DetallesCard"; // si quieres, esto también podría lazy load
 import Filtros from "@/components/Filtros";
 import { FiltrosTarjetas } from "@/lib/FiltrosTarjetas";
+import { truncarDosDecimalesSinRedondear } from "@/lib/calculoCafe";
 import dayjs from "dayjs";
-import TarjetaMobile from "@/components/TarjetaMobile";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
-import Link from "next/link";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 
-export default function TablaCompras() {
+// 🔹 Lazy load de TarjetaMobile solo para mobile
+const TarjetaMobile = dynamic(() => import("@/components/TarjetaMobile"), {
+  ssr: false,
+});
+
+export default function ClienteDetalle() {
+  const { id } = useParams();
   const { mounted, isDesktop } = useClientAndDesktop();
   const isMobile = mounted && !isDesktop;
 
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [clienteNombreCompleto, setClienteNombreCompleto] = useState("");
 
-  const [nombreFiltro, setNombreFiltro] = useState("");
   const [tipoCafeFiltro, setTipoCafeFiltro] = useState("");
-  const [rangoFecha, setRangoFecha] = useState([dayjs(), dayjs()]);
-  const [movimientoFiltro, setMovimientoFiltro] = useState("Entrada"); // Entrada o Salida
+  const [rangoFecha, setRangoFecha] = useState([
+    dayjs().startOf("year"),
+    dayjs(),
+  ]);
+  const [movimientoFiltro, setMovimientoFiltro] = useState("Entrada");
 
-  // 🔹 Cargar datos desde API
+  // 🔹 Cargar compras del cliente específico
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/compras");
+      const res = await fetch(`/api/compras?clienteID=${id}`);
       if (!res.ok) throw new Error("Error al cargar los datos");
-      const data = await res.json();
+      const compras = await res.json();
 
-      // 🔹 Filtrar por compraMovimiento
-      const dataFiltrada = data.filter(
+      if (compras.length > 0) {
+        setClienteNombreCompleto(compras[0].clienteNombreCompleto);
+      }
+
+      const dataFiltrada = compras.filter(
         (item) => item.compraMovimiento === movimientoFiltro
       );
 
-      // 🔹 Agrupar por cliente y tipo de café
       const mapa = {};
-      dataFiltrada.forEach((item) => {
-        const key = `${item.clienteID}-${item.tipoCafeID}`;
+      dataFiltrada.forEach((item, index) => {
+        const key = item.tipoCafeID ?? index;
         if (!mapa[key]) {
           mapa[key] = {
             clienteID: item.clienteID,
@@ -52,16 +63,9 @@ export default function TablaCompras() {
             tipoCafeNombre: item.tipoCafeNombre,
             cantidadTotal: 0,
             totalLps: 0,
-            compraMovimiento: item.compraMovimiento,
             detalles: [],
           };
-        } else {
-          // 🔹 Si quieres mostrar todos los movimientos distintos en mobile
-          if (!mapa[key].compraMovimiento.includes(item.compraMovimiento)) {
-            mapa[key].compraMovimiento += `, ${item.compraMovimiento}`;
-          }
         }
-
         const cantidad = parseFloat(item.compraCantidadQQ || 0);
         const precio = parseFloat(item.compraPrecioQQ || 0);
         const totalLps = cantidad * precio;
@@ -76,7 +80,7 @@ export default function TablaCompras() {
       setFilteredData(groupedData);
     } catch (error) {
       console.error(error);
-      message.error("No se pudieron cargar las compras");
+      message.error("No se pudieron cargar las compras del cliente");
     } finally {
       setLoading(false);
     }
@@ -86,21 +90,18 @@ export default function TablaCompras() {
     cargarDatos();
   }, [movimientoFiltro]);
 
-  // 🔹 Aplicar filtros
+  // 🔹 Aplicar filtros (tipo de café y rango de fechas)
   const aplicarFiltros = () => {
     const filtros = {
-      clienteNombreCompleto: nombreFiltro,
       tipoCafeNombre: tipoCafeFiltro,
     };
-
     const filtrados = FiltrosTarjetas(data, filtros, rangoFecha, "compraFecha");
-
     setFilteredData(filtrados);
   };
 
   useEffect(() => {
     aplicarFiltros();
-  }, [nombreFiltro, tipoCafeFiltro, rangoFecha, data]);
+  }, [tipoCafeFiltro, rangoFecha, data]);
 
   // 🔹 Totales
   const totalQQ = filteredData.reduce(
@@ -112,16 +113,107 @@ export default function TablaCompras() {
     0
   );
 
-  // 🔹 Columnas de tabla principal
+  // 🔹 Lazy load jsPDF solo al exportar
+  const exportarPDF = async () => {
+    if (filteredData.length === 0) return;
+
+    const { default: jsPDF } = await import("jspdf"); // 🔹 lazy load jsPDF
+
+    const doc = new jsPDF();
+    const margin = 14;
+    const lineHeight = 6;
+    const pageHeight = 280;
+    let y = 20;
+
+    doc.setFontSize(14);
+    doc.text(`Reporte de compras - ${clienteNombreCompleto}`, margin, y);
+    y += 10;
+
+    const headers = [
+      "Compra ID",
+      "Fecha",
+      "Tipo Café",
+      "Cantidad (QQ)",
+      "Precio (Lps/QQ)",
+      "Total (Lps)",
+      "Movimiento",
+      "Descripción",
+    ];
+
+    const colWidth = [20, 25, 25, 20, 25, 25, 20, 40];
+
+    doc.setFontSize(9);
+    let x = margin;
+    headers.forEach((h, i) => {
+      doc.text(h, x, y);
+      x += colWidth[i];
+    });
+
+    y += 2;
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, margin + colWidth.reduce((a, b) => a + b, 0), y);
+    y += 4;
+
+    let totalQQPDF = 0;
+    let totalLpsPDF = 0;
+
+    filteredData.forEach((item) => {
+      item.detalles.forEach((d) => {
+        x = margin;
+        const row = [
+          d.compraId,
+          new Date(d.compraFecha).toLocaleDateString("es-HN"),
+          item.tipoCafeNombre,
+          truncarDosDecimalesSinRedondear(d.compraCantidadQQ),
+          truncarDosDecimalesSinRedondear(d.compraPrecioQQ),
+          truncarDosDecimalesSinRedondear(d.totalLps),
+          d.compraMovimiento,
+          d.compraDescripcion,
+        ];
+
+        row.forEach((val, i) => {
+          doc.text(String(val), x, y);
+          x += colWidth[i];
+        });
+
+        y += lineHeight;
+        totalQQPDF += parseFloat(d.compraCantidadQQ || 0);
+        totalLpsPDF += parseFloat(d.totalLps || 0);
+
+        if (y > pageHeight) {
+          doc.addPage();
+          y = 20;
+
+          x = margin;
+          headers.forEach((h, i) => {
+            doc.text(h, x, y);
+            x += colWidth[i];
+          });
+          y += 6;
+        }
+      });
+    });
+
+    y += 2;
+    doc.line(margin, y, margin + colWidth.reduce((a, b) => a + b, 0), y);
+    y += lineHeight;
+
+    x = margin;
+    doc.setFontSize(10);
+    doc.text("TOTALES:", x, y);
+    x += colWidth[0] + colWidth[1] + colWidth[2];
+    doc.text(truncarDosDecimalesSinRedondear(totalQQPDF).toString(), x, y);
+    x += colWidth[3] + colWidth[4];
+    doc.text(truncarDosDecimalesSinRedondear(totalLpsPDF).toString(), x, y);
+
+    y += 2;
+    doc.line(margin, y, margin + colWidth.reduce((a, b) => a + b, 0), y);
+
+    doc.save(`Reporte_Compras_${clienteNombreCompleto}.pdf`);
+  };
+
+  // 🔹 Columnas tabla principal
   const columns = [
-    {
-      title: "Cliente",
-      dataIndex: "clienteNombreCompleto",
-      key: "clienteNombreCompleto",
-      render: (text, record) => (
-        <Link href={`/page/compra/vista/${record.clienteID}`}>{text}</Link>
-      ),
-    },
     { title: "Tipo Café", dataIndex: "tipoCafeNombre", key: "tipoCafeNombre" },
     {
       title: "Total (QQ)",
@@ -137,7 +229,6 @@ export default function TablaCompras() {
     },
   ];
 
-  // 🔹 Columnas de detalles
   const detalleColumns = [
     { title: "Compra ID", dataIndex: "compraId", key: "compraId" },
     {
@@ -178,9 +269,10 @@ export default function TablaCompras() {
 
   return (
     <div>
-      {/* Tarjetas */}
       <TarjetasDeTotales
-        title="Registro de Compras"
+        title={`Resumen de compras del cliente: ${
+          clienteNombreCompleto || "Cargando..."
+        }`}
         cards={[
           {
             title: "Total (QQ)",
@@ -193,15 +285,8 @@ export default function TablaCompras() {
         ]}
       />
 
-      {/* Filtros */}
       <Filtros
         fields={[
-          {
-            type: "input",
-            placeholder: "Buscar por cliente",
-            value: nombreFiltro,
-            setter: setNombreFiltro,
-          },
           {
             type: "select",
             placeholder: "Tipo de café",
@@ -223,21 +308,25 @@ export default function TablaCompras() {
         ]}
       />
 
-      <Row style={{ marginBottom: 16 }}>
-        <Col xs={24} sm={6} md={4}>
+      <Row style={{ marginBottom: 16 }} gutter={16}>
+        <Col xs={12} sm={6} md={4}>
           <Button onClick={cargarDatos} block>
             Refrescar
           </Button>
         </Col>
+
+        <Col xs={12} sm={6} md={4}>
+          <Button onClick={exportarPDF} block type="default">
+            Exportar PDF
+          </Button>
+        </Col>
       </Row>
 
-      {/* Tabla responsive */}
       {isMobile ? (
         <TarjetaMobile
           loading={loading}
           data={filteredData}
           columns={[
-            { label: "Cliente", key: "clienteNombreCompleto" },
             { label: "Tipo Café", key: "tipoCafeNombre" },
             {
               label: "Total (QQ)",
@@ -249,7 +338,6 @@ export default function TablaCompras() {
               key: "totalLps",
               render: truncarDosDecimalesSinRedondear,
             },
-            { label: "Movimiento", key: "compraMovimiento" },
           ]}
           detailsKey="detalles"
           detailsColumns={[
@@ -277,29 +365,26 @@ export default function TablaCompras() {
             { label: "Movimiento", key: "compraMovimiento" },
             { label: "Descripción", key: "compraDescripcion" },
           ]}
-          rowKey={(item, index) =>
-            `${item.clienteID}-${item.tipoCafeID ?? index}`
-          }
-          detailsRowKey={(item) => item.compraId}
+          rowKey={(item, index) => `${item.tipoCafeID ?? index}`}
+          detailsRowKey={(item) => item.compraId ?? `detalle-${Math.random()}`}
         />
       ) : (
         <Table
           columns={columns}
           dataSource={filteredData}
           rowKey={(row) =>
-            `${row.clienteID}-${row.tipoCafeID ?? row.detalles[0]?.compraId}`
+            `${row.tipoCafeID}-${row.detalles[0]?.compraId ?? Math.random()}`
           }
           loading={loading}
           bordered
           size="middle"
-          pagination={{ pageSize: 6 }}
           scroll={{ x: "max-content" }}
           expandable={{
             expandedRowRender: (record) => (
               <Table
                 columns={detalleColumns}
                 dataSource={record.detalles}
-                rowKey="compraId"
+                rowKey={(item) => item.compraId ?? `detalle-${Math.random()}`}
                 pagination={false}
                 size="small"
                 bordered

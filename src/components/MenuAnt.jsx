@@ -11,19 +11,22 @@ const { useBreakpoint } = Grid;
 
 export default function DashboardLayout({ children }) {
   const screens = useBreakpoint();
-  const isMobile = !screens.md;
-
-  const [collapsed, setCollapsed] = useState(false); // desktop: colapsable
-  const [drawerVisible, setDrawerVisible] = useState(false); // mobile: Drawer
+  const [mounted, setMounted] = useState(false); // 🔹 Para evitar SSR mobile flash
+  const [collapsed, setCollapsed] = useState(false); // desktop
+  const [drawerVisible, setDrawerVisible] = useState(false); // mobile
 
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
 
+  useEffect(() => {
+    setMounted(true); // 🔹 Indicamos que ya estamos en cliente
+  }, []);
+
   // 🔹 Ajustar collapsed en desktop cuando cambie la resolución
   useEffect(() => {
-    if (!isMobile) setCollapsed(false);
-  }, [isMobile]);
+    if (mounted && screens.md) setCollapsed(false);
+  }, [mounted, screens.md]);
 
   // 🔹 Generar items del menú
   const generateMenuItems = (items) =>
@@ -36,7 +39,7 @@ export default function DashboardLayout({ children }) {
           children: item.children.map((sub) => ({
             key: sub.key,
             label: <Link href={sub.route}>{sub.label}</Link>,
-            onClick: () => isMobile && setDrawerVisible(false), // cerrar Drawer en mobile
+            onClick: () => mounted && !screens.md && setDrawerVisible(false),
           })),
         };
       }
@@ -44,7 +47,7 @@ export default function DashboardLayout({ children }) {
         key: item.key,
         icon: item.icon,
         label: <Link href={item.route}>{item.label}</Link>,
-        onClick: () => isMobile && setDrawerVisible(false), // cerrar Drawer en mobile
+        onClick: () => mounted && !screens.md && setDrawerVisible(false),
       };
     });
 
@@ -58,6 +61,10 @@ export default function DashboardLayout({ children }) {
     />
   );
 
+  if (!mounted) return null; // 🔹 No renderizamos nada hasta cliente
+
+  const isMobile = !screens.md;
+
   return (
     <Layout style={{ minHeight: "100vh" }}>
       {/* 🔹 Desktop Sider */}
@@ -68,11 +75,7 @@ export default function DashboardLayout({ children }) {
           collapsed={collapsed}
           theme="dark"
           width={250}
-          style={{
-            height: "100vh",
-            overflowY: "auto",
-            flexShrink: 0,
-          }}
+          style={{ height: "100vh", overflowY: "auto", flexShrink: 0 }}
           className="scroll-hidden"
         >
           <div
@@ -125,11 +128,10 @@ export default function DashboardLayout({ children }) {
           open={drawerVisible}
           onClose={() => setDrawerVisible(false)}
           placement="left"
-          closable={false} // 🔹 desactiva la X predeterminada
+          closable={false}
           styles={{ body: { padding: 0, height: "100%" } }}
           width={250}
         >
-          {/* Header personalizado: título + botón cerrar */}
           <div
             style={{
               display: "flex",
@@ -152,18 +154,12 @@ export default function DashboardLayout({ children }) {
             <Button
               type="text"
               onClick={() => setDrawerVisible(false)}
-              style={{
-                fontSize: 50,
-                color: "#fff",
-                padding: 0,
-                lineHeight: 1,
-              }}
+              style={{ fontSize: 50, color: "#fff", padding: 0, lineHeight: 1 }}
             >
               ×
             </Button>
           </div>
 
-          {/* Menú */}
           {menu}
         </Drawer>
       )}
@@ -180,7 +176,6 @@ export default function DashboardLayout({ children }) {
           }}
           className="scroll-hidden"
         >
-          {/* 🔹 Botón de menú para mobile */}
           {isMobile && (
             <Button
               type="primary"

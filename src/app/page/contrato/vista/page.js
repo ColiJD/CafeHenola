@@ -8,19 +8,18 @@ import TarjetaMobile from "@/components/TarjetaMobile";
 import dayjs from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
+import useClientAndDesktop from "@/hook/useClientAndDesktop";
 
 // 🔹 Plugins necesarios para filtros de fechas
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 
-const { useBreakpoint } = Grid;
-
 // 🔹 NUEVO: filtro genérico
 import { FiltrosTarjetas } from "@/lib/FiltrosTarjetas";
 
 export default function TablaResumenContrato() {
-  const screens = useBreakpoint();
-  const isMobile = !screens.md;
+  const { mounted, isDesktop } = useClientAndDesktop();
+  const isMobile = mounted && !isDesktop;
 
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);

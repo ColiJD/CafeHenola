@@ -1,62 +1,33 @@
 "use client";
+import { useEffect, useState } from "react";
+import { Table, Row, Col, message, Button } from "antd";
+import { truncarDosDecimalesSinRedondear } from "@/lib/calculoCafe";
+import TarjetasDeTotales from "@/components/DetallesCard";
+import Filtros from "@/components/Filtros";
+import { useRouter } from "next/navigation";
+import useClientAndDesktop from "@/hook/useClientAndDesktop";
 
-import { useEffect, useState, useCallback } from "react";
-import { Table, Input, Select, Row, Col, message, Button, Grid } from "antd";
-import { convertirAHonduras } from "@/lib/fechaHonduras";
+export default function InventarioActualPage() {
+  const { mounted, isDesktop } = useClientAndDesktop();
+  const isMobile = mounted && !isDesktop;
 
-const { Option } = Select;
-const { useBreakpoint } = Grid;
-
-export default function InventarioCafePage() {
-  const screens = useBreakpoint();
-  const isMobile = !screens.md;
+  const router = useRouter();
 
   const [data, setData] = useState([]);
-  const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const [nombreFiltro, setNombreFiltro] = useState("");
   const [tipoCafeFiltro, setTipoCafeFiltro] = useState("");
 
-  // 🔹 Cargar datos de la API
+  // Cargar inventario actual
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/inventario/Registro");
-      if (!res.ok) throw new Error("Error al cargar los datos");
-      const movimientos = await res.json();
-
-      // Agrupar por productoID
-      const mapa = new Map();
-      movimientos.forEach((m) => {
-        const key = m.productoID;
-        if (!mapa.has(key)) {
-          mapa.set(key, {
-            productoID: m.productoID,
-            tipoCafe: m.tipoCafe,
-            totalQQ: 0,
-            totalSacos: 0,
-            detalles: [],
-          });
-        }
-        const item = mapa.get(key);
-        item.totalQQ += parseFloat(m.cantidadQQ);
-        item.totalSacos += parseFloat(m.cantidadSacos);
-        item.detalles.push({
-          movimientoID: m.movimientoID,
-          fecha: m.fecha,
-          clienteNombre: m.clienteNombre,
-          clienteApellido: m.clienteApellido,
-          clienteCedula: m.clienteCedula,
-          cantidadQQ: m.cantidadQQ,
-          cantidadSacos: m.cantidadSacos,
-        });
-      });
-
-      setData(Array.from(mapa.values()));
+      const res = await fetch("/api/inventario/Actual"); // endpoint que devuelve vw_inventario_actual
+      if (!res.ok) throw new Error("Error al cargar inventario");
+      const data = await res.json();
+      setData(data);
     } catch (error) {
       console.error(error);
-      message.error("No se pudieron cargar los movimientos");
+      message.error("No se pudo cargar el inventario actual");
     } finally {
       setLoading(false);
     }
@@ -66,181 +37,108 @@ export default function InventarioCafePage() {
     cargarDatos();
   }, []);
 
-  // 🔹 Aplicar filtros
-  const aplicarFiltros = useCallback(() => {
-    let filtrados = [...data];
+  // Totales generales
+  const totalEntradas = data.reduce(
+    (acc, item) => acc + (item.totalEntradasQQ || 0),
+    0
+  );
+  const totalSalidas = data.reduce(
+    (acc, item) => acc + (item.totalSalidasQQ || 0),
+    0
+  );
+  const totalSaldo = data.reduce((acc, item) => acc + (item.saldoQQ || 0), 0);
 
-    if (nombreFiltro) {
-      filtrados = filtrados.filter((item) =>
-        item.detalles.some((d) =>
-          d.clienteNombre.toLowerCase().includes(nombreFiltro.toLowerCase())
-        )
-      );
-    }
-    if (tipoCafeFiltro) {
-      filtrados = filtrados.filter((item) => item.tipoCafe === tipoCafeFiltro);
-    }
-
-    return filtrados;
-  }, [data, nombreFiltro, tipoCafeFiltro]);
-
-  useEffect(() => {
-    setFilteredData(aplicarFiltros());
-  }, [aplicarFiltros]);
-
-  // 🔹 Columnas de tabla
+  // Columnas de tabla
   const columns = [
-    { title: "ID Café", dataIndex: "productoID", key: "productoID", width: 80 },
-    { title: "Tipo de Café", dataIndex: "tipoCafe", key: "tipoCafe" },
     {
-      title: "Total QQ",
-      dataIndex: "totalQQ",
-      key: "totalQQ",
-      render: (v) => parseFloat(v).toFixed(2),
+      title: "Tipo de Café",
+      dataIndex: "tipoCafe",
+      key: "tipoCafe",
+      render: (text, record) => (
+        <a
+          onClick={() =>
+            router.push(`/page/inventario/${record.productoID}`)
+          }
+        >
+          {text}
+        </a>
+      ),
     },
     {
-      title: "Total Sacos",
-      dataIndex: "totalSacos",
-      key: "totalSacos",
-      render: (v) => parseFloat(v).toFixed(2),
-    },
-  ];
-
-  const detalleColumns = [
-    { title: "MovimientoID", dataIndex: "movimientoID", key: "movimientoID" },
-    {
-      title: "Fecha",
-      dataIndex: "fecha",
-      key: "fecha",
-      render: (v) => convertirAHonduras(v),
+      title: "Total Entradas (QQ)",
+      dataIndex: "totalEntradasQQ",
+      key: "totalEntradasQQ",
+      render: truncarDosDecimalesSinRedondear,
     },
     {
-      title: "Cliente",
-      key: "cliente",
-      render: (_, record) =>
-        `${record.clienteNombre} ${record.clienteApellido}`,
-    },
-    { title: "Cédula", dataIndex: "clienteCedula", key: "cedula" },
-    {
-      title: "Cantidad QQ",
-      dataIndex: "cantidadQQ",
-      key: "cantidadQQ",
-      render: (v) => parseFloat(v).toFixed(2),
+      title: "Total Salidas (QQ)",
+      dataIndex: "totalSalidasQQ",
+      key: "totalSalidasQQ",
+      render: truncarDosDecimalesSinRedondear,
     },
     {
-      title: "Cantidad Sacos",
-      dataIndex: "cantidadSacos",
-      key: "cantidadSacos",
-      render: (v) => parseFloat(v).toFixed(2),
+      title: "Saldo (QQ)",
+      dataIndex: "saldoQQ",
+      key: "saldoQQ",
+      render: truncarDosDecimalesSinRedondear,
     },
   ];
 
   return (
     <div>
-      {/* 🔹 Filtros */}
-      <Row gutter={[8, 8]} style={{ marginBottom: 16 }}>
-        <Col xs={24} sm={12} md={6}>
-          <Input
-            placeholder="Buscar por nombre"
-            value={nombreFiltro}
-            onChange={(e) => setNombreFiltro(e.target.value)}
-          />
-        </Col>
-        <Col xs={24} sm={12} md={6}>
-          <Select
-            placeholder="Tipo de café"
-            value={tipoCafeFiltro}
-            onChange={setTipoCafeFiltro}
-            allowClear
-            style={{ width: "100%" }}
-          >
-            {[...new Set(data.map((d) => d.tipoCafe))].map((tipo) => (
-              <Option key={tipo} value={tipo}>
-                {tipo}
-              </Option>
-            ))}
-          </Select>
-        </Col>
-        <Col xs={24} sm={12} md={6}>
+      <TarjetasDeTotales
+        title="Inventario Actual"
+        cards={[
+          {
+            title: "Total Entradas",
+            value: truncarDosDecimalesSinRedondear(totalEntradas),
+          },
+          {
+            title: "Total Salidas",
+            value: truncarDosDecimalesSinRedondear(totalSalidas),
+          },
+          {
+            title: "Saldo Total",
+            value: truncarDosDecimalesSinRedondear(totalSaldo),
+          },
+        ]}
+      />
+
+      {/* Filtros */}
+      <Filtros
+        fields={[
+          {
+            type: "select",
+            placeholder: "Tipo de café",
+            value: tipoCafeFiltro || undefined,
+            setter: setTipoCafeFiltro,
+            allowClear: true,
+            options: [...new Set(data.map((d) => d.tipoCafe))],
+          },
+        ]}
+      />
+
+      <Row style={{ marginBottom: 16 }}>
+        <Col xs={24} sm={6} md={4}>
           <Button onClick={cargarDatos} block>
             Refrescar
           </Button>
         </Col>
       </Row>
 
-      {/* 🔹 Tabla o tarjetas según pantalla */}
-      {isMobile ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {filteredData.map((row) => (
-            <div
-              key={row.productoID}
-              style={{
-                border: "1px solid #ddd",
-                borderRadius: 8,
-                padding: 12,
-                background: "#fff",
-              }}
-            >
-              <div>
-                <strong>Café:</strong> {row.tipoCafe} (ID: {row.productoID})
-              </div>
-              <div>
-                <strong>Total QQ:</strong> {row.totalQQ.toFixed(2)}
-              </div>
-              <div>
-                <strong>Total Sacos:</strong> {row.totalSacos.toFixed(2)}
-              </div>
-
-              {row.detalles.length > 0 && (
-                <details style={{ marginTop: 8 }}>
-                  <summary>Ver movimientos</summary>
-                  {row.detalles.map((d) => (
-                    <div
-                      key={d.movimientoID}
-                      style={{ borderTop: "1px dashed #ccc", padding: 4 }}
-                    >
-                      <div>Movimiento ID: {d.movimientoID}</div>
-                      <div>Fecha: {convertirAHonduras(d.fecha)}</div>
-                      <div>
-                        Cliente: {d.clienteNombre} {d.clienteApellido}
-                      </div>
-                      <div>Cédula: {d.clienteCedula}</div>
-                      <div>Cantidad QQ: {parseFloat(d.cantidadQQ).toFixed(2)}</div>
-                      <div>
-                        Cantidad Sacos: {parseFloat(d.cantidadSacos).toFixed(2)}
-                      </div>
-                    </div>
-                  ))}
-                </details>
-              )}
-            </div>
-          ))}
-        </div>
-      ) : (
-        <Table
-          columns={columns}
-          dataSource={filteredData}
-          rowKey="productoID"
-          loading={loading}
-          bordered
-          size="middle"
-          expandable={{
-            expandedRowRender: (record) => (
-              <Table
-                columns={detalleColumns}
-                dataSource={record.detalles}
-                rowKey={(r) => r.movimientoID}
-                pagination={false}
-                size="small"
-                bordered
-                scroll={{ x: "max-content" }}
-              />
-            ),
-          }}
-          pagination={{ pageSize: 6 }}
-          scroll={{ x: "max-content" }}
-        />
-      )}
+      {/* Tabla */}
+      <Table
+        columns={columns}
+        dataSource={
+          tipoCafeFiltro
+            ? data.filter((d) => d.tipoCafe === tipoCafeFiltro)
+            : data
+        }
+        rowKey="productoID"
+        loading={loading}
+        bordered
+        size="middle"
+      />
     </div>
   );
 }

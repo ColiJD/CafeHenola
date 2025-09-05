@@ -239,7 +239,15 @@ export default function TablaCompras() {
           loading={loading}
           data={filteredData}
           columns={[
-            { label: "Cliente", key: "clienteNombreCompleto" },
+            {
+              label: "Cliente",
+              key: "clienteNombreCompleto",
+              render: (text, record) => (
+                <Link href={`/page/compra/vista/${record.clienteID}`}>
+                  {text}
+                </Link>
+              ),
+            },
             { label: "Tipo Café", key: "tipoCafeNombre" },
             {
               label: "Total (QQ)",

@@ -97,7 +97,12 @@ export default function CompraForm() {
       compraTipoCafe: producto.value,
       compraTipoDocumento,
       compraCantidadQQ: parseFloat(compraOro),
-      compraTotalSacos: compraTotalSacos ? parseInt(compraTotalSacos, 10) : 0,
+      compraTotalSacos:
+        producto?.label === "Cafe Lata"
+          ? 1
+          : compraTotalSacos
+          ? parseInt(compraTotalSacos, 10)
+          : 0,
       compraPrecioQQ: parseFloat(compraPrecioQQ),
       compraRetencio: parseFloat(compraRetencio),
       compraTotal: parseFloat(compraTotal),
@@ -163,40 +168,41 @@ export default function CompraForm() {
     },
 
     {
-      label: "Peso Bruto",
+      label: "Peso Bruto (lbs)",
       value: compraCantidadQQ,
       setter: setCompraCantidadQQ,
       type: "Float",
       required: true,
-      error: errors["Peso Bruto"],
+      error: errors["Peso Bruto (lbs)"],
       validator: validarFloatPositivo,
     },
     {
       label: "Total Sacos",
-      value: compraTotalSacos,
-      setter: setCompraTotalSacos,
+      value: producto?.label === "Cafe Lata" ? 0 : compraTotalSacos,
+      setter: producto?.label === "Cafe Lata" ? () => {} : setCompraTotalSacos,
       type: "integer",
-      required: true,
+      required: producto?.label === "Cafe Lata" ? false : true,
       error: errors["Total Sacos"],
-      validator: (v) =>
-        v === "" || v === null || v === undefined
-          ? "Ingrese total de sacos"
-          : validarEnteroNoNegativo(v)
-          ? null
-          : "Total sacos debe ser >= 0",
+      readOnly: producto?.label === "Cafe Lata",
+      validator: (v) => {
+        if (producto?.label === "Cafe Lata") return null; 
+        if (v === "" || v === null || v === undefined)
+          return "Ingrese total de sacos";
+        return validarEnteroNoNegativo(v) ? null : "Total sacos debe ser >= 0";
+      },
     },
     {
-      label: "Precio",
+      label: "Precio (Lps)",
       value: compraPrecioQQ,
       setter: setCompraPrecioQQ,
       type: "Float",
       required: true,
-      error: errors["Precio"],
+      error: errors["Precio (Lps)"],
       validator: validarFloatPositivo,
     },
 
     {
-      label: "Total",
+      label: "Total (Lps)",
       value: compraTotal,
       setter: setCompraTotal,
       type: "Float",
@@ -254,7 +260,9 @@ export default function CompraForm() {
         fields={fields.map((f) => ({
           label: f.label,
           value:
-            f.type === "select"
+            f.label === "Total Sacos" && producto?.label === "Cafe Lata"
+              ? 0
+              : f.type === "select"
               ? f.options?.find((o) => o.value === f.value?.value)?.label
               : f.value || (f.label === "Compra en" ? "Compra Directa" : "-"),
         }))}

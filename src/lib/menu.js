@@ -18,7 +18,7 @@ import {
   HomeOutlined,
   SettingOutlined,
   ShoppingCartOutlined,
-  DollarOutlined,
+  MinusCircleOutlined,
   AppstoreOutlined,
   FileTextOutlined,
 } from "@ant-design/icons";
@@ -29,12 +29,12 @@ const Ruta = "/page/";
 export const menuItems = [
   {
     id: 1,
-    name: "Compra",
+    name: "Entradas",
     image: Compras,
     subItems: [
       {
         id: 101,
-        name: "Nueva Compra",
+        name: "Compra Directa",
         href: Ruta + "/compra/",
         image: Compras,
       },
@@ -56,7 +56,7 @@ export const menuItems = [
   },
   {
     id: 2,
-    name: "Ventas",
+    name: "Salidas",
     image: deposito,
     subItems: [
       {
@@ -90,6 +90,12 @@ export const menuItems = [
         href: Ruta + "/contrato/vista",
         image: prestamo,
       },
+      {
+        id: 403,
+        name: "Detalle de Compras",
+        href: Ruta + "/compra/vista",
+        image: Reportes,
+      }
     ],
   },
 
@@ -137,9 +143,9 @@ export const menuItem = [
     ],
   },
   {
-    key: "compras",
+    key: "Entradas",
     icon: <ShoppingCartOutlined />,
-    label: "Compra",
+    label: "Entradas",
 
     children: [
       {
@@ -170,9 +176,9 @@ export const menuItem = [
     ],
   },
   {
-    key: "venta",
-    icon: <DollarOutlined />,
-    label: "Venta",
+    key: "Salidas",
+    icon: <MinusCircleOutlined />,
+    label: "Salidas",
     children: [
       {
         key: "venta-directa",

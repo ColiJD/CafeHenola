@@ -1,10 +1,24 @@
 import { Form, Input, Button, Row, Col } from "antd";
+import React from "react";
 import Select from "react-select";
 import {
   handleIntegerChange,
   handleFloatChange,
 } from "@/config/validacionesForm";
 
+// Funciones de formato
+const formatNumber = (num, type) => {
+  if (num === "" || num === null || num === undefined) return "";
+  const n = parseFloat(num.toString().replace(/,/g, ""));
+  if (isNaN(n)) return "";
+  if (type === "integer") return Math.round(n).toLocaleString("es-HN");
+  return n.toLocaleString("es-HN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+};
+// Función para quitar comas
+const parseNumber = (str) => (str ? str.toString().replace(/,/g, "") : "");
 export default function Formulario({
   title,
   fields,
@@ -12,6 +26,27 @@ export default function Formulario({
   submitting,
   button,
 }) {
+  const [rawValues, setRawValues] = React.useState({});
+
+  // Manejo de cambio de número (integer o float)
+  const handleNumberChange = (label, setter, type) => (e) => {
+    let val = e.target.value;
+
+    if (type === "integer" && !/^\d*$/.test(val)) return;
+    if (type === "Float" && !/^\d*\.?\d{0,2}$/.test(val)) return;
+
+    setter(val);
+    setRawValues((prev) => ({ ...prev, [label]: val }));
+  };
+
+  // Manejo de blur (formato)
+  const handleNumberBlur = (label, value, type) => {
+    setRawValues((prev) => ({
+      ...prev,
+      [label]: formatNumber(value ?? "", type),
+    }));
+  };
+
   return (
     <Form layout="vertical" onSubmitCapture={onSubmit}>
       {title && (
@@ -49,17 +84,30 @@ export default function Formulario({
                   onChange={(e) => f.setter(e.target.value)}
                   readOnly={f.readOnly}
                 />
-              ) : f.type === "integer" ? (
+              ) : f.type === "integer" || f.type === "Float" ? (
                 <Input
-                  value={f.value}
-                  onChange={handleIntegerChange(f.setter)}
+                  value={
+                    f.readOnly
+                      ? formatNumber(f.value ?? "", f.type)
+                      : rawValues[f.label] ?? f.value ?? ""
+                  }
+                  onChange={
+                    f.readOnly
+                      ? undefined
+                      : handleNumberChange(f.label, f.setter, f.type)
+                  }
+                  onFocus={() =>
+                    setRawValues((prev) => ({
+                      ...prev,
+                      [f.label]: f.value ?? "",
+                    }))
+                  }
+                  onBlur={() => handleNumberBlur(f.label, f.value, f.type)}
                   readOnly={f.readOnly}
-                />
-              ) : f.type === "Float" ? (
-                <Input
-                  value={f.value}
-                  onChange={handleFloatChange(f.setter)}
-                  readOnly={f.readOnly}
+                  style={{
+                    backgroundColor: f.readOnly ? "#f5f5f5" : "white",
+                    cursor: f.readOnly ? "not-allowed" : "text",
+                  }}
                 />
               ) : (
                 <Input

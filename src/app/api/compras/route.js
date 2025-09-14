@@ -29,8 +29,6 @@ export async function POST(request) {
         { status: 400 }
       );
     }
-
-    console.log(new Date());
     const hoy = new Date();
     const fechaSolo = new Date(
       Date.UTC(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())

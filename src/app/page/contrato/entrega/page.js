@@ -1,12 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { message, Tooltip } from "antd";
 import Formulario from "@/components/Formulario";
 import PreviewModal from "@/components/Modal";
-import {
-  limpiarFormulario,
-  validarEnteroPositivo,
-} from "@/config/validacionesForm";
+import { limpiarFormulario } from "@/config/validacionesForm";
 import { validarDatos } from "@/lib/validacionesForm";
 import {
   obtenerClientesSelect,
@@ -14,7 +11,11 @@ import {
   obtenerSaldoContrato,
   obtenerContratosPendientes,
 } from "@/lib/consultas";
-import { calcularCafeDesdeProducto } from "@/lib/calculoCafe";
+import { validarEnteroPositivo } from "@/config/validacionesForm";
+import {
+  calcularCafeDesdeProducto,
+  calcularPesoBrutoDesdeOro,
+} from "@/lib/calculoCafe";
 
 export default function LiquidacionContratoForm() {
   const [clientes, setClientes] = useState([]);
@@ -35,17 +36,19 @@ export default function LiquidacionContratoForm() {
     oro: "0.00",
     retencion: "0.00",
     producto: null,
+    descripcion: "Entrega de contrato",
   });
 
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
+  const messageRef = useRef(messageApi);
   const [previewVisible, setPreviewVisible] = useState(false);
 
   const handleChange = (key, value) =>
     setFormState((prev) => ({ ...prev, [key]: value }));
 
-  const { cantidadLiquidar, contrato, cliente } = formState;
+  const { contrato, cliente } = formState;
 
   // ------------------------------
   // Cargar clientes y productos
@@ -73,10 +76,25 @@ export default function LiquidacionContratoForm() {
       if (cliente) {
         const contratosData = await obtenerContratosPendientes(cliente.value);
         setContratos(contratosData);
-        setFormState((prev) => ({ ...prev, contrato: null }));
+        setFormState((prev) => ({
+          ...prev,
+          contrato: null,
+          totalSacos: "",
+          cantidadLiquidar: "",
+        }));
+        if (!contratosData || contratosData.length === 0) {
+          messageRef.current.warning(
+            "El cliente no tiene contratos pendientes disponibles."
+          );
+        }
       } else {
         setContratos([]);
-        setFormState((prev) => ({ ...prev, contrato: null }));
+        setFormState((prev) => ({
+          ...prev,
+          contrato: null,
+          totalSacos: "",
+          cantidadLiquidar: "",
+        }));
       }
     }
 
@@ -91,6 +109,7 @@ export default function LiquidacionContratoForm() {
       if (!contrato) {
         setFormState((prev) => ({
           ...prev,
+          cantidadLiquidar: "",
           saldoDisponibleQQ: 0,
           saldoDisponibleLps: 0,
           tipoCafeID: 0,
@@ -100,6 +119,7 @@ export default function LiquidacionContratoForm() {
           totalSacos: "",
           oro: "0.00",
           retencion: "0.00",
+          pesoBrutoContrato: "0.00",
           producto: null,
         }));
         return;
@@ -108,7 +128,9 @@ export default function LiquidacionContratoForm() {
       const saldoData = await obtenerSaldoContrato(contrato.value);
 
       if (!saldoData) {
-        messageApi.error("No se encontró saldo disponible para este contrato");
+        messageRef.current.error(
+          "No se encontró saldo disponible para este contrato"
+        );
         return;
       }
 
@@ -117,15 +139,25 @@ export default function LiquidacionContratoForm() {
         (p) => p.value === saldoData.tipoCafeID
       );
 
+      // calcular peso bruto necesario con saldo disponible (oro)
+      const { pesoBruto } = calcularPesoBrutoDesdeOro(
+        saldoData.saldoDisponibleQQ,
+        saldoData.totalSacos || 0, // si lo trae del contrato, si no 0
+        productoSeleccionado
+      );
+
       setFormState((prev) => ({
         ...prev,
         ...saldoData,
         producto: productoSeleccionado || null,
+        pesoBrutoContrato: pesoBruto,
+        totalSacos: "",
+        cantidadLiquidar: "",
       }));
     }
 
     cargar();
-  }, [contrato, messageApi, productos]);
+  }, [contrato, productos]);
 
   // ------------------------------
   // Recalcular valores cuando cambia cantidad/precio
@@ -167,7 +199,6 @@ export default function LiquidacionContratoForm() {
     e.preventDefault();
     setSubmitting(true);
 
-
     if (formState.oro > formState.saldoDisponibleQQ) {
       messageApi.error(
         `La cantidad (${formState.oro}) supera el saldo disponible (${formState.saldoDisponibleQQ})`
@@ -186,6 +217,7 @@ export default function LiquidacionContratoForm() {
       tipoDocumento: "EntregaContrato",
       descripcion: "Liquidación de contrato",
       liqEn: "Bodega",
+      liqDescripcion: formState.descripcion,
     };
 
     try {
@@ -222,6 +254,40 @@ export default function LiquidacionContratoForm() {
   };
 
   // ------------------------------
+  // Recalcular peso bruto necesario al cambiar total de sacos
+  // ------------------------------
+  useEffect(() => {
+    if (!formState.producto) return;
+
+    const sacos = parseFloat(formState.totalSacos || 0);
+    const esLata = formState.tipoCafeNombre === "Cafe Lata";
+
+    // solo si el usuario ya ingresó sacos
+    if (esLata || sacos > 0) {
+      const { pesoBruto } = calcularPesoBrutoDesdeOro(
+        formState.saldoDisponibleQQ, // quintales oro del contrato
+        esLata ? sacos : 0, // cantidad de sacos que ingresó el usuario
+        formState.producto
+      );
+
+      setFormState((prev) => ({
+        ...prev,
+        pesoBrutoContrato: pesoBruto,
+      }));
+    } else {
+      setFormState((prev) => ({
+        ...prev,
+        pesoBrutoContrato: "0.00",
+      }));
+    }
+  }, [
+    formState.saldoDisponibleQQ,
+    formState.totalSacos,
+    formState.producto,
+    ,
+  ]);
+
+  // ------------------------------
   // Configuración de campos
   // ------------------------------
   const fieldsConfig = [
@@ -242,58 +308,70 @@ export default function LiquidacionContratoForm() {
       validator: (v) => (!!v ? null : "Seleccione un contrato"),
     },
     {
+      key: "cantidadLiquidar",
+      label:
+        formState.tipoCafeNombre === "Cafe Lata"
+          ? "Cantidad de Latas"
+          : "Peso Bruto (lbs)",
+      type: "Float",
+      required: true,
+      error: errors["Peso Bruto (lbs)"],
+      readOnly:
+        (!formState.totalSacos || formState.totalSacos <= 0) &&
+        formState.tipoCafeNombre !== "Cafe Lata",
+      validator: (v) => (v > 0 ? null : "Ingrese un peso válido"),
+    },
+    {
+      key: "totalSacos",
+      label: (
+        <Tooltip title="Al ingresar los sacos se calcula automáticamente el peso bruto necesario">
+          Total de Sacos
+        </Tooltip>
+      ),
+      type: "integer",
+      value: formState.totalSacos,
+      error: errors["Total de Sacos"],
+      readOnly: formState.tipoCafeNombre === "Cafe Lata",
+      validator: (v) => {
+        if (formState.tipoCafeNombre === "Cafe Lata") return null;
+        if (v === "" || v === null || v === undefined)
+          return "Ingrese total de sacos";
+        return validarEnteroPositivo(v) ? null : "Total de sacos debe ser >= 0";
+      },
+    },
+    {
       key: "tipoCafeNombre",
       label: "Tipo de Café",
       type: "text",
       readOnly: true,
     },
     {
-      key: "precioQQ",
-      label: "Precio por QQ (Lps)",
-      type: "Float",
-      readOnly: true,
-    },
-    {
       key: "saldoDisponibleQQ",
-      label: "Saldo disponible (QQ)",
+      label: "Quintales Oro disponibles",
       type: "Float",
       readOnly: true,
     },
     {
-      key: "saldoDisponibleLps",
-      label: "Saldo disponible (Lps)",
+      key: "pesoBrutoContrato",
+      label: "Peso Bruto necesario (lbs)",
       type: "Float",
       readOnly: true,
+      value: formState.pesoBrutoContrato,
     },
-    {
-      key: "cantidadLiquidar",
-      label: "Peso Bruto (Kg)",
-      type: "Float",
-      required: true,
-      error: errors["Peso Bruto"],
-      validator: (v) => (v > 0 ? null : "Ingrese un peso válido"),
-    },
-    {
-      key: "totalSacos",
-      label: "Total de Sacos",
-      type: "integer",
-      value: formState.totalSacos,
-      error: errors["Total de Sacos"],
-      validator: (v) => (v > 0 ? null : "Ingrese un total de sacos válido"),
-    },
+
     {
       key: "oro",
-      label: "Quintales Oro",
+      label: "Quintales Oro Ingresados",
       type: "Float",
       readOnly: true,
       value: formState.oro,
     },
+
     {
-      key: "retencion",
-      label: "Retención (QQ)",
+      key: "precioQQ",
+      label: "Precio (Lps)",
       type: "Float",
       readOnly: true,
-      value: formState.retencion,
     },
     {
       key: "totalLiquidacion",
@@ -301,6 +379,26 @@ export default function LiquidacionContratoForm() {
       type: "Float",
       readOnly: true,
       value: formState.totalLiquidacion,
+    },
+    {
+      key: "retencion",
+      label: "Retención (QOro)",
+      type: "Float",
+      readOnly: true,
+      value: formState.retencion,
+    },
+    {
+      key: "saldoDisponibleLps",
+      label: "Total del Contrato (Lps)",
+      type: "Float",
+      readOnly: true,
+    },
+    {
+      key: "Descripcion",
+      label: "Descripción",
+      type: "textarea",
+      readOnly: false,
+      value: "Liquidación de contrato",
     },
   ];
 
@@ -315,6 +413,7 @@ export default function LiquidacionContratoForm() {
     <>
       {contextHolder}
       <Formulario
+        key={formState.cliente?.value || "empty"}
         title="Entrega de Contrato"
         fields={fields}
         onSubmit={handleRegistrarClick}
@@ -332,13 +431,31 @@ export default function LiquidacionContratoForm() {
         onCancel={() => setPreviewVisible(false)}
         onConfirm={handleConfirmar}
         confirmLoading={submitting}
-        fields={fields.map((f) => ({
-          label: f.label,
-          value:
-            f.type === "select"
-              ? f.options?.find((o) => o.value === f.value?.value)?.label
-              : f.value || "-",
-        }))}
+        fields={fields
+          .filter((f) =>
+            [
+              "Cliente",
+              "Contrato Pendiente",
+              "Peso Bruto (lbs)",
+              "Total de Sacos",
+              "Tipo de Café",
+              "Quintales Oro Ingresados",
+              "Precio (Lps)",
+              "Total a pagar (Lps)",
+              "Retención (QOro)",
+              "Descripción",
+            ].includes(f.label)
+          )
+          .map((f) => ({
+            label: f.label,
+            value:
+              f.label === "Total Sacos" &&
+              formState.tipoCafeNombre === "Cafe Lata"
+                ? 0
+                : f.type === "select"
+                ? f.options?.find((o) => o.value === f.value?.value)?.label
+                : f.value || "-",
+          }))}
       />
     </>
   );

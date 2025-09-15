@@ -102,21 +102,21 @@ export default function ContratoForm() {
     },
     {
       key: "contratoPrecio",
-      label: "Precio",
+      label: "Precio (Lps)",
       type: "Float",
       required: true,
       validator: validarFloatPositivo,
     },
     {
       key: "contratoCantidadQQ",
-      label: "Cantidad QQ",
+      label: "Cantidad (QOro)",
       type: "Float",
       required: true,
       validator: validarFloatPositivo,
     },
     {
       key: "contratoTotalLps",
-      label: "Total",
+      label: "Total (Lps)",
       type: "Float",
       required: true,
       readOnly: true,
@@ -202,6 +202,7 @@ export default function ContratoForm() {
       {contextHolder} {/* Contenedor de mensajes Ant Design */}
       {/* Componente de formulario principal */}
       <Formulario
+        key={formState.cliente?.value || "empty"}
         title="Registrar Contrato"
         fields={fields}
         onSubmit={handleRegistrarClick}

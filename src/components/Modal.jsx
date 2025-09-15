@@ -12,6 +12,18 @@ export default function PreviewModal({
   cancelText = "Cancelar",
   extraButtons = [],
 }) {
+  // Formatea números con comas
+  const formatValue = (value) => {
+    if (value === undefined || value === null || value === "") return "-";
+    const numero = parseFloat(value);
+    if (!isNaN(numero)) {
+      return numero.toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    }
+    return value;
+  };
   return (
     <Modal
       open={open}
@@ -38,12 +50,7 @@ export default function PreviewModal({
     >
       {fields.map((field, index) => (
         <p key={index}>
-          <strong>{field.label}:</strong>{" "}
-          {field.value !== undefined &&
-          field.value !== null &&
-          field.value !== ""
-            ? field.value
-            : "-"}
+          <strong>{field.label}:</strong> {formatValue(field.value)}
         </p>
       ))}
     </Modal>

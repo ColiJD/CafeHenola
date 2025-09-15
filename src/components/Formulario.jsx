@@ -117,9 +117,17 @@ export default function Formulario({
                 />
               ) : (
                 <Input
-                  value={f.value}
-                  onChange={(e) => f.setter(e.target.value)}
+                  value={
+                    f.readOnly ? f.value : rawValues[f.label] ?? f.value ?? ""
+                  }
+                  onChange={(e) =>
+                    f.readOnly ? undefined : f.setter(e.target.value)
+                  }
                   readOnly={f.readOnly}
+                  style={{
+                    backgroundColor: f.readOnly ? "#f5f5f5" : "white",
+                    cursor: f.readOnly ? "not-allowed" : "text",
+                  }}
                 />
               )}
             </Form.Item>

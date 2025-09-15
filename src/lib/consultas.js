@@ -91,7 +91,8 @@ export async function obtenerSaldoContrato(contratoID) {
       tipoCafeNombre: data.tipoCafeNombre || "",
       precioQQ: data.precioQQ || 0,
       totalLiquidacion: 0,
-      totalSacos: 0,
+      totalSacos: "",
+      pesoBrutoContrato: "",
     };
   } catch (err) {
     console.error("Error cargando saldo disponible:", err);

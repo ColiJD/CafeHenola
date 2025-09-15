@@ -1,6 +1,7 @@
 export function truncarDosDecimalesSinRedondear(numero) {
-  const truncado = Math.floor(numero * 100) / 100;
-  return truncado.toFixed(2); // devuelve string con 2 decimales
+  // Convertimos a centésimos como entero
+  const centesimos = Math.ceil(numero * 100); // asegura que nunca quede por debajo
+  return (centesimos / 100).toFixed(2);
 }
 
 export function calcularCafeDesdeProducto(
@@ -30,7 +31,38 @@ export function calcularCafeDesdeProducto(
   const oroStr = truncarDosDecimalesSinRedondear(oro);
 
   const total = (precioQQ * parseFloat(oroStr)).toFixed(2);
-  const retencion = (Math.max(parseFloat(oroStr) - parseFloat(oroStr) * 0.04, 0)).toFixed(2);
+  const retencion = Math.max(
+    parseFloat(oroStr) - parseFloat(oroStr) * 0.04,
+    0
+  ).toFixed(2);
 
   return { oro: oroStr, total, retencion };
 }
+
+export function calcularPesoBrutoDesdeOro(
+  oro,
+  sacosTotales,
+  productoSeleccionado
+) {
+  if (!productoSeleccionado || !productoSeleccionado.data) {
+    return { pesoBruto: "0.00" };
+  }
+
+  const { tara = 0, descuento = 0, factorOro = 1 } = productoSeleccionado.data;
+
+  oro = Math.max(parseFloat(oro) || 0, 0);
+  sacosTotales = Math.max(parseFloat(sacosTotales) || 0, 0);
+
+  // Paso 1: Calcular peso neto necesario para obtener el oro deseado
+  let pesoNetoNecesario = oro * factorOro;
+
+  // Paso 2: Revertir el descuento si existe
+  if (descuento) {
+    pesoNetoNecesario = pesoNetoNecesario / (1 - descuento);
+  }
+
+  // Paso 3: Calcular peso bruto (agregando tara por saco)
+  const pesoBrutoNecesario = pesoNetoNecesario + sacosTotales * tara;
+
+  return { pesoBruto: Math.ceil(pesoBrutoNecesario * 100) / 100 };
+};

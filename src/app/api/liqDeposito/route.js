@@ -80,35 +80,83 @@ export async function POST(request) {
 
 
 
+// export async function GET(request) {
+//   try {
+//     const { searchParams } = new URL(request.url);
+//     const clienteID = searchParams.get("clienteID");
+//     const tipoCafe = searchParams.get("tipoCafe");
+
+//     if (!clienteID || !tipoCafe) {
+//       return new Response(
+//         JSON.stringify({ error: "Debe enviar clienteID y tipoCafe" }),
+//         { status: 400 }
+//       );
+//     }
+
+//     // Consultar saldo pendiente
+//     const saldoResult = await prisma.$queryRaw`
+//       SELECT SUM(saldoPendienteQQ) AS saldoPendiente
+//       FROM vw_SaldoDepositos
+//       WHERE clienteID = ${clienteID} AND depositoTipoCafe = ${tipoCafe};
+//     `;
+
+//     const saldoDisponible = saldoResult[0]?.saldoPendiente || 0;
+
+//     return new Response(
+//       JSON.stringify({ saldoDisponible }),
+//       { status: 200 }
+//     );
+
+//   } catch (error) {
+//     console.error("Error al obtener saldo pendiente:", error);
+//     return new Response(JSON.stringify({ error: "Error interno" }), { status: 500 });
+//   }
+// }
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const clienteID = searchParams.get("clienteID");
     const tipoCafe = searchParams.get("tipoCafe");
 
-    if (!clienteID || !tipoCafe) {
+    if (!clienteID) {
       return new Response(
-        JSON.stringify({ error: "Debe enviar clienteID y tipoCafe" }),
+        JSON.stringify({ error: "Debe enviar clienteID" }),
         { status: 400 }
       );
     }
 
-    // Consultar saldo pendiente
-    const saldoResult = await prisma.$queryRaw`
-      SELECT SUM(saldoPendienteQQ) AS saldoPendiente
+    // Caso 1: cliente + café específico -> saldo puntual
+    if (tipoCafe) {
+      const saldoResult = await prisma.$queryRaw`
+        SELECT SUM(saldoPendienteQQ) AS saldoPendiente
+        FROM vw_SaldoDepositos
+        WHERE clienteID = ${clienteID} AND depositoTipoCafe = ${tipoCafe};
+      `;
+
+      const saldoDisponible = saldoResult[0]?.saldoPendiente || 0;
+
+      return new Response(JSON.stringify({ saldoDisponible }), {
+        status: 200,
+      });
+    }
+
+    // Caso 2: solo cliente -> devolver lista de cafés con saldo > 0
+    const productosResult = await prisma.$queryRaw`
+      SELECT depositoTipoCafe AS tipoCafe, SUM(saldoPendienteQQ) AS saldoPendiente
       FROM vw_SaldoDepositos
-      WHERE clienteID = ${clienteID} AND depositoTipoCafe = ${tipoCafe};
+      WHERE clienteID = ${clienteID}
+      GROUP BY depositoTipoCafe
+      HAVING SUM(saldoPendienteQQ) > 0;
     `;
 
-    const saldoDisponible = saldoResult[0]?.saldoPendiente || 0;
-
-    return new Response(
-      JSON.stringify({ saldoDisponible }),
-      { status: 200 }
-    );
-
+    return new Response(JSON.stringify(productosResult), { status: 200 });
   } catch (error) {
     console.error("Error al obtener saldo pendiente:", error);
-    return new Response(JSON.stringify({ error: "Error interno" }), { status: 500 });
+    return new Response(
+      JSON.stringify({ error: "Error interno" }),
+      { status: 500 }
+    );
   }
 }
+

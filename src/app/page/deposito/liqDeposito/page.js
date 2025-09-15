@@ -1,12 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { message } from "antd";
 import Formulario from "@/components/Formulario";
 import PreviewModal from "@/components/Modal";
 import { obtenerClientesSelect, obtenerProductosSelect } from "@/lib/consultas";
 import {
   limpiarFormulario,
-  validarEnteroPositivo,
   validarFloatPositivo,
 } from "@/config/validacionesForm";
 import { validarDatos } from "@/lib/validacionesForm";
@@ -14,7 +13,6 @@ import { validarDatos } from "@/lib/validacionesForm";
 export default function DepositoForm() {
   const [clientes, setClientes] = useState([]);
   const [productos, setProductos] = useState([]);
-
   const [formState, setFormState] = useState({
     cliente: null,
     producto: null,
@@ -29,7 +27,9 @@ export default function DepositoForm() {
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
+  const messageRef = useRef(messageApi);
   const [previewVisible, setPreviewVisible] = useState(false);
+  const { cliente, producto } = formState;
 
   const handleChange = (key, value) =>
     setFormState((prev) => ({ ...prev, [key]: value }));
@@ -40,46 +40,122 @@ export default function DepositoForm() {
   ).toFixed(2);
 
   // ------------------------------
-  // Cargar clientes y productos
+  // Cargar clientes
   // ------------------------------
   useEffect(() => {
-    async function cargarDatos() {
+    async function cargarClientes() {
       try {
-        setClientes(await obtenerClientesSelect(messageApi));
-        setProductos(await obtenerProductosSelect(messageApi));
+        const clientesData = await obtenerClientesSelect(messageApi);
+        setClientes(clientesData);
       } catch {
-        messageApi.error("Error cargando clientes o productos");
+        messageApi.error("Error cargando clientes");
       }
     }
-    cargarDatos();
+    cargarClientes();
   }, [messageApi]);
+
+  // ------------------------------
+  // 2️⃣ Filtrar productos según cliente y saldo
+  // ------------------------------
+
+  useEffect(() => {
+    async function cargarProductosConSaldo() {
+      setProductos([]);
+      handleChange("producto", null);
+      handleChange("saldoPendiente", 0);
+      handleChange("depositoCantidadQQ", "");
+      handleChange("depositoPrecioQQ", "");
+      if (!cliente) return;
+
+      try {
+        // Traer todos los productos para obtener el label
+        const todosProductos = await obtenerProductosSelect(messageRef.current);
+
+        // Traer cafés con saldo > 0 para el cliente
+        const res = await fetch(`/api/liqDeposito?clienteID=${cliente.value}`);
+        const dataSaldo = await res.json(); // [{ tipoCafe, saldoPendiente }, ...]
+
+        const productosConSaldo = dataSaldo
+          .filter((p) => p.saldoPendiente > 0)
+          .map((p) => {
+            const prodInfo = todosProductos.find(
+              (prod) => prod.value === p.tipoCafe
+            );
+            return {
+              value: p.tipoCafe,
+              label: prodInfo?.label || `Café ${p.tipoCafe}`,
+              saldoDisponible: p.saldoPendiente,
+            };
+          });
+
+        setProductos(productosConSaldo);
+
+        if (productosConSaldo.length === 0) {
+          messageRef.current.warning(
+            "El cliente no tiene saldo disponible en ningún café."
+          );
+        }
+
+        // Limpiar producto y saldo si ya no tiene saldo
+        if (!productosConSaldo.some((p) => p.value === producto?.value)) {
+          handleChange("producto", null);
+          handleChange("saldoPendiente", 0);
+        }
+      } catch (err) {
+        console.error(err);
+        messageRef.current.error("Error cargando productos o saldo");
+        // Limpiar todo si hay error
+        setProductos([]);
+        handleChange("producto", null);
+        handleChange("saldoPendiente", 0);
+        handleChange("depositoCantidadQQ", "");
+        handleChange("depositoPrecioQQ", "");
+        handleChange("depositoDescripcion", "");
+        handleChange("depositoTipoDocumento", "");
+        handleChange("depositoEn", "");
+      }
+    }
+
+    cargarProductosConSaldo();
+  }, [cliente]);
 
   // ------------------------------
   // Actualiza saldo pendiente
   // ------------------------------
-  const { cliente, producto } = formState;
 
   useEffect(() => {
-    async function fetchSaldo() {
-      if (!cliente || !producto) return handleChange("saldoPendiente", 0);
+    async function fetchSaldoProducto() {
+      if (!cliente || !producto) {
+        handleChange("saldoPendiente", 0);
+        handleChange("depositoCantidadQQ", "");
+        handleChange("depositoPrecioQQ", "");
+        return;
+      }
+
       try {
-        const res = await fetch(
+        const resSaldoProducto = await fetch(
           `/api/liqDeposito?clienteID=${cliente.value}&tipoCafe=${producto.value}`
         );
-        const data = await res.json();
-        handleChange("saldoPendiente", data.saldoDisponible || 0);
+        const saldoData = await resSaldoProducto.json();
+        const saldo = saldoData.saldoDisponible || 0;
+        handleChange("saldoPendiente", saldo);
 
-        // Limpiar campos si saldo es 0
-        if (!data.saldoDisponible || data.saldoDisponible <= 0) {
+        if (saldo <= 0) {
           handleChange("depositoCantidadQQ", "");
           handleChange("depositoPrecioQQ", "");
+          messageRef.current.warning(
+            "El cliente no tiene saldo disponible en este café."
+          );
         }
       } catch {
         handleChange("saldoPendiente", 0);
+        handleChange("depositoCantidadQQ", "");
+        handleChange("depositoPrecioQQ", "");
       }
     }
-    fetchSaldo();
-  }, [cliente, producto]); // solo dependencias necesarias
+
+    fetchSaldoProducto();
+  }, [producto]);
 
   // ------------------------------
   // Mostrar modal de previsualización
@@ -161,28 +237,14 @@ export default function DepositoForm() {
       key: "producto",
       label: "Tipo de Café",
       type: "select",
-      options: productos,
+      options: cliente ? productos : [], // solo mostrar si hay cliente
       required: true,
       validator: (v) => (!!v ? null : "Seleccione un café"),
-    },
-    {
-      key: "saldoPendiente",
-      label: "Saldo Disponible (QQ)",
-      type: "Float",
-      readOnly: true,
-    },
-    {
-      key: "depositoPrecioQQ",
-      label: "Precio por (QQ)",
-      type: "Float",
-      required: true,
-      validator: validarFloatPositivo,
-      // Deshabilitar si saldo es 0
-      disabled: formState.saldoPendiente <= 0,
+      disabled: !cliente, // deshabilitar si no hay cliente
     },
     {
       key: "depositoCantidadQQ",
-      label: "Cantidad a liquidar (QQ)",
+      label: "Cantidad a liquidar (QOro)",
       type: "Float",
       required: true,
       validator: (v) => {
@@ -195,8 +257,24 @@ export default function DepositoForm() {
       disabled: formState.saldoPendiente <= 0,
     },
     {
+      key: "depositoPrecioQQ",
+      label: "Precio (Lps)",
+      type: "Float",
+      required: true,
+      validator: validarFloatPositivo,
+      // Deshabilitar si saldo es 0
+      disabled: formState.saldoPendiente <= 0,
+    },
+    {
+      key: "saldoPendiente",
+      label: "Saldo Disponible (QOro)",
+      type: "Float",
+      readOnly: true,
+    },
+
+    {
       key: "totalLiquidacion",
-      label: "Total a pagar",
+      label: "Total a pagar (Lps)",
       type: "Float",
       readOnly: true,
       value: totalLiquidacion,
@@ -220,6 +298,7 @@ export default function DepositoForm() {
     <>
       {contextHolder}
       <Formulario
+        key={cliente?.value || "empty"}
         title="Liquidar Depósito"
         fields={fields}
         onSubmit={handleRegistrarClick}

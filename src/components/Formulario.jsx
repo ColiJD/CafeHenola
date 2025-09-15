@@ -1,10 +1,6 @@
 import { Form, Input, Button, Row, Col } from "antd";
 import React from "react";
 import Select from "react-select";
-import {
-  handleIntegerChange,
-  handleFloatChange,
-} from "@/config/validacionesForm";
 
 // Funciones de formato
 const formatNumber = (num, type) => {
@@ -17,8 +13,7 @@ const formatNumber = (num, type) => {
     maximumFractionDigits: 2,
   });
 };
-// Función para quitar comas
-const parseNumber = (str) => (str ? str.toString().replace(/,/g, "") : "");
+
 export default function Formulario({
   title,
   fields,
@@ -46,6 +41,16 @@ export default function Formulario({
       [label]: formatNumber(value ?? "", type),
     }));
   };
+  React.useEffect(() => {
+    // Si todos los campos vienen vacíos después de limpiar
+    if (
+      fields.every(
+        (f) => f.value === "" || f.value === null || f.value === undefined
+      )
+    ) {
+      setRawValues({});
+    }
+  }, [fields]);
 
   return (
     <Form layout="vertical" onSubmitCapture={onSubmit}>
@@ -71,6 +76,7 @@ export default function Formulario({
                   onChange={f.setter}
                   placeholder={`Seleccione ${f.label}`}
                   isClearable
+                  isDisabled={!f.options || f.options.length === 0} // <-- deshabilita si no hay opciones
                   styles={{
                     control: (base) => ({
                       ...base,

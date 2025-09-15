@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { message } from "antd";
 import Formulario from "@/components/Formulario";
 import PreviewModal from "@/components/Modal";
@@ -8,7 +8,6 @@ import { obtenerClientesSelect, obtenerProductosSelect } from "@/lib/consultas";
 import {
   limpiarFormulario,
   validarEnteroPositivo,
-  validarEnteroNoNegativo,
   validarFloatPositivo,
 } from "@/config/validacionesForm";
 import { calcularCafeDesdeProducto } from "@/lib/calculoCafe";
@@ -30,22 +29,23 @@ export default function FormDeposito() {
   const [submitting, setSubmitting] = useState(false);
 
   const [messageApi, contextHolder] = message.useMessage();
+  const messageApiRef = useRef(messageApi);
 
   // Carga clientes y productos
   useEffect(() => {
     async function cargarDatos() {
       try {
-        const clientesData = await obtenerClientesSelect(messageApi);
-        const productosData = await obtenerProductosSelect(messageApi);
+        const clientesData = await obtenerClientesSelect(messageApiRef.current);
+        const productosData = await obtenerProductosSelect(messageApiRef.current);
         setClientes(clientesData);
         setProductos(productosData);
       } catch (err) {
         console.error(err);
-        messageApi.error("Error cargando clientes o productos");
+        messageApiRef.current.error("Error cargando clientes o productos");
       }
     }
     cargarDatos();
-  }, [messageApi]);
+  }, []);
 
   useEffect(() => {
     if (!producto) return;
@@ -88,9 +88,12 @@ export default function FormDeposito() {
       clienteID: cliente.value,
       depositoTipoCafe: producto.value,
       depositoCantidadQQ: parseFloat(depositoCantidadQQ),
-      depositoTotalSacos: depositoTotalSacos
-        ? parseInt(depositoTotalSacos, 10)
-        : 0,
+      depositoTotalSacos:
+        producto?.label === "Cafe Lata"
+          ? 1
+          : depositoTotalSacos
+          ? parseInt(depositoTotalSacos, 10)
+          : 0,
       depositoEn: depositoEn || "Depósito",
       depositoDescripcion,
     };
@@ -147,27 +150,29 @@ export default function FormDeposito() {
       validator: (v) => (v ? null : "Seleccione un café"),
     },
     {
-      label: "Peso Bruto",
+      label: "Peso Bruto (lbs)",
       value: pesoBruto,
       setter: setPesoBruto,
       type: "Float",
       required: true,
-      error: errors["Peso Bruto"],
+      error: errors["Peso Bruto (lbs)"],
       validator: validarFloatPositivo,
     },
     {
       label: "Total Sacos",
-      value: depositoTotalSacos,
-      setter: setDepositoTotalSacos,
+      value: producto?.label === "Cafe Lata" ? 0 : depositoTotalSacos,
+      setter:
+        producto?.label === "Cafe Lata" ? () => {} : setDepositoTotalSacos,
       type: "integer",
-      required: true,
+      required: producto?.label === "Cafe Lata" ? false : true,
       error: errors["Total Sacos"],
-      validator: (v) =>
-        v === "" || v === null || v === undefined
-          ? "Ingrese total de sacos"
-          : validarEnteroNoNegativo(v)
-          ? null
-          : "Total sacos debe ser >= 0",
+      readOnly: producto?.label === "Cafe Lata",
+      validator: (v) => {
+        if (producto?.label === "Cafe Lata") return null;
+        if (v === "" || v === null || v === undefined)
+          return "Ingrese total de sacos";
+        return validarEnteroPositivo(v) ? null : "Total sacos debe ser > 0";
+      },
     },
     {
       label: "Quintales Oro",

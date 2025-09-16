@@ -34,7 +34,7 @@ export async function DELETE(req, context) {
       return new Response(
         JSON.stringify({
           error:
-            "No se puede eliminar el producto porque está asociado a otras transacciones (liqTipoCafe).",
+            "No se puede eliminar el producto porque está asociado a otras transacciones.",
         }),
         { status: 400 }
       );
@@ -47,9 +47,8 @@ export async function DELETE(req, context) {
 }
 
 // Actualizar producto
-export async function PUT(req, context) {
-  const { params } = context; // ✅ correcto
-  const id = parseInt(params.id);
+export async function PUT(req, { params }) {
+  const id = parseInt(params.id );
 
   if (isNaN(id) || id <= 0) {
     return new Response(JSON.stringify({ error: "ID inválido" }), {
@@ -59,6 +58,7 @@ export async function PUT(req, context) {
 
   try {
     const body = await req.json();
+    const { productName, tara, descuento, factorOro } = body;
 
     const productoExistente = await prisma.producto.findUnique({
       where: { productID: id },
@@ -69,12 +69,32 @@ export async function PUT(req, context) {
         status: 404,
       });
     }
-
+    // 🔹 Validar nombre único si se cambia
+    if (productName && productName.trim() !== productoExistente.productName) {
+      const duplicado = await prisma.producto.findUnique({
+        where: { productName: productName.trim() },
+      });
+      if (duplicado) {
+        return new Response(
+          JSON.stringify({ error: "El nombre del producto ya existe" }),
+          { status: 400 }
+        );
+      }
+    }
     // Actualizar producto sin validar duplicados
     const productoActualizado = await prisma.producto.update({
       where: { productID: id },
       data: {
-        productName: body.productName || productoExistente.productName,
+        productName: productName?.trim() || productoExistente.productName,
+        tara: typeof tara === "number" ? tara : productoExistente.tara,
+        descuento:
+          typeof descuento === "number"
+            ? descuento
+            : productoExistente.descuento,
+        factorOro:
+          typeof factorOro === "number"
+            ? factorOro
+            : productoExistente.factorOro,
       },
     });
 

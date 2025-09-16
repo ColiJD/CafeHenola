@@ -9,7 +9,7 @@ datasource db {
 
 model cliente {
   clienteID          Int                 @id @default(autoincrement())
-  clienteCedula      String?             @unique(map: "clienteCedula") @db.VarChar(13)
+  clienteCedula      String?             @unique(map: "clienteCedula") @db.VarChar(15)
   clienteNombre      String?             @db.VarChar(20)
   clienteApellido    String?             @db.VarChar(20)
   clienteDirecion    String?             @db.VarChar(200)
@@ -71,7 +71,7 @@ model deposito {
 
 model producto {
   productID         Int                 @id @default(autoincrement())
-  productName       String              @db.VarChar(50)
+  productName       String              @unique(map: "UQ_Producto_Nombre") @db.VarChar(50)
   tara              Decimal?            @default(0.00) @db.Decimal(5, 2)
   descuento         Decimal?            @default(0.00) @db.Decimal(5, 2)
   factorOro         Decimal?            @default(1.00) @db.Decimal(10, 2)

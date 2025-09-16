@@ -1,6 +1,7 @@
-import { Form, Input, Button, Row, Col } from "antd";
+import { Form, Input, Button, Row, Col, Tooltip } from "antd";
 import React from "react";
 import Select from "react-select";
+import { InfoCircleOutlined } from "@ant-design/icons";
 
 // Funciones de formato
 const formatNumber = (num, type) => {
@@ -61,7 +62,16 @@ export default function Formulario({
         {fields.map((f, idx) => (
           <Col key={idx} xs={24} sm={12}>
             <Form.Item
-              label={f.label}
+              label={
+                <span>
+                  {f.label}{" "}
+                  {f.tooltip && (
+                    <Tooltip title={f.tooltip}>
+                      <InfoCircleOutlined style={{ color: "#1890ff" }} />
+                    </Tooltip>
+                  )}
+                </span>
+              }
               required={f.required}
               validateStatus={f.error ? "error" : ""}
               help={f.error}

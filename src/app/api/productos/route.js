@@ -6,7 +6,10 @@ export async function GET() {
     const productos = await prisma.producto.findMany();
     return new Response(JSON.stringify(productos), { status: 200 });
   } catch (error) {
-    return new Response(JSON.stringify({ error: "Error al obtener productos" }), { status: 500 });
+    return new Response(
+      JSON.stringify({ error: "Error al obtener productos" }),
+      { status: 500 }
+    );
   }
 }
 
@@ -14,18 +17,40 @@ export async function GET() {
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { productName } = body;
+    const { productName, tara = 0, descuento = 0, factorOro = 1 } = body;
 
-    if (!productName) {
-      return new Response(JSON.stringify({ error: "El nombre del producto es obligatorio" }), { status: 400 });
+    if (!productName?.trim()) {
+      return new Response(
+        JSON.stringify({ error: "El nombre del producto es obligatorio" }),
+        { status: 400 }
+      );
+    }
+    // 🔹 Validación de nombre único
+    const existente = await prisma.producto.findUnique({
+      where: { productName: productName.trim() },
+    });
+
+    if (existente) {
+      return new Response(
+        JSON.stringify({ error: "El nombre del producto ya existe" }),
+        { status: 400 }
+      );
     }
 
     const nuevoProducto = await prisma.producto.create({
-      data: { productName },
+      data: {
+        productName: productName.trim(),
+        tara: Number(tara),
+        descuento: Number(descuento),
+        factorOro: Number(factorOro),
+      },
     });
 
     return new Response(JSON.stringify(nuevoProducto), { status: 201 });
   } catch (error) {
-    return new Response(JSON.stringify({ error: "Error al crear producto" }), { status: 500 });
+    console.error("Error creando producto:", error);
+    return new Response(JSON.stringify({ error: "Error al crear producto" }), {
+      status: 500,
+    });
   }
 }

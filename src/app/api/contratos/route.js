@@ -11,6 +11,7 @@ export async function POST(request) {
       contratoTotalLps,
       contratoEn,
       contratoDescripcion,
+      contratoRetencion,
     } = body;
 
     // Validar campos obligatorios
@@ -37,6 +38,7 @@ export async function POST(request) {
         contratoPrecio: parseFloat(contratoPrecio),
         contratoCantidadQQ: parseFloat(contratoCantidadQQ),
         contratoTotalLps: parseFloat(contratoTotalLps),
+        contratoRetencionQQ: parseFloat(contratoRetencion) || 0,
         contratoEn,
         contratoDescripcion: contratoDescripcion || "",
         estado: "Pendiente",

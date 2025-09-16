@@ -10,6 +10,7 @@ export async function POST(request) {
       depositoTotalSacos,
       depositoEn,
       depositoDescripcion,
+      depositoRetencion,
     } = body;
 
     // 🔹 Validaciones básicas
@@ -62,6 +63,8 @@ export async function POST(request) {
         depositoEn,
         depositoDescripcion: depositoDescripcion || "",
         estado: "Pendiente",
+        depositoRetencionQQ: depositoRetencion ? parseFloat(depositoRetencion) : 0,
+
       },
     });
 

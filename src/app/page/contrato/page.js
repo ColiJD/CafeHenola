@@ -25,6 +25,7 @@ export default function ContratoForm() {
     producto: null,
     contratoPrecio: "",
     contratoCantidadQQ: "",
+    contratoRetencion: "",
     contratoTotalLps: 0,
     contratoEn: "",
     contratoDescripcion: "",
@@ -59,12 +60,14 @@ export default function ContratoForm() {
   useEffect(() => {
     const precio = parseFloat(formState.contratoPrecio);
     const cantidad = parseFloat(formState.contratoCantidadQQ);
-
+    // 🔹 Calcular retención automática, ejemplo 5%
+    const retencion = cantidad - (cantidad * 0.04).toFixed(2);
     setFormState((prev) => ({
       ...prev,
       // Si los valores no son números, el total será 0
       contratoTotalLps:
         !isNaN(precio) && !isNaN(cantidad) ? (precio * cantidad).toFixed(2) : 0,
+      contratoRetencion: retencion,
     }));
   }, [formState.contratoPrecio, formState.contratoCantidadQQ]); // Se ejecuta cuando cambian precio o cantidad
 
@@ -122,6 +125,14 @@ export default function ContratoForm() {
       readOnly: true,
     },
     {
+      key: "contratoRetencion",
+      label: "Retención (QOro)",
+      type: "Float",
+      required: true,
+      readOnly: true,
+      error: errors["Retención"],
+    },
+    {
       key: "contratoDescripcion",
       label: "Descripción",
       type: "textarea",
@@ -154,6 +165,7 @@ export default function ContratoForm() {
       contratoTipoCafe: formState.producto?.value,
       contratoPrecio: parseFloat(formState.contratoPrecio),
       contratoCantidadQQ: parseFloat(formState.contratoCantidadQQ),
+      contratoRetencion: parseFloat(formState.contratoRetencion) || 0,
       contratoTotalLps: parseFloat(formState.contratoTotalLps),
       contratoEn: formState.contratoEn || "Contrato Directo",
       contratoDescripcion: formState.contratoDescripcion || "N/A",
@@ -182,6 +194,7 @@ export default function ContratoForm() {
           contratoTotalLps: 0,
           contratoEn: "",
           contratoDescripcion: "",
+          contratoRetencion: 0,
         });
       } else {
         const err = await res.json();

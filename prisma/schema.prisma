@@ -58,6 +58,7 @@ model deposito {
   depositoEn          String?              @db.VarChar(20)
   depositoDescripcion String?              @db.VarChar(200)
   estado              String?              @default("Pendiente") @db.VarChar(20)
+  depositoRetencionQQ Decimal?             @db.Decimal(15, 2)
   cliente             cliente?             @relation(fields: [clienteID], references: [clienteID], onDelete: Restrict, onUpdate: Restrict, map: "deposito_ibfk_1")
   producto            producto?            @relation(fields: [depositoTipoCafe], references: [productID], onDelete: Restrict, onUpdate: Restrict, map: "deposito_ibfk_2")
   contrato            contrato?            @relation(fields: [contratoID], references: [contratoID], onDelete: Restrict, onUpdate: Restrict, map: "fk_deposito_contrato")
@@ -145,6 +146,7 @@ model contrato {
   contratoEn          String?           @db.VarChar(20)
   contratoDescripcion String?           @db.VarChar(200)
   estado              String?           @default("Pendiente") @db.VarChar(20)
+  contratoRetencionQQ Decimal?          @db.Decimal(15, 2)
   cliente             cliente?          @relation(fields: [contratoclienteID], references: [clienteID], onDelete: Restrict, onUpdate: Restrict, map: "contrato_ibfk_1")
   producto            producto?         @relation(fields: [contratoTipoCafe], references: [productID], onDelete: Restrict, onUpdate: Restrict, map: "contrato_ibfk_2")
   deposito            deposito[]

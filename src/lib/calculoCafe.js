@@ -1,7 +1,7 @@
-export function truncarDosDecimalesSinRedondear(numero) {
-  // Convertimos a centésimos como entero
-  const centesimos = Math.ceil(numero * 100); // asegura que nunca quede por debajo
-  return (centesimos / 100).toFixed(2);
+
+function truncarDosDecimalesSinRedondear(numero) {
+  const truncado = Math.floor(numero * 100) / 100;
+  return truncado.toFixed(2); 
 }
 
 export function calcularCafeDesdeProducto(

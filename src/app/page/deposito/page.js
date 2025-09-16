@@ -21,6 +21,7 @@ export default function FormDeposito() {
   const [depositoCantidadQQ, setDepositoCantidadQQ] = useState("");
   const [depositoTotalSacos, setDepositoTotalSacos] = useState("");
   const [depositoEn, setDepositoEn] = useState("");
+  const [depositoRetencion, setDepositoRetencion] = useState(0);
   const [depositoDescripcion, setDepositoDescripcion] = useState("");
   const [pesoBruto, setPesoBruto] = useState("");
 
@@ -36,7 +37,9 @@ export default function FormDeposito() {
     async function cargarDatos() {
       try {
         const clientesData = await obtenerClientesSelect(messageApiRef.current);
-        const productosData = await obtenerProductosSelect(messageApiRef.current);
+        const productosData = await obtenerProductosSelect(
+          messageApiRef.current
+        );
         setClientes(clientesData);
         setProductos(productosData);
       } catch (err) {
@@ -53,9 +56,10 @@ export default function FormDeposito() {
     const resultado = calcularCafeDesdeProducto(
       pesoBruto,
       depositoTotalSacos,
-      producto // objeto con value, label y data
+      producto
     );
     setDepositoCantidadQQ(resultado.oro);
+    setDepositoRetencion(resultado.retencion);
   }, [pesoBruto, depositoTotalSacos, producto]);
 
   // Validación
@@ -96,6 +100,7 @@ export default function FormDeposito() {
           : 0,
       depositoEn: depositoEn || "Depósito",
       depositoDescripcion,
+      depositoRetencion: parseFloat(depositoRetencion) || 0,
     };
     try {
       const res = await fetch("/api/deposito", {
@@ -110,6 +115,7 @@ export default function FormDeposito() {
           setCliente,
           setProducto,
           setPesoBruto,
+          setDepositoRetencion,
           setDepositoCantidadQQ,
           setDepositoTotalSacos,
           setDepositoEn,
@@ -182,6 +188,15 @@ export default function FormDeposito() {
       required: true,
       readOnly: true,
       error: errors["Quintales Oro"],
+    },
+    {
+      label: "Retención",
+      value: depositoRetencion,
+      setter: setDepositoRetencion,
+      type: "Float",
+      required: true,
+      readOnly: true,
+      error: errors["Retención"],
     },
     {
       label: "Descripción",

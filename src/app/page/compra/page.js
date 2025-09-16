@@ -168,7 +168,10 @@ export default function CompraForm() {
     },
 
     {
-      label: "Peso Bruto (lbs)",
+      label:
+        producto?.label === "Cafe Lata"
+          ? "Cantidad de Latas"
+          : "Peso Bruto (lbs)",
       value: compraCantidadQQ,
       setter: setCompraCantidadQQ,
       type: "Float",
@@ -185,7 +188,7 @@ export default function CompraForm() {
       error: errors["Total Sacos"],
       readOnly: producto?.label === "Cafe Lata",
       validator: (v) => {
-        if (producto?.label === "Cafe Lata") return null; 
+        if (producto?.label === "Cafe Lata") return null;
         if (v === "" || v === null || v === undefined)
           return "Ingrese total de sacos";
         return validarEnteroNoNegativo(v) ? null : "Total sacos debe ser >= 0";

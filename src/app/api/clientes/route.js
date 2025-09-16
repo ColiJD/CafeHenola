@@ -47,7 +47,7 @@ export async function POST(req) {
     if (error.code === "P2002") {
       return new Response(
         JSON.stringify({
-          error: "Ya existe un registro con algún dato único duplicado",
+          error: "Ya existe un registro con esa cédula o RTN",
         }),
         { status: 400 }
       );

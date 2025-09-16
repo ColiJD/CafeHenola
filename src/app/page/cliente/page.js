@@ -10,6 +10,8 @@ import {
   Modal,
   Popconfirm,
 } from "antd";
+import PhoneInput from "react-phone-input-2";
+import "react-phone-input-2/lib/style.css";
 import Select from "react-select";
 import CreatableSelect from "react-select/creatable";
 import { departamentos, municipiosPorDepartamento } from "./data";
@@ -90,18 +92,18 @@ export default function ClienteForm() {
     if (!values.clienteNombre) newErrors.clienteNombre = "Ingrese el nombre";
     if (!values.clienteApellido)
       newErrors.clienteApellido = "Ingrese el apellido";
-    // if (!validarCedula(values.clienteCedula))
-    //   newErrors.clienteCedula = "Cédula inválida, formato: 0000-0000-00000";
+    if (values.clienteCedula && !validarCedula(values.clienteCedula))
+      newErrors.clienteCedula = "Cédula inválida, formato: 0000-0000-00000";
     if (!values.clienteDirecion)
       newErrors.clienteDirecion = "Ingrese la dirección";
     if (!values.clienteDepartament)
       newErrors.clienteDepartament = "Seleccione departamento";
     if (!values.clienteMunicipio)
       newErrors.clienteMunicipio = "Seleccione municipio";
-    if (!validarTelefono(values.clienteTelefono))
+    if (!values.clienteTelefono)
       newErrors.clienteTelefono = "Teléfono inválido, solo números";
-    // if (!validarRTN(values.clienteRTN))
-    //   newErrors.clienteRTN = "RTN inválido, formato: 0000-0000-0000000";
+    if (values.clienteRTN && !validarRTN(values.clienteRTN))
+      newErrors.clienteRTN = "RTN inválido, formato: 0000-0000-0000000";
 
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) {
@@ -123,7 +125,7 @@ export default function ClienteForm() {
     setSubmitting(true);
     const values = form.getFieldsValue();
     const data = {
-      clienteCedula: values.clienteCedula || "",
+      clienteCedula: values.clienteCedula || null,
       clienteNombre: capitalizarNombre(values.clienteNombre) || "",
       clienteApellido: capitalizarNombre(values.clienteApellido) || "",
       clienteDirecion: values.clienteDirecion || "",
@@ -206,6 +208,7 @@ export default function ClienteForm() {
   }) => (
     <Form.Item
       name={name}
+      valuePropName="value"
       validateStatus={errors[name] ? "error" : ""}
       help={errors[name]}
     >
@@ -382,7 +385,20 @@ export default function ClienteForm() {
               validateStatus={errors.clienteTelefono ? "error" : ""}
               help={errors.clienteTelefono}
             >
-              <Input maxLength={13} placeholder="Solo números" />
+              <PhoneInput
+                country={"hn"} // País por defecto: Honduras
+                value={form.getFieldValue("clienteTelefono") || ""}
+                onChange={(phone) => {
+                  // Asegurarse de guardar con +
+                  const formatted = phone.startsWith("+") ? phone : "+" + phone;
+                  form.setFieldsValue({ clienteTelefono: formatted });
+                }}
+                inputProps={{
+                  name: "telefono",
+                  autoFocus: true,
+                  maxLength: 15,
+                }}
+              />
             </Form.Item>
           </Col>
         </Row>

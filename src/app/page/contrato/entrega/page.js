@@ -1,12 +1,12 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
-import { message, Tooltip } from "antd";
+import { message } from "antd";
 import Formulario from "@/components/Formulario";
 import PreviewModal from "@/components/Modal";
 import { limpiarFormulario } from "@/config/validacionesForm";
 import { validarDatos } from "@/lib/validacionesForm";
 import {
-  obtenerClientesSelect,
+  obtenerClientesPendientesContratos,
   obtenerProductosSelect,
   obtenerSaldoContrato,
   obtenerContratosPendientes,
@@ -16,6 +16,7 @@ import {
   calcularCafeDesdeProducto,
   calcularPesoBrutoDesdeOro,
 } from "@/lib/calculoCafe";
+import { truncarDosDecimalesSinRedondear } from "@/lib/calculoCafe";
 
 export default function LiquidacionContratoForm() {
   const [clientes, setClientes] = useState([]);
@@ -37,6 +38,7 @@ export default function LiquidacionContratoForm() {
     retencion: "0.00",
     producto: null,
     descripcion: "Entrega de contrato",
+    pesoBrutoContrato: "0.00",
   });
 
   const [errors, setErrors] = useState({});
@@ -56,7 +58,9 @@ export default function LiquidacionContratoForm() {
   useEffect(() => {
     async function cargarDatos() {
       try {
-        const clientesData = await obtenerClientesSelect(messageApi);
+        const clientesData = await obtenerClientesPendientesContratos(
+          messageApi
+        );
         const productosData = await obtenerProductosSelect(messageApi);
         setClientes(clientesData);
         setProductos(productosData);
@@ -138,11 +142,13 @@ export default function LiquidacionContratoForm() {
       const productoSeleccionado = productos.find(
         (p) => p.value === saldoData.tipoCafeID
       );
+      // 🔹 Determinar si el producto requiere sacos
+      const usaSacos = productoSeleccionado?.data?.tara > 0;
 
       // calcular peso bruto necesario con saldo disponible (oro)
       const { pesoBruto } = calcularPesoBrutoDesdeOro(
         saldoData.saldoDisponibleQQ,
-        saldoData.totalSacos || 0, // si lo trae del contrato, si no 0
+        usaSacos ? saldoData.totalSacos || 0 : 0,
         productoSeleccionado
       );
 
@@ -231,7 +237,11 @@ export default function LiquidacionContratoForm() {
 
       if (res.ok) {
         messageApi.success(
-          `Liquidación registrada ✅. Saldo disponible: ${result.saldoDespuesQQ} QQ / ${result.saldoDespuesLps} Lps`
+          `Liquidación registrada ✅. Saldo disponible: ${truncarDosDecimalesSinRedondear(
+            result.saldoDespuesQQ
+          )} QQ / ${truncarDosDecimalesSinRedondear(
+            result.saldoDespuesLps
+          )} Lps`
         );
         setPreviewVisible(false);
 
@@ -260,31 +270,40 @@ export default function LiquidacionContratoForm() {
     if (!formState.producto) return;
 
     const sacos = parseFloat(formState.totalSacos || 0);
-    const esLata = formState.tipoCafeNombre === "Cafe Lata";
+    const usaSacos = formState.producto?.data?.tara > 0;
 
-    // solo si el usuario ya ingresó sacos
-    if (esLata || sacos > 0) {
+    if (usaSacos) {
+      if (sacos > 0) {
+        const { pesoBruto } = calcularPesoBrutoDesdeOro(
+          formState.saldoDisponibleQQ, // quintales oro del contrato
+          sacos, // cantidad de sacos que ingresó el usuario
+          formState.producto
+        );
+
+        setFormState((prev) => ({
+          ...prev,
+          pesoBrutoContrato: pesoBruto,
+        }));
+      } else {
+        setFormState((prev) => ({
+          ...prev,
+          pesoBrutoContrato: "0.00",
+        }));
+      }
+    } else {
+      // 🔹 Si no requiere sacos, pasar 0 siempre
       const { pesoBruto } = calcularPesoBrutoDesdeOro(
-        formState.saldoDisponibleQQ, // quintales oro del contrato
-        esLata ? sacos : 0, // cantidad de sacos que ingresó el usuario
+        formState.saldoDisponibleQQ,
+        0,
         formState.producto
       );
-
-      setFormState((prev) => ({
-        ...prev,
-        pesoBrutoContrato: pesoBruto,
-      }));
-    } else {
-      setFormState((prev) => ({
-        ...prev,
-        pesoBrutoContrato: "0.00",
-      }));
+      setFormState((prev) => ({ ...prev, pesoBrutoContrato: pesoBruto }));
     }
   }, [
     formState.saldoDisponibleQQ,
     formState.totalSacos,
     formState.producto,
-    ,
+    formState.tipoCafeNombre,
   ]);
 
   // ------------------------------
@@ -323,17 +342,16 @@ export default function LiquidacionContratoForm() {
     },
     {
       key: "totalSacos",
-      label: (
-        <Tooltip title="Al ingresar los sacos se calcula automáticamente el peso bruto necesario">
-          Total de Sacos
-        </Tooltip>
-      ),
+      label: "Total de Sacos",
+      tooltip:
+        "Al ingresar los sacos se calcula automáticamente el peso bruto necesario",
       type: "integer",
       value: formState.totalSacos,
       error: errors["Total de Sacos"],
-      readOnly: formState.tipoCafeNombre === "Cafe Lata",
+      readOnly: !(formState.producto?.data?.tara > 0), // 🔹 bloquear si no requiere sacos
+      required: formState.producto?.data?.tara > 0, // 🔹 solo requerido si aplica
       validator: (v) => {
-        if (formState.tipoCafeNombre === "Cafe Lata") return null;
+        if (!(formState.producto?.data?.tara > 0)) return null; // 🔹 sin validación si no se usa
         if (v === "" || v === null || v === undefined)
           return "Ingrese total de sacos";
         return validarEnteroPositivo(v) ? null : "Total de sacos debe ser >= 0";
@@ -353,7 +371,10 @@ export default function LiquidacionContratoForm() {
     },
     {
       key: "pesoBrutoContrato",
-      label: "Peso Bruto necesario (lbs)",
+      label:
+        formState.tipoCafeNombre === "Cafe Lata"
+          ? "Cantidad de Latas necesaria"
+          : "Peso Bruto (lbs) necesaria",
       type: "Float",
       readOnly: true,
       value: formState.pesoBrutoContrato,

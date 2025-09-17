@@ -59,10 +59,9 @@ export async function obtenerContratosPendientes(clienteID) {
   try {
     const res = await fetch(`/api/contratos/pendientes/${clienteID}`);
     const data = await res.json();
-
     return data.map((c) => ({
       value: c.contratoID,
-      label: `Contrato #${c.contratoID} - ${c.contratoCantidadQQ} QQ`,
+      label: `Contrato #${c.contratoID} - ${c.contratoCantidadQQ} (QOro) - ${c.tipoCafeNombre}`,
       tipoCafeID: c.tipoCafeID,
       tipoCafeNombre: c.tipoCafeNombre,
     }));
@@ -97,5 +96,49 @@ export async function obtenerSaldoContrato(contratoID) {
   } catch (err) {
     console.error("Error cargando saldo disponible:", err);
     return null;
+  }
+}
+
+export async function obtenerClientesPendientesContratos(messageApi) {
+  try {
+    const res = await fetch("/api/contratos/disponibles");
+    if (!res.ok) throw new Error("Error en la respuesta del servidor");
+
+    const clientesData = await res.json();
+
+    return clientesData.map((c) => ({
+      value: c.clienteID,
+      label: c.clienteNombreCompleto, // ya viene concatenado desde la vista
+      data: c, // solo si necesitas más info del cliente
+    }));
+  } catch (err) {
+    console.error("Error al cargar clientes:", err);
+    messageApi.error("⚠️ No se pudieron cargar los clientes.");
+    return [];
+  }
+}
+
+// lib/obtenerSelectData.js
+export async function obtenerSelectData({
+  url,
+  messageApi,
+  valueField,
+  labelField,
+}) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Error en la respuesta del servidor");
+
+    const data = await res.json();
+
+    return data.map((item) => ({
+      value: item[valueField],
+      label: item[labelField],
+      data: item,
+    }));
+  } catch (err) {
+    console.error(`Error al cargar datos desde ${url}:`, err);
+    if (messageApi) messageApi.error("⚠️ No se pudieron cargar los datos.");
+    return [];
   }
 }

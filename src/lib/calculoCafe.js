@@ -1,5 +1,6 @@
 export function truncarDosDecimalesSinRedondear(numero) {
-  const truncado = Math.floor(numero * 100) / 100;
+  const epsilon = 1e-10;
+  const truncado = Math.floor((numero + epsilon) * 100) / 100;
   return truncado.toFixed(2);
 }
 
@@ -63,5 +64,5 @@ export function calcularPesoBrutoDesdeOro(
   // Paso 3: Calcular peso bruto (agregando tara por saco)
   const pesoBrutoNecesario = pesoNetoNecesario + sacosTotales * tara;
 
-  return { pesoBruto: Math.ceil(pesoBrutoNecesario * 100) / 100 };
+  return { pesoBruto: truncarDosDecimalesSinRedondear(pesoBrutoNecesario) };
 }

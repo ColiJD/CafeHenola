@@ -3,7 +3,7 @@ import { useEffect, useState, useRef } from "react";
 import { message } from "antd";
 import Formulario from "@/components/Formulario";
 import PreviewModal from "@/components/Modal";
-import { obtenerClientesSelect, obtenerProductosSelect } from "@/lib/consultas";
+import { obtenerProductosSelect, obtenerSelectData } from "@/lib/consultas";
 import {
   limpiarFormulario,
   validarFloatPositivo,
@@ -44,12 +44,13 @@ export default function DepositoForm() {
   // ------------------------------
   useEffect(() => {
     async function cargarClientes() {
-      try {
-        const clientesData = await obtenerClientesSelect(messageApi);
-        setClientes(clientesData);
-      } catch {
-        messageApi.error("Error cargando clientes");
-      }
+      const data = await obtenerSelectData({
+        url: "/api/liqDeposito/clienteConDeposito",
+        messageApi: messageRef.current,
+        valueField: "clienteID",
+        labelField: "clienteNombreCompleto",
+      });
+      setClientes(data);
     }
     cargarClientes();
   }, [messageApi]);

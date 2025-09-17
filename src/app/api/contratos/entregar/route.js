@@ -1,4 +1,5 @@
 import prisma from "@/lib/prisma";
+import { truncarDosDecimalesSinRedondear } from "@/lib/calculoCafe";
 
 export async function POST(request) {
   try {
@@ -9,65 +10,103 @@ export async function POST(request) {
       cantidadQQ,
       precioQQ,
       totalSacos,
-      tipoDocumento,
       descripcion,
-      liqEn,
     } = await request.json();
 
-    // 1️⃣ Obtener saldo disponible desde la vista
-    const saldoResult = await prisma.$queryRaw`
-      SELECT saldoDisponibleQQ, saldoDisponibleLps, precioQQ
-      FROM vw_SaldoPorContrato
-      WHERE contratoID = ${contratoID} 
-        AND clienteID = ${clienteID} 
-        AND tipoCafeID = ${tipoCafe}
-    `;
+    console.log("Datos recibidos:", {
+      contratoID,
+      clienteID,
+      tipoCafe,
+      cantidadQQ,
+      precioQQ,
+      totalSacos,
+      descripcion,
+    });
 
-    if (!saldoResult || saldoResult.length === 0) {
+    // 1️⃣ Obtener el contrato
+    const contrato = await prisma.contrato.findUnique({
+      where: { contratoID: Number(contratoID) },
+    });
+
+    console.log("Contrato encontrado:", contrato);
+
+    if (!contrato) {
       return new Response(
-        JSON.stringify({ error: "No se encontró saldo disponible para este contrato" }),
+        JSON.stringify({ error: "No se encontró el contrato" }),
         { status: 400 }
       );
     }
 
-    const saldoDisponibleQQ = parseFloat(saldoResult[0].saldoDisponibleQQ || 0);
-    const saldoDisponibleLps = parseFloat(saldoResult[0].saldoDisponibleLps || 0);
-    const precioContrato = parseFloat(saldoResult[0].precioQQ || precioQQ);
+    // 2️⃣ Calcular saldo disponible desde detallecontrato
+    const detalle = await prisma.detallecontrato.aggregate({
+      _sum: { cantidadQQ: true },
+      where: { contratoID: Number(contratoID) },
+    });
 
-    // 2️⃣ Validación de cantidad a liquidar
-    if (parseFloat(cantidadQQ) > saldoDisponibleQQ) {
+    console.log("Detalle acumulado:", detalle);
+
+    const totalEntregado = parseFloat(detalle._sum?.cantidadQQ ?? "0");
+    const contratoCantidadQQ = parseFloat(
+      contrato.contratoCantidadQQ.toString()
+    );
+    const saldoDisponible = contratoCantidadQQ - totalEntregado;
+
+    console.log({
+      totalEntregado,
+      contratoCantidadQQ,
+      saldoDisponible,
+    });
+
+    if (Number(cantidadQQ) > saldoDisponible) {
       return new Response(
         JSON.stringify({
-          error: `La cantidad a liquidar (${cantidadQQ}) supera el saldo disponible (${saldoDisponibleQQ})`,
+          error: `La cantidad a entregar (${cantidadQQ}) supera el saldo disponible (${saldoDisponible})`,
         }),
         { status: 400 }
       );
     }
 
-    // 3️⃣ Ejecutar todo dentro de una transacción
+    // 3️⃣ Ejecutar transacción
     const resultado = await prisma.$transaction(async (tx) => {
-      // a) Llamar al stored procedure para entregar el contrato
-      try {
-        await tx.$executeRawUnsafe(
-          `CALL EntregarContrato(?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          Number(contratoID),
-          Number(clienteID),
-          Number(tipoCafe),
-          Number(cantidadQQ),
-          Number(precioContrato),
-          Number(totalSacos),
-          tipoDocumento,
-          descripcion,
-          liqEn
-        );
-      } catch (err) {
-        if (err.code === "1644" && err.message.includes("No hay depósitos pendientes")) {
-          throw new Error("No hay depósitos pendientes para este cliente y tipo de café");
-        }
-        throw err;
+      // a) Registrar entrega en detallecontrato
+      const detalleEntrega = await tx.detallecontrato.create({
+        data: {
+          contratoID: Number(contratoID),
+          cantidadQQ: Number(cantidadQQ),
+          precioQQ: Number(precioQQ),
+          tipoMovimiento: "Entrada",
+          fecha: new Date(),
+          observaciones: descripcion || null,
+        },
+      });
+
+      const nuevoTotalEntregado = totalEntregado + Number(cantidadQQ);
+      let estadoContrato = "Pendiente";
+
+      console.log("Nuevo total entregado:", nuevoTotalEntregado);
+
+      // b) Actualizar estado del contrato si se completó
+      if (nuevoTotalEntregado >= contratoCantidadQQ) {
+        await tx.contrato.update({
+          where: { contratoID: Number(contratoID) },
+          data: { estado: "Liquidado" },
+        });
+
+        estadoContrato = "Liquidado";
+
+        // c) Registrar cierre en cierrecontrato
+        await tx.cierrecontrato.create({
+          data: {
+            contratoID: Number(contratoID),
+            totalEntregadoQQ: nuevoTotalEntregado,
+            totalLps: nuevoTotalEntregado * Number(precioQQ),
+            tipoMovimiento: "Entrada",
+            observaciones: "Contrato completado",
+          },
+        });
       }
 
-      // b) Actualizar inventario del cliente
+      // d) Actualizar inventario del cliente
       const inventarioCliente = await tx.inventariocliente.upsert({
         where: {
           clienteID_productoID: {
@@ -87,7 +126,7 @@ export async function POST(request) {
         },
       });
 
-      // c) Registrar movimiento de inventario
+      // e) Registrar movimiento de inventario
       await tx.movimientoinventario.create({
         data: {
           inventarioClienteID: inventarioCliente.inventarioClienteID,
@@ -96,45 +135,41 @@ export async function POST(request) {
           referenciaID: contratoID,
           cantidadQQ: Number(cantidadQQ),
           cantidadSacos: Number(totalSacos),
-          nota: "Entrada de café por liquidación de contrato",
+          nota: "Entrada de café por entrega de contrato",
         },
       });
 
-      // d) Consultar nuevo saldo después de la liquidación
-      const nuevoSaldoResult = await tx.$queryRaw`
-        SELECT saldoDisponibleQQ, saldoDisponibleLps
-        FROM vw_SaldoPorContrato
-        WHERE contratoID = ${contratoID} 
-          AND clienteID = ${clienteID} 
-          AND tipoCafeID = ${tipoCafe}
-      `;
-
-      const nuevoSaldoQQ = parseFloat(nuevoSaldoResult[0]?.saldoDisponibleQQ || 0);
-      const nuevoSaldoLps = parseFloat(nuevoSaldoResult[0]?.saldoDisponibleLps || 0);
-
       return {
-        saldoAntesQQ: saldoDisponibleQQ,
-        saldoAntesLps: saldoDisponibleLps,
-        cantidadLiquidadaQQ: cantidadQQ,
-        totalLiquidacionLps: cantidadQQ * precioContrato,
-        saldoDespuesQQ: nuevoSaldoQQ,
-        saldoDespuesLps: nuevoSaldoLps,
+        saldoAntesQQ: truncarDosDecimalesSinRedondear(saldoDisponible),
+        cantidadEntregadaQQ: truncarDosDecimalesSinRedondear(
+          Number(cantidadQQ)
+        ),
+        saldoDespuesQQ: truncarDosDecimalesSinRedondear(
+          contratoCantidadQQ - nuevoTotalEntregado
+        ),
+        estadoContrato,
+        detalleEntregaID: detalleEntrega.detalleID,
+        saldoDespuesLps: truncarDosDecimalesSinRedondear(
+          (contratoCantidadQQ - nuevoTotalEntregado) * Number(precioQQ)
+        ), // 🔹 truncado
       };
     });
+
+    console.log("Resultado de la transacción:", resultado);
 
     // 4️⃣ Retornar resultado
     return new Response(
       JSON.stringify({
-        message: "Liquidación del contrato realizada correctamente",
+        message: "Entrega de contrato registrada correctamente",
         ...resultado,
       }),
       { status: 201 }
     );
   } catch (error) {
-    let msg = "Error interno";
-    if (error?.message) {
-      msg = error.message;
-    }
-    return new Response(JSON.stringify({ error: msg }), { status: 500 });
+    console.error("Error en POST /api/contratos/entregar:", error);
+    return new Response(
+      JSON.stringify({ error: error?.message || "Error interno" }),
+      { status: 500 }
+    );
   }
 }

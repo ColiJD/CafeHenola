@@ -9,7 +9,8 @@ export async function POST(request) {
       precioQQ,
       tipoDocumento,
       descripcion,
-      liqEn
+      liqEn,
+      movimiento
     } = await request.json();
 
     // 1️⃣ Obtener saldo pendiente del cliente para el tipo de café
@@ -39,11 +40,12 @@ export async function POST(request) {
 
     // 3️⃣ Llamar al stored procedure para liquidar
     await prisma.$executeRawUnsafe(
-      `CALL LiquidarDepositoAuto(?, ?, ?, ?, ?, ?, ?)`,
+      `CALL LiquidarDepositoAuto(?, ?, ?, ?, ?, ?, ?,?)`,
       Number(clienteID),
       Number(tipoCafe),
       Number(cantidadQQ),
       Number(precioQQ),
+      movimiento || "Entrada",
       tipoDocumento,
       descripcion,
       liqEn

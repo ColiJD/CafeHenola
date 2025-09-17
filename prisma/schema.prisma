@@ -147,6 +147,7 @@ model contrato {
   contratoDescripcion String?           @db.VarChar(200)
   estado              String?           @default("Pendiente") @db.VarChar(20)
   contratoRetencionQQ Decimal?          @db.Decimal(15, 2)
+  cierrecontrato      cierrecontrato[]
   cliente             cliente?          @relation(fields: [contratoclienteID], references: [clienteID], onDelete: Restrict, onUpdate: Restrict, map: "contrato_ibfk_1")
   producto            producto?         @relation(fields: [contratoTipoCafe], references: [productID], onDelete: Restrict, onUpdate: Restrict, map: "contrato_ibfk_2")
   deposito            deposito[]
@@ -157,18 +158,16 @@ model contrato {
 }
 
 model detallecontrato {
-  detalleID      Int         @id @default(autoincrement())
+  detalleID      Int       @id @default(autoincrement())
   contratoID     Int
-  liquidacionID  Int
-  cantidadQQ     Decimal     @db.Decimal(15, 2)
-  precioQQ       Decimal     @db.Decimal(15, 2)
-  tipoMovimiento String      @default("Entrega de contrato") @db.VarChar(50)
-  fecha          DateTime?   @default(now()) @db.DateTime(0)
-  contrato       contrato    @relation(fields: [contratoID], references: [contratoID], onUpdate: Restrict, map: "detallecontrato_ibfk_1")
-  liqdeposito    liqdeposito @relation(fields: [liquidacionID], references: [liqID], onUpdate: Restrict, map: "detallecontrato_ibfk_2")
+  cantidadQQ     Decimal   @db.Decimal(15, 2)
+  precioQQ       Decimal   @db.Decimal(15, 2)
+  tipoMovimiento String    @default("Entrega de contrato") @db.VarChar(50)
+  fecha          DateTime? @default(now()) @db.DateTime(0)
+  observaciones  String?   @db.VarChar(200)
+  contrato       contrato  @relation(fields: [contratoID], references: [contratoID], onUpdate: Restrict, map: "detallecontrato_ibfk_1")
 
   @@index([contratoID], map: "contratoID")
-  @@index([liquidacionID], map: "liquidacionID")
 }
 
 model liqdeposito {
@@ -183,13 +182,25 @@ model liqdeposito {
   liqTotalLps        Decimal?             @db.Decimal(15, 2)
   liqEn              String?              @db.VarChar(20)
   liqDescripcion     String?              @db.VarChar(200)
-  detallecontrato    detallecontrato[]
   detalleliqdeposito detalleliqdeposito[]
   cliente            cliente?             @relation(fields: [liqclienteID], references: [clienteID], onDelete: Restrict, onUpdate: Restrict, map: "liqdeposito_ibfk_1")
   producto           producto?            @relation(fields: [liqTipoCafe], references: [productID], onDelete: Restrict, onUpdate: Restrict, map: "liqdeposito_ibfk_2")
 
   @@index([liqTipoCafe], map: "liqTipoCafe")
   @@index([liqclienteID], map: "liqclienteID")
+}
+
+model cierrecontrato {
+  cierreID         Int       @id @default(autoincrement())
+  contratoID       Int
+  fechaCierre      DateTime? @default(now()) @db.DateTime(0)
+  totalEntregadoQQ Decimal   @db.Decimal(15, 2)
+  totalLps         Decimal   @db.Decimal(15, 2)
+  tipoMovimiento   String    @default("Cierre de contrato") @db.VarChar(50)
+  observaciones    String?   @db.VarChar(200)
+  contrato         contrato  @relation(fields: [contratoID], references: [contratoID], onUpdate: Restrict, map: "cierrecontrato_ibfk_1")
+
+  @@index([contratoID], map: "contratoID")
 }
 
 enum movimientoinventario_tipoMovimiento {

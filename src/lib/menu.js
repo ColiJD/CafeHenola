@@ -95,7 +95,7 @@ export const menuItems = [
         name: "Detalle de Compras",
         href: Ruta + "/compra/vista",
         image: Reportes,
-      }
+      },
     ],
   },
 
@@ -125,6 +125,11 @@ export const menuItem = [
     icon: <FileTextOutlined />,
     label: "Informe",
     children: [
+      {
+        key: "InformeGeneral",
+        label: "General",
+        route: Ruta + "/informe/general",
+      },
       {
         key: "SaldoDisponible",
         label: "Saldo Por Deposito",

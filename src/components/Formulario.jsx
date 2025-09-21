@@ -4,7 +4,7 @@ import Select from "react-select";
 import { InfoCircleOutlined } from "@ant-design/icons";
 
 // Funciones de formato
-const formatNumber = (num, type) => {
+export const formatNumber = (num, type) => {
   if (num === "" || num === null || num === undefined) return "";
   const n = parseFloat(num.toString().replace(/,/g, ""));
   if (isNaN(n)) return "";

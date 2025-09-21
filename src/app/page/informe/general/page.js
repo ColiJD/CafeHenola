@@ -1,219 +1,282 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Table, Row, Col, message, Button, Grid } from "antd";
-import { truncarDosDecimalesSinRedondear } from "@/lib/calculoCafe";
-import TarjetasDeTotales from "@/components/DetallesCard";
-import Filtros from "@/components/Filtros";
-import { FiltrosTarjetas } from "@/lib/FiltrosTarjetas";
+import { Table, message, Card, Button } from "antd";
 import dayjs from "dayjs";
 import TarjetaMobile from "@/components/TarjetaMobile";
-import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
-import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
-import Link from "next/link";
+import { formatNumber } from "@/components/Formulario";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
+import Filtros from "@/components/Filtros";
+import TarjetasDeTotales from "@/components/DetallesCard";
+import { ReloadOutlined } from "@ant-design/icons";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
-dayjs.extend(isSameOrAfter);
-dayjs.extend(isSameOrBefore);
-import customParseFormat from "dayjs/plugin/customParseFormat";
-dayjs.extend(customParseFormat);
-
-export default function TablaCompras() {
-  const { mounted, isDesktop } = useClientAndDesktop();
-  const isMobile = mounted && !isDesktop;
-
-  const [data, setData] = useState([]);
-  const [filteredData, setFilteredData] = useState([]);
+export default function ResumenMovimientos() {
+  const hoy = dayjs().startOf("day"); // 🔹 Día actual
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [rangoFechas, setRangoFechas] = useState([hoy, hoy]);
 
-  const [rangoFecha, setRangoFecha] = useState([dayjs(), dayjs()]);
+  const { mounted, isDesktop } = useClientAndDesktop();
 
-  // 🔹 Cargar datos desde API
-  const cargarDatos = async () => {
-    setLoading(true);
+  // 🔹 Función para cargar datos desde la API
+  async function fetchData(desde, hasta) {
     try {
-      const res = await fetch("/api/compras");
-      if (!res.ok) throw new Error("Error al cargar los datos");
-      const data = await res.json();
+      setLoading(true);
+      let url = "/api/reportes";
 
-      // 🔹 Agrupar por cliente y tipo de café
-      const mapa = {};
-      dataFiltrada.forEach((item) => {
-        const key = `${item.clienteID}-${item.tipoCafeID}`;
-        if (!mapa[key]) {
-          mapa[key] = {
-            cantidadTotal: 0,
-            totalLps: 0,
-          };
-        }
+      if (desde && hasta) {
+        url += `?desde=${desde}&hasta=${hasta}`;
+      }
 
-        const cantidad = parseFloat(item.compraCantidadQQ || 0);
-        const precio = parseFloat(item.compraPrecioQQ || 0);
-        const totalLps = cantidad * precio;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Error en la API");
 
-        mapa[key].cantidadTotal += cantidad;
-        mapa[key].totalLps += totalLps;
-        mapa[key].detalles.push({ ...item, totalLps });
-      });
-
-      const groupedData = Object.values(mapa);
-      setData(groupedData);
-      setFilteredData(groupedData);
-    } catch (error) {
-      console.error(error);
-      message.error("No se pudieron cargar las compras");
+      const json = await res.json();
+      setData(json);
+    } catch (err) {
+      console.error(err);
+      message.error("⚠️ Error cargando datos.");
     } finally {
       setLoading(false);
     }
-  };
+  }
+ const exportPDF = (totales, secciones) => {
+  const doc = new jsPDF();
 
-  // 🔹 Aplicar filtros
-  const aplicarFiltros = () => {
-    const filtrados = FiltrosTarjetas(data, rangoFecha, "compraFecha");
+  doc.setFontSize(14);
+  doc.text("Resumen de Movimientos", 14, 16);
 
-    setFilteredData(filtrados);
-  };
+  const totalesData = [
+    ["Entradas (QQ)", totales.entradas.cantidad],
+    ["Entradas (Lps)", totales.entradas.total],
+    ["Salidas (QQ)", totales.salidas.cantidad],
+    ["Salidas (Lps)", totales.salidas.total],
+  ];
 
+  autoTable(doc, {
+    startY: 30,
+    head: [["Concepto", "Valor"]],
+    body: totalesData,
+  });
+
+  let startY = doc.lastAutoTable.finalY + 10;
+
+  secciones.forEach((sec) => {
+    doc.text(sec.titulo, 14, startY);
+
+    autoTable(doc, {
+      startY: startY + 4,
+      head: [["Movimiento", "Cantidad QQ", "Total Lps"]],
+      body: sec.datos.map((d) => [d.movimiento, d.cantidad, d.total]),
+    });
+
+    startY = doc.lastAutoTable.finalY + 10;
+  });
+
+  doc.save("resumen_movimientos.pdf");
+};
+  // 🔹 Cargar datos del día actual por defecto
   useEffect(() => {
-    aplicarFiltros();
-  }, [rangoFecha, data]);
+    const desde = hoy.format("YYYY-MM-DD");
+    const hasta = hoy.format("YYYY-MM-DD");
+    fetchData(desde, hasta);
+  }, []);
 
-  // 🔹 Totales
-  const totalQQ = filteredData.reduce(
-    (acc, item) => acc + (item.cantidadTotal || 0),
-    0
-  );
-  const totalLps = filteredData.reduce(
-    (acc, item) => acc + (item.totalLps || 0),
-    0
-  );
+  // 🔹 Manejar cambio de fechas
+  const onFechasChange = (val) => {
+    setRangoFechas(val);
+    if (!val || !val[0] || !val[1]) {
+      // si el usuario borra → traer mes actual
+      fetchData();
+      return;
+    }
+    const desde = val[0].format("YYYY-MM-DD");
+    const hasta = val[1].format("YYYY-MM-DD");
+    fetchData(desde, hasta);
+  };
 
-  // 🔹 Columnas de tabla principal
-  const columns = [
+  // 🔹 preparar datos
+  const formatearData = (entradas, salidas, keys) => [
     {
-      title: "Cliente",
-      dataIndex: "clienteNombreCompleto",
-      key: "clienteNombreCompleto",
-      render: (text, record) => (
-        <Link href={`/page/compra/vista/${record.clienteID}`}>{text}</Link>
-      ),
-    },
-    { title: "Tipo Café", dataIndex: "tipoCafeNombre", key: "tipoCafeNombre" },
-    {
-      title: "Total (QQ)",
-      dataIndex: "cantidadTotal",
-      key: "cantidadTotal",
-      render: truncarDosDecimalesSinRedondear,
+      key: "entrada",
+      movimiento: "📥 Entrada",
+      cantidad: formatNumber(entradas?._sum?.[keys.cantidad] || 0),
+      total: formatNumber(entradas?._sum?.[keys.total] || 0),
     },
     {
-      title: "Total (Lps)",
-      dataIndex: "totalLps",
-      key: "totalLps",
-      render: truncarDosDecimalesSinRedondear,
+      key: "salida",
+      movimiento: "📤 Salida",
+      cantidad: formatNumber(salidas?._sum?.[keys.cantidad] || 0),
+      total: formatNumber(salidas?._sum?.[keys.total] || 0),
     },
   ];
+
+  // 🔹 Datos específicos por sección
+  const comprasData = data
+    ? formatearData(data.compras.entradas, data.compras.salidas, {
+        cantidad: "compraCantidadQQ",
+        total: "compraTotal",
+      })
+    : [];
+
+  const contratosData = data
+    ? formatearData(data.contratos.entradas, data.contratos.salidas, {
+        cantidad: "totalEntregadoQQ",
+        total: "totalLps",
+      })
+    : [];
+
+  const depositosData = data
+    ? formatearData(data.depositos.entradas, data.depositos.salidas, {
+        cantidad: "cantidadQQ",
+        total: "totalLps",
+      })
+    : [];
+
+  // 📌 Totales globales sumando compras + contratos + depósitos
+  const totales = data
+    ? {
+        entradas: {
+          cantidad:
+            (Number(data.compras.entradas._sum.compraCantidadQQ) || 0) +
+            (Number(data.contratos.entradas._sum.totalEntregadoQQ) || 0) +
+            (Number(data.depositos.entradas._sum.cantidadQQ) || 0),
+          total:
+            (Number(data.compras.entradas._sum.compraTotal) || 0) +
+            (Number(data.contratos.entradas._sum.totalLps) || 0) +
+            (Number(data.depositos.entradas._sum.totalLps) || 0),
+        },
+        salidas: {
+          cantidad:
+            (Number(data.compras.salidas._sum.compraCantidadQQ) || 0) +
+            (Number(data.contratos.salidas._sum.totalEntregadoQQ) || 0) +
+            (Number(data.depositos.salidas._sum.cantidadQQ) || 0),
+          total:
+            (Number(data.compras.salidas._sum.compraTotal) || 0) +
+            (Number(data.contratos.salidas._sum.totalLps) || 0) +
+            (Number(data.depositos.salidas._sum.totalLps) || 0),
+        },
+      }
+    : {
+        entradas: { cantidad: 0, total: 0 },
+        salidas: { cantidad: 0, total: 0 },
+      };
+
+  // 🔹 columnas para tarjetas móviles
+  const columnasTarjetas = [
+    { label: "Movimiento", key: "movimiento" },
+    { label: "Cantidad QQ", key: "cantidad" },
+    { label: "Total Lps", key: "total" },
+  ];
+
+  // 🔹 Columnas genéricas
+  const columnasGenericas = [
+    { title: "Movimiento", dataIndex: "movimiento" },
+    { title: "Cantidad QQ", dataIndex: "cantidad" },
+    { title: "Total Lps", dataIndex: "total" },
+  ];
+
+  // 🔹 Secciones a mostrar
+  const secciones = [
+    { titulo: "📊 Resumen de Compras", datos: comprasData },
+    { titulo: "📑 Resumen de Contratos", datos: contratosData },
+    { titulo: "🏦 Resumen de Depósitos", datos: depositosData },
+  ];
+
+  if (!mounted) return null; // evitar parpadeo inicial
+
   return (
     <div>
-      {/* Tarjetas */}
-      <TarjetasDeTotales
-        title="Registro de Compras"
-        cards={[
-          {
-            title: "Total (QQ)",
-            value: truncarDosDecimalesSinRedondear(totalQQ),
-          },
-          {
-            title: "Total (Lps)",
-            value: truncarDosDecimalesSinRedondear(totalLps),
-          },
-        ]}
-      />
-
       {/* Filtros */}
-      <Filtros
-        fields={[{ type: "date", value: rangoFecha, setter: setRangoFecha }]}
-      />
-
-      <Row style={{ marginBottom: 16 }}>
-        <Col xs={24} sm={6} md={4}>
-          <Button onClick={cargarDatos} block>
-            Refrescar
-          </Button>
-        </Col>
-      </Row>
-
-      {/* Tabla responsive */}
-      {isMobile ? (
-        <TarjetaMobile
-          loading={loading}
-          data={filteredData}
-          columns={[
+      <Card>
+        <h2>Resumen de Movimientos</h2>
+        <TarjetasDeTotales
+          title="Totales Generales"
+          cards={[
             {
-              label: "Cliente",
-              key: "clienteNombreCompleto",
-              render: (text, record) => (
-                <Link href={`/page/compra/vista/${record.clienteID}`}>
-                  {text}
-                </Link>
-              ),
-            },
-            { label: "Tipo Café", key: "tipoCafeNombre" },
-            {
-              label: "Total (QQ)",
-              key: "cantidadTotal",
-              render: truncarDosDecimalesSinRedondear,
+              title: "📥 Entradas (QQ)",
+              value: totales.entradas.cantidad,
+              precision: 2,
             },
             {
-              label: "Total (Lps)",
-              key: "totalLps",
-              render: truncarDosDecimalesSinRedondear,
+              title: "📥 Entradas (Lps)",
+              value: totales.entradas.total,
+              precision: 2,
             },
-            { label: "Movimiento", key: "compraMovimiento" },
+            {
+              title: "📤 Salidas (QQ)",
+              value: totales.salidas.cantidad,
+              precision: 2,
+            },
+            {
+              title: "📤 Salidas (Lps)",
+              value: totales.salidas.total,
+              precision: 2,
+            },
           ]}
-          detailsKey="detalles"
-          detailsColumns={[
-            { label: "Compra ID", key: "compraId" },
-            {
-              label: "Fecha",
-              key: "compraFecha",
-              render: (val) => dayjs(val, "YYYY-MM-DD").format("DD/MM/YYYY"),
-            },
-            {
-              label: "Cantidad (QQ)",
-              key: "compraCantidadQQ",
-              render: truncarDosDecimalesSinRedondear,
-            },
-            {
-              label: "Precio (Lps/QQ)",
-              key: "compraPrecioQQ",
-              render: truncarDosDecimalesSinRedondear,
-            },
-            {
-              label: "Total (Lps)",
-              key: "totalLps",
-              render: truncarDosDecimalesSinRedondear,
-            },
-            { label: "Movimiento", key: "compraMovimiento" },
-            { label: "Descripción", key: "compraDescripcion" },
-          ]}
-          rowKey={(item, index) =>
-            `${item.clienteID}-${item.tipoCafeID ?? index}`
-          }
-          detailsRowKey={(item) => item.compraId}
         />
-      ) : (
-        <Table
-          columns={columns}
-          dataSource={filteredData}
-          rowKey={(row) =>
-            `${row.clienteID}-${row.tipoCafeID ?? row.detalles[0]?.compraId}`
-          }
-          loading={loading}
-          bordered
-          size="middle"
-          pagination={{ pageSize: 6 }}
-          scroll={{ x: "max-content" }}
-        />
-      )}
+        <div
+          style={{
+            display: "flex",
+            gap: 12,
+            flexWrap: "wrap",
+            marginBottom: 16,
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <Filtros
+              fields={[
+                {
+                  type: "date",
+                  value: rangoFechas,
+                  setter: onFechasChange,
+                  placeholder: "Rango de fechas",
+                },
+              ]}
+            />
+          </div>
+          <div style={{ width: 120 }}>
+            <Button
+              type="primary"
+              icon={<ReloadOutlined spin={loading} />}
+              onClick={() =>
+                fetchData(
+                  rangoFechas?.[0]?.format("YYYY-MM-DD"),
+                  rangoFechas?.[1]?.format("YYYY-MM-DD")
+                )
+              }
+              style={{ width: "100%" }}
+            >
+              Refrescar
+            </Button>
+          </div>
+          <div style={{ width: 120 }}>
+            <Button onClick={() => exportPDF(totales, secciones)}>
+              Imprimir PDF
+            </Button>
+          </div>
+        </div>
+      </Card>
+      {secciones.map((sec, idx) => (
+        <Card key={idx} title={sec.titulo}>
+          {isDesktop ? (
+            <Table
+              columns={columnasGenericas}
+              dataSource={sec.datos}
+              loading={loading}
+              pagination={false}
+              bordered
+            />
+          ) : (
+            <TarjetaMobile
+              data={sec.datos}
+              columns={columnasTarjetas}
+              loading={loading}
+            />
+          )}
+        </Card>
+      ))}
     </div>
   );
 }

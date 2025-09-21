@@ -9,13 +9,13 @@ export default function Filtros({ fields }) {
   const isMobile = !screens.md;
 
   return (
-    <Row gutter={[8, 8]} style={{ marginBottom: 16 }}>
+    <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
       {fields.map((f, idx) => {
         const fechaInicio = f.value?.[0] || null;
         const fechaFin = f.value?.[1] || null;
 
         return (
-          <Col key={idx} xs={24} sm={12} md={6}>
+          <Col key={idx} xs={24} sm={18} md={12}>
             {f.type === "input" ? (
               <Input
                 placeholder={f.placeholder}
@@ -28,7 +28,6 @@ export default function Filtros({ fields }) {
                 value={f.value}
                 onChange={f.setter}
                 allowClear={f.allowClear}
-                style={{ width: "100%" }}
               >
                 {f.options?.map((o) =>
                   typeof o === "string" ? (
@@ -44,29 +43,29 @@ export default function Filtros({ fields }) {
               </Select>
             ) : f.type === "date" ? (
               isMobile ? (
-                <Row gutter={8}>
-                  <Col xs={12}>
+                <Row>
+                  <Col>
                     <DatePicker
                       placeholder="Fecha inicio"
                       value={fechaInicio}
-                      onChange={(date) => f.setter([date, fechaFin])}
-                      style={{ width: "100%" }}
-                      size="small"
+                      format="DD/MM/YYYY"
+                      onChange={(date) => f.setter([date || null, fechaFin])}
                     />
                   </Col>
-                  <Col xs={12}>
+                  <Col>
                     <DatePicker
                       placeholder="Fecha fin"
+                      format="DD/MM/YYYY"
                       value={fechaFin}
-                      onChange={(date) => f.setter([fechaInicio, date])}
-                      style={{ width: "100%" }}
-                      size="small"
+                      onChange={(date) => f.setter([fechaInicio, date || null])}
                     />
                   </Col>
                 </Row>
               ) : (
                 <RangePicker
-                  style={{ width: "100%" }}
+               
+                  placeholder={["Fecha inicio", "Fecha fin"]}
+                  format="DD/MM/YYYY"
                   value={f.value}
                   allowEmpty={[true, true]}
                   onChange={f.setter}

@@ -43,8 +43,8 @@ export default function ResumenMovimientos() {
 
   // 🔹 Cargar datos del día actual por defecto
   useEffect(() => {
-    const desde = hoy.format("YYYY-MM-DD");
-    const hasta = hoy.format("YYYY-MM-DD");
+    const desde = hoy.startOf("day").toDate().toISOString();
+    const hasta = hoy.endOf("day").toDate().toISOString();
     fetchData(desde, hasta);
   }, []);
 
@@ -56,8 +56,8 @@ export default function ResumenMovimientos() {
       fetchData();
       return;
     }
-    const desde = val[0].format("YYYY-MM-DD");
-    const hasta = val[1].format("YYYY-MM-DD");
+    const desde = val[0].startOf("day").toDate().toISOString();
+    const hasta = val[1].endOf("day").toDate().toISOString();
     fetchData(desde, hasta);
   };
 
@@ -207,8 +207,8 @@ export default function ResumenMovimientos() {
               icon={<ReloadOutlined spin={loading} />}
               onClick={() =>
                 fetchData(
-                  rangoFechas?.[0]?.format("YYYY-MM-DD"),
-                  rangoFechas?.[1]?.format("YYYY-MM-DD")
+                  rangoFechas?.[0]?.startOf("day").toDate().toISOString(),
+                  rangoFechas?.[1]?.endOf("day").toDate().toISOString()
                 )
               }
               style={{ width: "100%" }}

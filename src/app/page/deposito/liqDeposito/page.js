@@ -42,8 +42,8 @@ export default function DepositoForm() {
   // ------------------------------
   // Cargar clientes
   // ------------------------------
-  useEffect(() => {
-    async function cargarClientes() {
+  const cargarClientes = async () => {
+    try {
       const data = await obtenerSelectData({
         url: "/api/liqDeposito/clienteConDeposito",
         messageApi: messageRef.current,
@@ -51,9 +51,15 @@ export default function DepositoForm() {
         labelField: "clienteNombreCompleto",
       });
       setClientes(data);
+    } catch (err) {
+      console.error(err);
+      messageRef.current.error("Error cargando clientes");
     }
+  };
+
+  useEffect(() => {
     cargarClientes();
-  }, [messageApi]);
+  }, []);
 
   // ------------------------------
   // 2️⃣ Filtrar productos según cliente y saldo
@@ -211,6 +217,8 @@ export default function DepositoForm() {
             ])
           ),
         });
+        await cargarClientes();
+      
       } else {
         const err = await res.json();
         messageApi.error(err.error || "No se pudo registrar la liquidación");

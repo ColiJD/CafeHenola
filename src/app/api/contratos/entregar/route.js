@@ -13,22 +13,22 @@ export async function POST(request) {
       descripcion,
     } = await request.json();
 
-    console.log("Datos recibidos:", {
-      contratoID,
-      clienteID,
-      tipoCafe,
-      cantidadQQ,
-      precioQQ,
-      totalSacos,
-      descripcion,
-    });
+    // console.log("Datos recibidos:", {
+    //   contratoID,
+    //   clienteID,
+    //   tipoCafe,
+    //   cantidadQQ,
+    //   precioQQ,
+    //   totalSacos,
+    //   descripcion,
+    // });
 
     // 1️⃣ Obtener el contrato
     const contrato = await prisma.contrato.findUnique({
       where: { contratoID: Number(contratoID) },
     });
 
-    console.log("Contrato encontrado:", contrato);
+    // console.log("Contrato encontrado:", contrato);
 
     if (!contrato) {
       return new Response(
@@ -43,7 +43,7 @@ export async function POST(request) {
       where: { contratoID: Number(contratoID) },
     });
 
-    console.log("Detalle acumulado:", detalle);
+    // console.log("Detalle acumulado:", detalle);
 
     const totalEntregado = parseFloat(detalle._sum?.cantidadQQ ?? "0");
     const contratoCantidadQQ = parseFloat(
@@ -51,11 +51,11 @@ export async function POST(request) {
     );
     const saldoDisponible = contratoCantidadQQ - totalEntregado;
 
-    console.log({
-      totalEntregado,
-      contratoCantidadQQ,
-      saldoDisponible,
-    });
+    // console.log({
+    //   totalEntregado,
+    //   contratoCantidadQQ,
+    //   saldoDisponible,
+    // });
 
     if (Number(cantidadQQ) > saldoDisponible) {
       return new Response(
@@ -83,7 +83,7 @@ export async function POST(request) {
       const nuevoTotalEntregado = totalEntregado + Number(cantidadQQ);
       let estadoContrato = "Pendiente";
 
-      console.log("Nuevo total entregado:", nuevoTotalEntregado);
+      // console.log("Nuevo total entregado:", nuevoTotalEntregado);
 
       // b) Actualizar estado del contrato si se completó
       if (nuevoTotalEntregado >= contratoCantidadQQ) {
@@ -155,7 +155,7 @@ export async function POST(request) {
       };
     });
 
-    console.log("Resultado de la transacción:", resultado);
+    // console.log("Resultado de la transacción:", resultado);
 
     // 4️⃣ Retornar resultado
     return new Response(

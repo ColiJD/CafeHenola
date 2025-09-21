@@ -10,27 +10,8 @@ export async function GET(req) {
 
     if (desdeParam && hastaParam) {
       // Usar UTC y asegurar que incluya todo el día
-      desde = new Date(
-        Date.UTC(
-          new Date(desdeParam).getFullYear(),
-          new Date(desdeParam).getMonth(),
-          new Date(desdeParam).getDate(),
-          0,
-          0,
-          0
-        )
-      );
-      hasta = new Date(
-        Date.UTC(
-          new Date(hastaParam).getFullYear(),
-          new Date(hastaParam).getMonth(),
-          new Date(hastaParam).getDate(),
-          23,
-          59,
-          59,
-          999
-        )
-      );
+      desde = new Date(new Date(desdeParam).setUTCHours(0, 0, 0, 0));
+      hasta = new Date(new Date(hastaParam).setUTCHours(23, 59, 59, 999));
     } else {
       const ahora = new Date();
       desde = new Date(
@@ -97,9 +78,9 @@ export async function GET(req) {
         totalLps: true,
       },
       where: {
-        deposito: {
-          depositoMovimiento: "Entrada",
-          depositoFecha: { gte: desde, lte: hasta },
+        liqdeposito: {
+          liqMovimiento: "Entrada",
+          liqFecha: { gte: desde, lte: hasta },
         },
       },
     });
@@ -110,9 +91,9 @@ export async function GET(req) {
         totalLps: true,
       },
       where: {
-        deposito: {
-          depositoMovimiento: "Salida",
-          depositoFecha: { gte: desde, lte: hasta },
+        liqdeposito: {
+          liqMovimiento: "Salida",
+          liqFecha: { gte: desde, lte: hasta },
         },
       },
     });

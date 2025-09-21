@@ -1,7 +1,6 @@
 export function truncarDosDecimalesSinRedondear(numero) {
   const epsilon = 1e-10;
-  const truncado = Math.floor((numero + epsilon) * 100) / 100;
-  return truncado.toFixed(2);
+  return Math.floor((numero + epsilon) * 100) / 100;
 }
 
 export function calcularCafeDesdeProducto(
@@ -30,11 +29,8 @@ export function calcularCafeDesdeProducto(
   // Truncar y formatear a string con 2 decimales
   const oroStr = truncarDosDecimalesSinRedondear(oro);
 
-  const total = (precioQQ * parseFloat(oroStr)).toFixed(2);
-  const retencion = Math.max(
-    parseFloat(oroStr) - parseFloat(oroStr) * 0.04,
-    0
-  ).toFixed(2);
+  const total = truncarDosDecimalesSinRedondear(precioQQ * oroStr);
+  const retencion = truncarDosDecimalesSinRedondear(oroStr * 0.96);
 
   return { oro: oroStr, total, retencion };
 }
@@ -64,5 +60,5 @@ export function calcularPesoBrutoDesdeOro(
   // Paso 3: Calcular peso bruto (agregando tara por saco)
   const pesoBrutoNecesario = pesoNetoNecesario + sacosTotales * tara;
 
-  return { pesoBruto: truncarDosDecimalesSinRedondear(pesoBrutoNecesario) };
+  return { pesoBruto: Math.round(pesoBrutoNecesario * 100) / 100};
 }

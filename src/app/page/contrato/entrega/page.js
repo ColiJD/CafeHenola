@@ -55,22 +55,30 @@ export default function LiquidacionContratoForm() {
   // ------------------------------
   // Cargar clientes y productos
   // ------------------------------
-  useEffect(() => {
-    async function cargarDatos() {
-      try {
-        const clientesData = await obtenerClientesPendientesContratos(
-          messageApi
-        );
-        const productosData = await obtenerProductosSelect(messageApi);
-        setClientes(clientesData);
-        setProductos(productosData);
-      } catch (err) {
-        console.error(err);
-        messageApi.error("⚠️ Error cargando clientes o productos.");
-      }
+
+  const cargarClientes = async () => {
+    try {
+      const clientesData = await obtenerClientesPendientesContratos(messageApi);
+      setClientes(clientesData);
+    } catch (err) {
+      console.error(err);
+      messageApi.error("⚠️ Error cargando clientes.");
     }
-    cargarDatos();
-  }, [messageApi]);
+  };
+  const cargarProductos = async () => {
+    try {
+      const productosData = await obtenerProductosSelect(messageApi);
+      setProductos(productosData);
+    } catch (err) {
+      console.error(err);
+      messageApi.error("⚠️ Error cargando productos.");
+    }
+  };
+  // Inicial cargar clientes y productos
+  useEffect(() => {
+    cargarClientes();
+    cargarProductos();
+  }, []);
 
   // ------------------------------
   // Cargar contratos pendientes al cambiar cliente
@@ -137,6 +145,12 @@ export default function LiquidacionContratoForm() {
         );
         return;
       }
+      saldoData.saldoDisponibleQQ = truncarDosDecimalesSinRedondear(
+        saldoData.saldoDisponibleQQ
+      );
+      saldoData.saldoDisponibleLps = truncarDosDecimalesSinRedondear(
+        saldoData.saldoDisponibleLps
+      );
 
       // buscar el producto asociado al tipo de café
       const productoSeleccionado = productos.find(
@@ -180,9 +194,9 @@ export default function LiquidacionContratoForm() {
 
     setFormState((prev) => ({
       ...prev,
-      oro: resultado.oro,
-      retencion: resultado.retencion,
-      totalLiquidacion: resultado.total,
+      oro: truncarDosDecimalesSinRedondear(resultado.oro),
+      retencion: truncarDosDecimalesSinRedondear(resultado.retencion),
+      totalLiquidacion: truncarDosDecimalesSinRedondear(resultado.total),
     }));
   }, [
     formState.cantidadLiquidar,
@@ -217,7 +231,7 @@ export default function LiquidacionContratoForm() {
       contratoID: contrato.value,
       clienteID: cliente.value,
       tipoCafe: formState.tipoCafeID,
-      cantidadQQ: formState.oro ? parseFloat(formState.oro) : 0,
+      cantidadQQ: truncarDosDecimalesSinRedondear(formState.oro),
       precioQQ: formState.precioQQ,
       totalSacos: parseInt(formState.totalSacos),
       tipoDocumento: "EntregaContrato",
@@ -253,6 +267,7 @@ export default function LiquidacionContratoForm() {
             ])
           ),
         });
+        await cargarClientes();
       } else {
         messageApi.error(result.error || "No se pudo registrar la liquidación");
       }

@@ -156,12 +156,12 @@ export default function FormDeposito() {
       validator: (v) => (v ? null : "Seleccione un café"),
     },
     {
-      label: "Peso Bruto (lbs)",
+      label: producto?.label === "Cafe Lata" ? "Cantidad de Latas" : "Peso Bruto (lbs)",
       value: pesoBruto,
       setter: setPesoBruto,
       type: "Float",
       required: true,
-      error: errors["Peso Bruto (lbs)"],
+      error: errors[producto?.label === "Cafe Lata" ? "Cantidad de Latas" : "Peso Bruto (lbs)"],
       validator: validarFloatPositivo,
     },
     {

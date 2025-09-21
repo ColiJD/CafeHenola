@@ -8,8 +8,7 @@ import useClientAndDesktop from "@/hook/useClientAndDesktop";
 import Filtros from "@/components/Filtros";
 import TarjetasDeTotales from "@/components/DetallesCard";
 import { ReloadOutlined } from "@ant-design/icons";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
+import { exportPDFGeneral } from "@/Doc/Reportes/General";
 
 export default function ResumenMovimientos() {
   const hoy = dayjs().startOf("day"); // 🔹 Día actual
@@ -41,41 +40,7 @@ export default function ResumenMovimientos() {
       setLoading(false);
     }
   }
- const exportPDF = (totales, secciones) => {
-  const doc = new jsPDF();
 
-  doc.setFontSize(14);
-  doc.text("Resumen de Movimientos", 14, 16);
-
-  const totalesData = [
-    ["Entradas (QQ)", totales.entradas.cantidad],
-    ["Entradas (Lps)", totales.entradas.total],
-    ["Salidas (QQ)", totales.salidas.cantidad],
-    ["Salidas (Lps)", totales.salidas.total],
-  ];
-
-  autoTable(doc, {
-    startY: 30,
-    head: [["Concepto", "Valor"]],
-    body: totalesData,
-  });
-
-  let startY = doc.lastAutoTable.finalY + 10;
-
-  secciones.forEach((sec) => {
-    doc.text(sec.titulo, 14, startY);
-
-    autoTable(doc, {
-      startY: startY + 4,
-      head: [["Movimiento", "Cantidad QQ", "Total Lps"]],
-      body: sec.datos.map((d) => [d.movimiento, d.cantidad, d.total]),
-    });
-
-    startY = doc.lastAutoTable.finalY + 10;
-  });
-
-  doc.save("resumen_movimientos.pdf");
-};
   // 🔹 Cargar datos del día actual por defecto
   useEffect(() => {
     const desde = hoy.format("YYYY-MM-DD");
@@ -252,7 +217,7 @@ export default function ResumenMovimientos() {
             </Button>
           </div>
           <div style={{ width: 120 }}>
-            <Button onClick={() => exportPDF(totales, secciones)}>
+            <Button onClick={() => exportPDFGeneral(totales, secciones)}>
               Imprimir PDF
             </Button>
           </div>

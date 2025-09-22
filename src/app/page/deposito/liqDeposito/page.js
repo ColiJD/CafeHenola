@@ -9,6 +9,7 @@ import {
   validarFloatPositivo,
 } from "@/config/validacionesForm";
 import { validarDatos } from "@/lib/validacionesForm";
+import { exportLiquidacionDeposito } from "@/Doc/Documentos/liqDepositp";
 
 export default function DepositoForm() {
   const [clientes, setClientes] = useState([]);
@@ -205,10 +206,38 @@ export default function DepositoForm() {
 
       if (res.ok) {
         const result = await res.json();
+       
         messageApi.success(
           `Liquidación registrada. Saldo restante: ${result.saldoDespues}`
         );
         setPreviewVisible(false);
+        // 🔹 Cargar depósitos pendientes para el comprobante
+        // 🔹 Generar PDF automáticamente
+        messageApi.open({
+          type: "loading",
+          content: "Generando comprobante de liquidación, por favor espere...",
+          duration: 0,
+          key: "generandoComprobante",
+        });
+        try {
+          await exportLiquidacionDeposito({
+            cliente: formState.cliente,
+            tipoCafe: formState.producto.label,
+            saldoDisponible: formState.saldoPendiente,
+            cantidadLiquidar: parseFloat(formState.depositoCantidadQQ),
+            totalPagar: parseFloat(totalLiquidacion),
+            descripcion: formState.depositoDescripcion,
+            saldoPendiente: result.saldoDespues,
+            comprobanteID: result.liqID,
+          });
+          messageApi.destroy("generandoComprobante");
+          messageApi.success("Comprobante generado correctamente");
+        } catch (err) {
+          console.error("Error generando PDF:", err);
+          messageApi.destroy("generandoComprobante");
+          messageApi.error("Error generando comprobante PDF");
+        }
+
         limpiarFormulario({
           ...Object.fromEntries(
             Object.keys(formState).map((k) => [
@@ -218,7 +247,6 @@ export default function DepositoForm() {
           ),
         });
         await cargarClientes();
-      
       } else {
         const err = await res.json();
         messageApi.error(err.error || "No se pudo registrar la liquidación");

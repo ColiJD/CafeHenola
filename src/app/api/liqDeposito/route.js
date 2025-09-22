@@ -10,7 +10,7 @@ export async function POST(request) {
       tipoDocumento,
       descripcion,
       liqEn,
-      movimiento
+      movimiento,
     } = await request.json();
 
     // 1️⃣ Obtener saldo pendiente del cliente para el tipo de café
@@ -24,16 +24,15 @@ export async function POST(request) {
 
     // Si no se envía cantidad, solo devolvemos el saldo
     if (!cantidadQQ) {
-      return new Response(
-        JSON.stringify({ saldoDisponible }),
-        { status: 200 }
-      );
+      return new Response(JSON.stringify({ saldoDisponible }), { status: 200 });
     }
 
     // 2️⃣ Validar cantidad
     if (Number(cantidadQQ) > saldoDisponible) {
       return new Response(
-        JSON.stringify({ error: "Cantidad supera saldo pendiente del cliente" }),
+        JSON.stringify({
+          error: "Cantidad supera saldo pendiente del cliente",
+        }),
         { status: 400 }
       );
     }
@@ -51,17 +50,27 @@ export async function POST(request) {
       liqEn
     );
 
+    const lastLiq = await prisma.$queryRaw`
+      SELECT liqID 
+      FROM LiqDeposito
+      WHERE liqclienteID = ${clienteID} AND liqTipoCafe = ${tipoCafe}
+      ORDER BY liqFecha DESC
+      LIMIT 1
+    `;
+    const liqID = lastLiq[0]?.liqID;
+
     // 4️⃣ Retornar información
     return new Response(
       JSON.stringify({
         message: "Liquidación realizada correctamente",
         saldoAntes: saldoDisponible,
         cantidadLiquidada: Number(cantidadQQ),
-        saldoDespues: saldoDisponible - Number(cantidadQQ)
+        saldoDespues: saldoDisponible - Number(cantidadQQ),
+        liqID,
       }),
+
       { status: 201 }
     );
-
   } catch (error) {
     console.error("Error al liquidar depósito:", error);
 
@@ -79,8 +88,6 @@ export async function POST(request) {
     return new Response(JSON.stringify({ error: msg }), { status: 500 });
   }
 }
-
-
 
 // export async function GET(request) {
 //   try {
@@ -122,10 +129,9 @@ export async function GET(request) {
     const tipoCafe = searchParams.get("tipoCafe");
 
     if (!clienteID) {
-      return new Response(
-        JSON.stringify({ error: "Debe enviar clienteID" }),
-        { status: 400 }
-      );
+      return new Response(JSON.stringify({ error: "Debe enviar clienteID" }), {
+        status: 400,
+      });
     }
 
     // Caso 1: cliente + café específico -> saldo puntual
@@ -155,10 +161,8 @@ export async function GET(request) {
     return new Response(JSON.stringify(productosResult), { status: 200 });
   } catch (error) {
     console.error("Error al obtener saldo pendiente:", error);
-    return new Response(
-      JSON.stringify({ error: "Error interno" }),
-      { status: 500 }
-    );
+    return new Response(JSON.stringify({ error: "Error interno" }), {
+      status: 500,
+    });
   }
 }
-

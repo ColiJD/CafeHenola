@@ -8,11 +8,10 @@ import { obtenerClientesSelect, obtenerProductosSelect } from "@/lib/consultas";
 import {
   limpiarFormulario,
   validarFloatPositivo,
-  validarEnteroPositivo,
 } from "@/config/validacionesForm"; // Utilidades de validación
 import { validarDatos } from "@/lib/validacionesForm"; // Validación general del formulario
 
-import { generarContratoDoc } from "@/components/ContratoDoc";
+import { exportContratoCafe } from "@/Doc/Documentos/contrato";
 
 export default function ContratoForm() {
   // 🔹 Estados de datos seleccionables
@@ -30,20 +29,6 @@ export default function ContratoForm() {
     contratoEn: "",
     contratoDescripcion: "",
   });
-
-  const handleGenerarDoc = () => {
-    // Genera el documento usando los datos actuales del formulario
-    generarContratoDoc({
-      clienteNombre: formState.cliente?.label,
-      productoNombre: formState.producto?.label,
-      contratoPrecio: formState.contratoPrecio,
-      contratoCantidadQQ: formState.contratoCantidadQQ,
-      contratoTotalLps: formState.contratoTotalLps,
-      contratoEn: formState.contratoEn,
-      contratoDescripcion: formState.contratoDescripcion,
-    });
-  };
-
   // 🔹 Estado para errores de validación
   const [errors, setErrors] = useState({});
 
@@ -179,34 +164,58 @@ export default function ContratoForm() {
         body: JSON.stringify(data),
       });
 
-      if (res.ok) {
-        messageApi.success("Contrato registrado exitosamente ✅"); // Mensaje de éxito
-        setPreviewVisible(false); // Cierra modal
-        // 🔹 Limpieza del formulario
-        limpiarFormulario(
-          Object.fromEntries(fieldsConfig.map((f) => [f.key, formState[f.key]]))
-        );
-        setFormState({
-          cliente: null,
-          producto: null,
-          contratoPrecio: "",
-          contratoCantidadQQ: "",
-          contratoTotalLps: 0,
-          contratoEn: "",
-          contratoDescripcion: "",
-          contratoRetencion: 0,
-        });
-      } else {
-        const err = await res.json();
-        messageApi.error(
-          "Error: " + (err.error || "No se pudo registrar el contrato")
-        ); // Mensaje de error del servidor
+      const result = await res.json();
+
+      if (!res.ok || !result.contratoID) {
+        throw new Error(result.error || "No se pudo registrar el contrato");
       }
+
+      messageApi.success("Contrato registrado exitosamente");
+
+      setPreviewVisible(false);
+      // 🔹 Generar y descargar PDF del contrato
+
+      // 🔹 Mostrar loading de generación de PDF
+      messageApi.open({
+        type: "loading",
+        content: "Generando contrato, por favor espere...",
+        duration: 0, // dura hasta que lo cerremos manualmente
+        key: "generandoContrato",
+      });
+
+      try {
+        await exportContratoCafe({
+          ...formState,
+          contratoID: result.contratoID,
+        });
+        // Cierra el mensaje de loading
+        messageApi.destroy("generandoContrato");
+        messageApi.success("PDF generado correctamente");
+      } catch (err) {
+        console.error("Error generando PDF:", err);
+        messageApi.destroy("generandoContrato");
+        messageApi.error("Error generando documento PDF");
+      }
+
+      // 🔹 Limpieza del formulario
+      limpiarFormulario(
+        Object.fromEntries(fieldsConfig.map((f) => [f.key, formState[f.key]]))
+      );
+      setFormState({
+        cliente: null,
+        producto: null,
+        contratoPrecio: "",
+        contratoCantidadQQ: "",
+        contratoTotalLps: "",
+        contratoEn: "",
+        contratoDescripcion: "",
+        contratoRetencion: 0,
+      });
     } catch (error) {
       console.error(error);
-      messageApi.error("Error enviando los datos"); // Mensaje de error de red
+      messageApi.error("Error enviando los datos");
     } finally {
-      setSubmitting(false); // Finaliza estado de envío
+      setSubmitting(false);
     }
   };
 
@@ -233,15 +242,6 @@ export default function ContratoForm() {
         onCancel={() => setPreviewVisible(false)}
         onConfirm={handleConfirmar}
         confirmLoading={submitting}
-        extraButtons={[
-          <Button
-            key="generate"
-            type="dashed"
-            onClick={() => generarContratoDoc(formState)}
-          >
-            Generar Documento
-          </Button>,
-        ]}
         fields={fields.map((f) => ({
           label: f.label,
           value:

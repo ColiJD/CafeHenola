@@ -11,6 +11,7 @@ import {
   validarFloatPositivo,
 } from "@/config/validacionesForm";
 import { calcularCafeDesdeProducto } from "@/lib/calculoCafe";
+import { exportDeposito } from "@/Doc/Documentos/desposito";
 
 export default function FormDeposito() {
   const [clientes, setClientes] = useState([]);
@@ -108,24 +109,57 @@ export default function FormDeposito() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (res.ok) {
-        messageApi.success("Depósito registrado exitosamente");
-        setPreviewVisible(false);
-        limpiarFormulario({
-          setCliente,
-          setProducto,
-          setPesoBruto,
-          setDepositoRetencion,
-          setDepositoCantidadQQ,
-          setDepositoTotalSacos,
-          setDepositoEn,
-          setDepositoDescripcion,
-          setErrors,
-        });
-      } else {
-        const err = await res.json();
-        messageApi.error(err.error || "Error al registrar depósito");
+      const result = await res.json();
+
+      if (!res.ok || !result.depositoID) {
+        throw new Error(result.error || "No se pudo registrar el depósito");
       }
+
+      messageApi.success("Depósito registrado exitosamente");
+      setPreviewVisible(false);
+
+      // 🔹 Loading mientras se genera PDF
+      messageApi.open({
+        type: "loading",
+        content: "Generando comprobante de depósito, por favor espere...",
+        duration: 0,
+        key: "generandoComprobante",
+      });
+
+      try {
+        await exportDeposito({
+          cliente,
+          productos: [
+            {
+              nombre: producto.label,
+              cantidad: parseFloat(depositoCantidadQQ),
+            },
+          ],
+          total: parseFloat(depositoCantidadQQ),
+          observaciones: depositoDescripcion,
+          comprobanteID: result.depositoID,
+        });
+
+        messageApi.destroy("generandoComprobante");
+        messageApi.success("Comprobante generado correctamente");
+      } catch (err) {
+        console.error("Error generando PDF:", err);
+        messageApi.destroy("generandoComprobante");
+        messageApi.error("Error generando comprobante PDF");
+      }
+
+      // 🔹 Limpiar formulario
+      limpiarFormulario({
+        setCliente,
+        setProducto,
+        setDepositoCantidadQQ,
+        setDepositoTotalSacos,
+        setDepositoEn,
+        setDepositoDescripcion,
+        setPesoBruto,
+        setDepositoRetencion,
+        setErrors,
+      });
     } catch (err) {
       console.error(err);
       messageApi.error("Error enviando datos al servidor");
@@ -133,7 +167,6 @@ export default function FormDeposito() {
       setSubmitting(false);
     }
   };
-
   const fields = [
     {
       label: "Cliente",
@@ -156,12 +189,20 @@ export default function FormDeposito() {
       validator: (v) => (v ? null : "Seleccione un café"),
     },
     {
-      label: producto?.label === "Cafe Lata" ? "Cantidad de Latas" : "Peso Bruto (lbs)",
+      label:
+        producto?.label === "Cafe Lata"
+          ? "Cantidad de Latas"
+          : "Peso Bruto (lbs)",
       value: pesoBruto,
       setter: setPesoBruto,
       type: "Float",
       required: true,
-      error: errors[producto?.label === "Cafe Lata" ? "Cantidad de Latas" : "Peso Bruto (lbs)"],
+      error:
+        errors[
+          producto?.label === "Cafe Lata"
+            ? "Cantidad de Latas"
+            : "Peso Bruto (lbs)"
+        ],
       validator: validarFloatPositivo,
     },
     {

@@ -5,6 +5,7 @@ import Formulario from "@/components/Formulario";
 import PreviewModal from "@/components/Modal";
 import { limpiarFormulario } from "@/config/validacionesForm";
 import { validarDatos } from "@/lib/validacionesForm";
+import { exportEntregaContrato } from "@/Doc/Documentos/entregaContrato";
 import {
   obtenerClientesPendientesContratos,
   obtenerProductosSelect,
@@ -248,16 +249,48 @@ export default function LiquidacionContratoForm() {
       });
 
       const result = await res.json();
+     
 
       if (res.ok) {
         messageApi.success(
-          `Liquidación registrada ✅. Saldo disponible: ${truncarDosDecimalesSinRedondear(
+          `Liquidación registrada. Saldo disponible: ${truncarDosDecimalesSinRedondear(
             result.saldoDespuesQQ
           )} QQ / ${truncarDosDecimalesSinRedondear(
             result.saldoDespuesLps
           )} Lps`
         );
         setPreviewVisible(false);
+        messageApi.open({
+          type: "loading",
+          content: "Generando comprobante de liquidación, por favor espere...",
+          duration: 0,
+          key: "generandoComprobante",
+        });
+        try {
+          await exportEntregaContrato({
+            cliente: formState.cliente,
+            contratoID: data.contratoID,
+            comprobanteID: result.detalleEntregaID, // ID del detalle
+            pesoBruto: parseFloat(formState.pesoBrutoContrato),
+            totalSacos: formState.totalSacos,
+            tipoCafe: formState.producto.label,
+            quintalesDisponibles: result.saldoAntesQQ,
+            quintalesIngresados: parseFloat(formState.oro),
+            precio: parseFloat(formState.precioQQ),
+            totalPagar: parseFloat(formState.totalLiquidacion),
+            retencion: parseFloat(formState.retencion),
+            saldoRestanteQQ: result.saldoDespuesQQ,
+            saldoRestanteLps: result.saldoDespuesLps,
+            formaPago: formState.formaPago,
+            observaciones: formState.descripcion,
+          });
+          messageApi.destroy("generandoComprobante");
+          messageApi.success("Comprobante generado correctamente");
+        } catch (err) {
+          console.error("Error generando PDF:", err);
+          messageApi.destroy("generandoComprobante");
+          messageApi.error("Error generando comprobante PDF");
+        }
 
         limpiarFormulario({
           ...Object.fromEntries(

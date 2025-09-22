@@ -6,6 +6,7 @@ import Formulario from "@/components/Formulario";
 import PreviewModal from "@/components/Modal";
 import { obtenerClientesSelect, obtenerProductosSelect } from "@/lib/consultas";
 import { calcularCafeDesdeProducto } from "@/lib/calculoCafe";
+import { exportCompraDirecta } from "@/Doc/Documentos/compra";
 import {
   limpiarFormulario,
   validarEnteroNoNegativo,
@@ -92,6 +93,7 @@ export default function CompraForm() {
 
   const handleConfirmar = async () => {
     setSubmitting(true);
+
     const data = {
       clienteID: cliente.value,
       compraTipoCafe: producto.value,
@@ -117,27 +119,63 @@ export default function CompraForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      if (res.ok) {
-        messageApi.success("Compra Directa registrada exitosamente");
-        setPreviewVisible(false);
-        limpiarFormulario({
-          setCliente,
-          setProducto,
-          setCompraCantidadQQ,
-          setCompraTotalSacos,
-          setCompraEn,
-          setCompraDescripcion,
-          setCompraTipoDocumento,
-          setCompraRetencio,
-          setCompraTotal,
-          setCompraPrecioQQ,
-          setCompraOro,
-          setErrors,
-        });
-      } else {
-        const err = await res.json();
-        messageApi.error(err.error || "Error al registrar compra directa");
+
+      const result = await res.json();
+
+      if (!res.ok || !result.compraId) {
+        throw new Error(result.error || "No se pudo registrar la compra");
       }
+
+      messageApi.success("Compra Directa registrada exitosamente");
+      setPreviewVisible(false);
+
+      // 🔹 Loading mientras se genera PDF
+      messageApi.open({
+        type: "loading",
+        content: "Generando comprobante de compra, por favor espere...",
+        duration: 0,
+        key: "generandoComprobante",
+      });
+
+      try {
+        await exportCompraDirecta({
+          cliente,
+          productos: [
+            {
+              nombre: producto.label,
+              cantidad: parseFloat(compraOro),
+              precio: compraPrecioQQ,
+              total: compraTotal,
+            },
+          ],
+          total: compraTotal,
+          observaciones: compraDescripcion,
+          comprobanteID: result.compraId,
+        });
+
+        messageApi.destroy("generandoComprobante");
+        messageApi.success("Comprobante generado correctamente");
+      } catch (err) {
+        console.error("Error generando PDF:", err);
+        messageApi.destroy("generandoComprobante");
+        messageApi.error("Error generando comprobante PDF");
+      }
+
+      // 🔹 Limpiar formulario
+      limpiarFormulario({
+        setCliente,
+        setProducto,
+        setCompraCantidadQQ,
+        setCompraTotalSacos,
+        setCompraEn,
+        setCompraDescripcion,
+        setCompraTipoDocumento,
+        setCompraRetencio,
+        setCompraTotal,
+        setCompraPrecioQQ,
+        setCompraOro,
+        setErrors,
+      });
     } catch (err) {
       console.error(err);
       messageApi.error("Error enviando datos al servidor");
@@ -145,6 +183,7 @@ export default function CompraForm() {
       setSubmitting(false);
     }
   };
+
   const fields = [
     {
       label: "Cliente",

@@ -37,12 +37,12 @@ export default function ClienteForm() {
 
   useEffect(() => {
     async function cargarClientes() {
-      const clientes = await obtenerClientesSelect(messageApi);
+      const clientes = await obtenerClientesSelect(message);
       setClientesOptions(clientes);
     }
     cargarClientes();
     setTimeout(() => selectRef.current?.focus(), 200);
-  }, [messageApi]);
+  }, []);
 
   const handleDepartamentoChange = (selected) => {
     form.setFieldsValue({ clienteMunicipio: null });

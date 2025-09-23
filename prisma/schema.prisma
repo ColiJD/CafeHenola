@@ -203,6 +203,35 @@ model cierrecontrato {
   @@index([contratoID], map: "contratoID")
 }
 
+model compradores {
+  compradorId        Int      @id @default(autoincrement())
+  compradorNombre    String   @db.VarChar(255)
+  compradorRTN       String?  @unique(map: "compradorRTN") @db.VarChar(50)
+  compradorDireccion String?  @db.VarChar(300)
+  compradorTelefono  String   @db.VarChar(50)
+  compradorEmail     String   @db.VarChar(255)
+  createdAt          DateTime @default(now()) @db.DateTime(0)
+}
+
+model roles {
+  roleId    Int      @id @default(autoincrement())
+  roleName  String   @unique(map: "roleName") @db.VarChar(50)
+  createdAt DateTime @default(now()) @db.DateTime(0)
+  users     users[]
+}
+
+model users {
+  userId       Int      @id @default(autoincrement())
+  userEmail    String   @unique(map: "userEmail") @db.VarChar(255)
+  userPassword String   @db.VarChar(255)
+  userName     String?  @db.VarChar(100)
+  roleId       Int
+  createdAt    DateTime @default(now()) @db.DateTime(0)
+  roles        roles    @relation(fields: [roleId], references: [roleId], onUpdate: Restrict, map: "users_ibfk_1")
+
+  @@index([roleId], map: "roleId")
+}
+
 enum movimientoinventario_tipoMovimiento {
   Entrada
   Salida

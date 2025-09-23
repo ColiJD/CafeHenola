@@ -1,6 +1,10 @@
 import prisma from "@/lib/prisma";
+import { checkRole } from "@/lib/checkRole";
 
-export async function GET() {
+export async function GET(req) {
+  const sessionOrResponse = await checkRole(req, ["ADMIN"]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
+
   try {
     const clientes = await prisma.cliente.findMany();
     return new Response(JSON.stringify(clientes), { status: 200 });
@@ -11,6 +15,8 @@ export async function GET() {
   }
 }
 export async function POST(req) {
+  const sessionOrResponse = await checkRole(req, ["ADMIN"]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
   try {
     const body = await req.json();
 

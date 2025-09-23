@@ -1,8 +1,11 @@
+import ProtectedPage from "@/components/ProtectedPage";
 import Menu from "@/app/page/menu/page";
 export default function Home() {
   return (
-    <main>
-      <Menu />
-    </main>
+    <ProtectedPage allowedRoles={["ADMIN"]}>
+      <main>
+        <Menu />
+      </main>
+    </ProtectedPage>
   );
 }

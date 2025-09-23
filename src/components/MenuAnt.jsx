@@ -5,6 +5,7 @@ import { MenuFoldOutlined, MenuUnfoldOutlined } from "@ant-design/icons";
 import { menuItem } from "@/lib/menu";
 import { Layout, Menu, Button, theme, Grid, Drawer } from "antd";
 import "@/style/menu.css";
+import ProtectedPage from "./ProtectedPage";
 
 const { Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
@@ -66,6 +67,7 @@ export default function DashboardLayout({ children }) {
   const isMobile = !screens.md;
 
   return (
+    // <ProtectedPage allowedRoles={["ADMIN", "USER"]}>
     <Layout style={{ minHeight: "100vh" }}>
       {/* 🔹 Desktop Sider */}
       {!isMobile && (
@@ -154,7 +156,12 @@ export default function DashboardLayout({ children }) {
             <Button
               type="text"
               onClick={() => setDrawerVisible(false)}
-              style={{ fontSize: 50, color: "#fff", padding: 0, lineHeight: 1 }}
+              style={{
+                fontSize: 50,
+                color: "#fff",
+                padding: 0,
+                lineHeight: 1,
+              }}
             >
               ×
             </Button>
@@ -190,5 +197,6 @@ export default function DashboardLayout({ children }) {
         </Content>
       </Layout>
     </Layout>
+    // </ProtectedPage>
   );
 }

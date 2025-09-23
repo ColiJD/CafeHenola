@@ -1,17 +1,7 @@
 "use client";
-
+import ProtectedPage from "@/components/ProtectedPage";
 import { useEffect, useState } from "react";
-import {
-  Table,
-  message,
-  Input,
-  Space,
-  Card,
-  Row,
-  Col,
-  Grid,
-  Button,
-} from "antd";
+import { Table, Input, Card, Row, Col, Grid, Button ,message} from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import { obtenerClientesSelect } from "@/lib/consultas";
 import TarjetaMobile from "@/components/TarjetaMobile";
@@ -26,25 +16,14 @@ export default function ClientesPage() {
 
   const screens = useBreakpoint();
   const isMobile = !screens.md;
+  const [messageApi, contextHolder] = message.useMessage();
 
   // 🔹 Cargar clientes usando la función exportada
   const cargarClientes = async () => {
     setLoading(true);
     try {
-      const clientesSelect = await obtenerClientesSelect(message);
-      // Transformar al formato original de cliente
-      const clientes = clientesSelect.map((c) => {
-        const cliente = c.data;
-        return {
-          ...cliente,
-          clienteNombreCompleto: `${cliente.clienteNombre || ""} ${
-            cliente.clienteApellido || ""
-          }`,
-          detalles: [cliente], // 🔹 todos los demás campos se mostrarán en detalles
-        };
-      });
-      setData(clientes);
-      setFilteredData(clientes);
+      const clientesSelect = await obtenerClientesSelect(messageApi);
+      setData(clientesSelect);
     } catch (err) {
       console.error(err);
     } finally {
@@ -105,114 +84,117 @@ export default function ClientesPage() {
   ];
 
   return (
-    <div style={{ padding: 16 }}>
-      <h2 style={{ fontSize: screens.xs ? "18px" : "22px" }}>
-        Lista de Clientes
-      </h2>
+    <ProtectedPage allowedRoles={["ADMIN"]}>
+      {contextHolder}
+      <div style={{ padding: 16 }}>
+        <h2 style={{ fontSize: screens.xs ? "18px" : "22px" }}>
+          Lista de Clientes
+        </h2>
 
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }} align="middle">
-        <Col xs={24} sm={12} md={6}>
-          <Input.Search
-            placeholder="Buscar por nombre o apellido"
-            allowClear
-            enterButton={<SearchOutlined />}
-            onSearch={handleSearch}
-            onChange={(e) => handleSearch(e.target.value)}
-            style={{ width: "100%" }}
-            value={searchText}
+        <Row gutter={[16, 16]} style={{ marginBottom: 16 }} align="middle">
+          <Col xs={24} sm={12} md={6}>
+            <Input.Search
+              placeholder="Buscar por nombre o apellido"
+              allowClear
+              enterButton={<SearchOutlined />}
+              onSearch={handleSearch}
+              onChange={(e) => handleSearch(e.target.value)}
+              style={{ width: "100%" }}
+              value={searchText}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={4}>
+            <Button onClick={cargarClientes} block>
+              Refrescar
+            </Button>
+          </Col>
+        </Row>
+
+        {/* 👀 Vista móvil → tarjetas */}
+        {isMobile ? (
+          <TarjetaMobile
+            data={filteredData}
+            loading={loading} // 🔹 Spinner mientras carga
+            columns={[
+              {
+                label: "Nombre",
+                key: "clienteNombreCompleto",
+                render: (v, item) =>
+                  `${item.clienteNombre || ""} ${item.clienteApellido || ""}`,
+              },
+              { label: "ID", key: "clienteID" },
+            ]}
+            detailsKey="detalles"
+            detailsColumns={[
+              {
+                label: "Teléfono",
+                key: "clienteTelefono",
+                render: (v) => v || "N/A",
+              },
+              {
+                label: "Municipio",
+                key: "clienteMunicipio",
+                render: (v) => v || "N/A",
+              },
+              {
+                label: "Departamento",
+                key: "clienteDepartament",
+                render: (v) => v || "N/A",
+              },
+              {
+                label: "Cédula",
+                key: "clienteCedula",
+                render: (v) => v || "N/A",
+              },
+              { label: "RTN", key: "clienteRTN", render: (v) => v || "N/A" },
+              {
+                label: "Clave IHCAFE",
+                key: "claveIHCAFE",
+                render: (v) => v || "N/A",
+              },
+              {
+                label: "Dirección",
+                key: "clienteDirecion",
+                render: (v) => v || "N/A",
+              },
+            ]}
           />
-        </Col>
-        <Col xs={24} sm={12} md={4}>
-          <Button onClick={cargarClientes} block>
-            Refrescar
-          </Button>
-        </Col>
-      </Row>
-
-      {/* 👀 Vista móvil → tarjetas */}
-      {isMobile ? (
-        <TarjetaMobile
-          data={filteredData}
-          loading={loading} // 🔹 Spinner mientras carga
-          columns={[
-            {
-              label: "Nombre",
-              key: "clienteNombreCompleto",
-              render: (v, item) =>
-                `${item.clienteNombre || ""} ${item.clienteApellido || ""}`,
-            },
-            { label: "ID", key: "clienteID" },
-          ]}
-          detailsKey="detalles"
-          detailsColumns={[
-            {
-              label: "Teléfono",
-              key: "clienteTelefono",
-              render: (v) => v || "N/A",
-            },
-            {
-              label: "Municipio",
-              key: "clienteMunicipio",
-              render: (v) => v || "N/A",
-            },
-            {
-              label: "Departamento",
-              key: "clienteDepartament",
-              render: (v) => v || "N/A",
-            },
-            {
-              label: "Cédula",
-              key: "clienteCedula",
-              render: (v) => v || "N/A",
-            },
-            { label: "RTN", key: "clienteRTN", render: (v) => v || "N/A" },
-            {
-              label: "Clave IHCAFE",
-              key: "claveIHCAFE",
-              render: (v) => v || "N/A",
-            },
-            {
-              label: "Dirección",
-              key: "clienteDirecion",
-              render: (v) => v || "N/A",
-            },
-          ]}
-        />
-      ) : (
-        // 👀 Vista tablet/desktop → tabla con expandibles
-        <Table
-          columns={columns}
-          dataSource={filteredData}
-          rowKey="clienteID"
-          loading={loading}
-          scroll={{ x: "max-content" }}
-          pagination={{ pageSize: 5 }}
-          expandable={{
-            expandedRowRender: (record) => (
-              <Card size="small" title="Detalles del Cliente" type="inner">
-                <Row gutter={[16, 8]}>
-                  <Col xs={24} sm={12}>
-                    <p>
-                      <b>Municipio:</b> {record.clienteMunicipio || "N/A"}
-                    </p>
-                    <p>
-                      <b>Clave IHCAFE:</b> {record.claveIHCAFE || "N/A"}
-                    </p>
-                  </Col>
-                  <Col xs={24} sm={12}>
-                    <p>
-                      <b>RTN:</b> {record.clienteRTN || "N/A"}
-                    </p>
-                    <p>
-                      <b>Dirección:</b> {record.clienteDirecion || "N/A"}
-                    </p>
-                  </Col>
-                </Row>
-              </Card>
-            ),
-          }}
-        />
-      )}
-    </div>
+        ) : (
+          // 👀 Vista tablet/desktop → tabla con expandibles
+          <Table
+            columns={columns}
+            dataSource={filteredData}
+            rowKey="clienteID"
+            loading={loading}
+            scroll={{ x: "max-content" }}
+            pagination={{ pageSize: 5 }}
+            expandable={{
+              expandedRowRender: (record) => (
+                <Card size="small" title="Detalles del Cliente" type="inner">
+                  <Row gutter={[16, 8]}>
+                    <Col xs={24} sm={12}>
+                      <p>
+                        <b>Municipio:</b> {record.clienteMunicipio || "N/A"}
+                      </p>
+                      <p>
+                        <b>Clave IHCAFE:</b> {record.claveIHCAFE || "N/A"}
+                      </p>
+                    </Col>
+                    <Col xs={24} sm={12}>
+                      <p>
+                        <b>RTN:</b> {record.clienteRTN || "N/A"}
+                      </p>
+                      <p>
+                        <b>Dirección:</b> {record.clienteDirecion || "N/A"}
+                      </p>
+                    </Col>
+                  </Row>
+                </Card>
+              ),
+            }}
+          />
+        )}
+      </div>
+    </ProtectedPage>
   );
 }

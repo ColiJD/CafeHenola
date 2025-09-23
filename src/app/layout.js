@@ -25,9 +25,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="es">
       <body className={`${montserrat.variable} ${roboto.variable}`}>
-        <ClientProviders>
-          <DashboardLayout>{children}</DashboardLayout>
-        </ClientProviders>
+        <ClientProviders>{children}</ClientProviders>
       </body>
     </html>
   );

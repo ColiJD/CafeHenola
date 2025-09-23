@@ -2,7 +2,8 @@ import eventos from "@/img/eventos.png";
 import producto from "@/img/cliente.png";
 import cliente from "@/img/product.png";
 import deposito from "@/img/deposito.png";
-import money from "@/img/money.png";
+import { LogoutOutlined } from "@ant-design/icons";
+import { signOut } from "next-auth/react";
 
 // import contrato from "@/img/co.png";
 import contrato from "@/img/contrato.png";
@@ -23,7 +24,7 @@ import {
   FileTextOutlined,
 } from "@ant-design/icons";
 
-const Ruta = "/page/";
+const Ruta = "/private/page/";
 // 📂 lib/menu.js
 
 export const menuItems = [
@@ -204,18 +205,23 @@ export const menuItem = [
         label: "Registros de Clientes",
         route: Ruta + "/cliente/Registros",
       },
+      {
+        key: "Registrar Usuario",
+        label: "Registrar Usuario",
+        route: Ruta + "/user",
+      },
     ],
   },
-  // {
-  //   key: "usuario",
-  //   icon: <UserOutlined />,
-  //   label: "Usuario",
-  //   route: "/usuario",
-  // },
   {
     key: "inventario",
     icon: <AppstoreOutlined />,
     label: "Inventario",
     route: Ruta + "/inventario",
+  },
+  {
+    key: "logout",
+    icon: <LogoutOutlined />,
+    label: "Cerrar Sesion",
+    onClick: () => signOut({ callbackUrl: "/login" }),
   },
 ];

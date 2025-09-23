@@ -13,28 +13,29 @@ export const authOptions = {
       async authorize(credentials) {
         const user = await prisma.users.findUnique({
           where: { userEmail: credentials.email },
-          include: { role: true }, // Traer el rol
+          include: { roles: true },
         });
 
-        if (!user) return null;
+        if (!user) throw new Error("Usuario no encontrado");
 
         const isValid = await bcrypt.compare(
           credentials.password,
           user.userPassword
         );
-        if (!isValid) return null;
+
+        if (!isValid) throw new Error("Contraseña incorrecta");
 
         return {
           id: user.userId,
           email: user.userEmail,
           name: user.userName,
-          role: user.role.roleName,
+          role: user.roles.roleName,
         };
       },
     }),
   ],
   callbacks: {
-    async session({ session, token, user }) {
+    async session({ session, token }) {
       session.user.id = token.id;
       session.user.role = token.role;
       return session;
@@ -47,5 +48,15 @@ export const authOptions = {
       return token;
     },
   },
-  session: { strategy: "jwt" },
+  session: {
+    strategy: "jwt",
+    maxAge: 60 * 20, 
+  },
+  jwt: {
+    maxAge: 60 * 20,
+  },
+  secret: process.env.NEXTAUTH_SECRET,
+  pages: {
+    signIn: "/login",
+  },
 };

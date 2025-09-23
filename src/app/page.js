@@ -1,11 +1,20 @@
-import ProtectedPage from "@/components/ProtectedPage";
-import Menu from "@/app/page/menu/page";
-export default function Home() {
-  return (
-    <ProtectedPage allowedRoles={["ADMIN"]}>
-      <main>
-        <Menu />
-      </main>
-    </ProtectedPage>
-  );
+import { getToken } from "next-auth/jwt";
+import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+
+export default async function RootPage() {
+  const cookieStore = await cookies(); // 👈 ahora sí async
+
+  const token = await getToken({
+    req: {
+      cookies: Object.fromEntries(
+        cookieStore.getAll().map((c) => [c.name, c.value])
+      ),
+    },
+    secret: process.env.NEXTAUTH_SECRET,
+  });
+
+  if (!token) redirect("/login");
+
+  redirect("/private");
 }

@@ -22,6 +22,7 @@
     "jspdf-autotable": "^5.0.2",
     "next": "15.4.5",
     "next-auth": "^4.24.11",
+    "nodemailer": "^6.10.1",
     "numero-a-texto": "^1.0.0",
     "pdfmake": "^0.2.20",
     "react": "^18.3.1",

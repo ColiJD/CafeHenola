@@ -221,15 +221,27 @@ model roles {
 }
 
 model users {
-  userId       Int      @id @default(autoincrement())
-  userEmail    String   @unique(map: "userEmail") @db.VarChar(255)
-  userPassword String   @db.VarChar(255)
-  userName     String?  @db.VarChar(100)
-  roleId       Int
-  createdAt    DateTime @default(now()) @db.DateTime(0)
-  roles        roles    @relation(fields: [roleId], references: [roleId], onUpdate: Restrict, map: "users_ibfk_1")
+  userId          Int               @id @default(autoincrement())
+  userEmail       String            @unique(map: "userEmail") @db.VarChar(255)
+  userPassword    String            @db.VarChar(255)
+  userName        String?           @db.VarChar(100)
+  roleId          Int
+  createdAt       DateTime          @default(now()) @db.DateTime(0)
+  password_resets password_resets[]
+  roles           roles             @relation(fields: [roleId], references: [roleId], onUpdate: Restrict, map: "users_ibfk_1")
 
   @@index([roleId], map: "roleId")
+}
+
+model password_resets {
+  id        Int      @id @default(autoincrement()) @db.UnsignedInt
+  userId    Int
+  token     String   @unique(map: "idx_token") @db.VarChar(64)
+  expiresAt DateTime @db.DateTime(0)
+  createdAt DateTime @default(now()) @db.DateTime(0)
+  users     users    @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: Restrict, map: "password_resets_ibfk_1")
+
+  @@index([userId], map: "userId")
 }
 
 enum movimientoinventario_tipoMovimiento {

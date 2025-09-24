@@ -18,17 +18,15 @@ export default function ResetPassword() {
       setValidToken(false);
       return;
     }
-
     async function checkToken() {
-    try {
-      const res = await fetch(`/api/auth/validate-token?token=${token}`);
-      const data = await res.json();
-      setValidToken(data.valid);
-    } catch {
-      setValidToken(false);
+      try {
+        const res = await fetch(`/api/auth/validate-token?token=${token}`);
+        const data = await res.json();
+        setValidToken(data.valid);
+      } catch {
+        setValidToken(false);
+      }
     }
-  }
-
     checkToken();
   }, [token]);
 
@@ -47,7 +45,7 @@ export default function ResetPassword() {
       } else {
         messageApi.error(data.message || "Error al actualizar la contraseña");
       }
-    } catch (error) {
+    } catch {
       messageApi.error("Error al actualizar la contraseña");
     } finally {
       setLoading(false);
@@ -65,11 +63,7 @@ export default function ResetPassword() {
           backgroundColor: "#f3f4f6",
         }}
       >
-        <Spin
-          spinning={validToken === null}
-          tip="Verificando enlace..."
-          size="large"
-        >
+        <Spin spinning={true} tip="Verificando enlace..." size="large">
           <Card
             style={{
               width: 350,
@@ -78,9 +72,7 @@ export default function ResetPassword() {
               borderRadius: 16,
               boxShadow: "0px 6px 18px rgba(0,0,0,0.1)",
             }}
-          >
-            {/* Contenido de reset password */}
-          </Card>
+          ></Card>
         </Spin>
       </div>
     );
@@ -126,15 +118,8 @@ export default function ResetPassword() {
     >
       {contextHolder}
       <Row justify="center" style={{ width: "100%" }}>
-        <Col
-          xs={24} // móvil completo
-          sm={20} // tablet pequeño
-          md={16} // tablet grande
-          lg={12} // laptop
-          xl={8} // escritorio grande
-        >
+        <Col xs={24} sm={20} md={16} lg={12} xl={8}>
           <Card
-            variant="outlined"
             style={{
               width: "100%",
               padding: 24,
@@ -143,7 +128,6 @@ export default function ResetPassword() {
               boxShadow: "0px 6px 18px rgba(0,0,0,0.1)",
             }}
           >
-            {/* Imagen */}
             <div
               style={{
                 display: "flex",
@@ -163,12 +147,9 @@ export default function ResetPassword() {
                 }}
               />
             </div>
-
             <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 24 }}>
               Restablecer contraseña
             </h2>
-
-            {/* Formulario */}
             <div style={{ display: "flex", justifyContent: "center" }}>
               <div style={{ width: "100%", maxWidth: 280 }}>
                 <Form layout="vertical" onFinish={onFinish}>
@@ -189,9 +170,8 @@ export default function ResetPassword() {
                       { required: true, message: "Confirme su contraseña" },
                       ({ getFieldValue }) => ({
                         validator(_, value) {
-                          if (!value || getFieldValue("password") === value) {
+                          if (!value || getFieldValue("password") === value)
                             return Promise.resolve();
-                          }
                           return Promise.reject(
                             new Error("Las contraseñas no coinciden")
                           );

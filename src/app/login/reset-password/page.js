@@ -20,14 +20,14 @@ export default function ResetPassword() {
     }
 
     async function checkToken() {
-      try {
-        const res = await fetch(`/api/auth/validate-token?token=${token}`);
-        const data = await res.json();
-        setValidToken(data.valid);
-      } catch (error) {
-        setValidToken(false);
-      }
+    try {
+      const res = await fetch(`/api/auth/validate-token?token=${token}`);
+      const data = await res.json();
+      setValidToken(data.valid);
+    } catch {
+      setValidToken(false);
     }
+  }
 
     checkToken();
   }, [token]);

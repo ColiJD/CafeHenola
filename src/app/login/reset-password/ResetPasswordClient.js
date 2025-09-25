@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Form, Input, Button, message, Card, Spin } from "antd";
+import { Form, Input, Button, message, Card, Spin, Row, Col } from "antd";
 import Image from "next/image";
 import frijolesImg from "@/img/frijoles.png";
 

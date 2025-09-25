@@ -1,39 +1,33 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
 import { Form, Input, Button, message, Card, Spin, Row, Col } from "antd";
 import Image from "next/image";
 import frijolesImg from "@/img/frijoles.png";
 
-export default function ResetPassword() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const [token, setToken] = useState(null);
+export default function ResetPassword({ token }) {
   const [validToken, setValidToken] = useState(null);
   const [loading, setLoading] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
 
-  // 👉 Manejar el token de forma segura
   useEffect(() => {
-    const t = searchParams.get("token");
-    if (!t) {
+    if (!token) {
       setValidToken(false);
       return;
     }
-    setToken(t);
 
     async function checkToken() {
       try {
-        const res = await fetch(`/api/auth/validate-token?token=${t}`);
+        const res = await fetch(`/api/auth/validate-token?token=${token}`);
         const data = await res.json();
         setValidToken(data.valid);
       } catch {
         setValidToken(false);
       }
     }
+
     checkToken();
-  }, [searchParams]);
+  }, [token]);
 
   const onFinish = async (values) => {
     setLoading(true);
@@ -44,9 +38,11 @@ export default function ResetPassword() {
         body: JSON.stringify({ token, password: values.password }),
       });
       const data = await res.json();
+
       if (data.success) {
         messageApi.success("Contraseña actualizada correctamente");
-        router.push("/login");
+        // ✅ sin useRouter: redirige con window
+        window.location.href = "/login";
       } else {
         messageApi.error(data.message || "Error al actualizar la contraseña");
       }

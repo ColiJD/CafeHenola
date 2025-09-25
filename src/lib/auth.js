@@ -16,14 +16,17 @@ export const authOptions = {
           include: { roles: true },
         });
 
-        if (!user) throw new Error("Usuario no encontrado");
+        // Mensaje genérico de error
+        const errorMsg = "Usuario o contraseña incorrecta";
+
+        if (!user) throw new Error(errorMsg);
 
         const isValid = await bcrypt.compare(
           credentials.password,
           user.userPassword
         );
 
-        if (!isValid) throw new Error("Contraseña incorrecta");
+        if (!isValid) throw new Error(errorMsg);
 
         return {
           id: user.userId,
@@ -50,7 +53,7 @@ export const authOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 60 * 20, 
+    maxAge: 60 * 20,
   },
   jwt: {
     maxAge: 60 * 20,

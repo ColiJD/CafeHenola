@@ -8,7 +8,7 @@ export default function Menu() {
   return (
     <main className="menu-container">
       {menuItems.map(({ id, name, image }) => (
-        <Link key={id} href={`/page/menu/${id}`} className="menu-card">
+        <Link key={id} href={`/private/page/menu/${id}`} className="menu-card">
           <Image
             src={image}
             alt={name}

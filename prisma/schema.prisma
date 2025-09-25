@@ -7,6 +7,50 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model roles {
+  roleId    Int      @id @default(autoincrement())
+  roleName  String   @unique(map: "roleName") @db.VarChar(50)
+  createdAt DateTime @default(now()) @db.DateTime(0)
+  users     users[]
+}
+
+model users {
+  userId          Int               @id @default(autoincrement())
+  userEmail       String            @unique(map: "userEmail") @db.VarChar(255)
+  userPassword    String            @db.VarChar(255)
+  userName        String?           @db.VarChar(100)
+  roleId          Int
+  createdAt       DateTime          @default(now()) @db.DateTime(0)
+  password_resets password_resets[]
+  roles           roles             @relation(fields: [roleId], references: [roleId], onUpdate: Restrict, map: "users_ibfk_1")
+
+  @@index([roleId], map: "roleId")
+}
+
+model password_resets {
+  id        Int      @id @default(autoincrement()) @db.UnsignedInt
+  userId    Int
+  token     String   @unique(map: "idx_token") @db.VarChar(64)
+  expiresAt DateTime @db.DateTime(0)
+  createdAt DateTime @default(now()) @db.DateTime(0)
+  users     users    @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: Restrict, map: "password_resets_ibfk_1")
+
+  @@index([userId], map: "userId")
+}
+
+model cierrecontrato {
+  cierreID         Int       @id @default(autoincrement())
+  contratoID       Int
+  fechaCierre      DateTime? @default(now()) @db.DateTime(0)
+  totalEntregadoQQ Decimal   @db.Decimal(15, 2)
+  totalLps         Decimal   @db.Decimal(15, 2)
+  tipoMovimiento   String    @default("Cierre de contrato") @db.VarChar(50)
+  observaciones    String?   @db.VarChar(200)
+  contrato         contrato  @relation(fields: [contratoID], references: [contratoID], onUpdate: Restrict, map: "cierrecontrato_ibfk_1")
+
+  @@index([contratoID], map: "contratoID")
+}
+
 model cliente {
   clienteID          Int                 @id @default(autoincrement())
   clienteCedula      String?             @unique(map: "clienteCedula") @db.VarChar(15)
@@ -46,6 +90,39 @@ model compra {
   @@index([compraTipoCafe], map: "compraTipoCafe")
 }
 
+model compradores {
+  compradorId        Int      @id @default(autoincrement())
+  compradorNombre    String   @db.VarChar(255)
+  compradorRTN       String?  @unique(map: "compradorRTN") @db.VarChar(50)
+  compradorDireccion String?  @db.VarChar(300)
+  compradorTelefono  String   @db.VarChar(50)
+  compradorEmail     String   @db.VarChar(255)
+  createdAt          DateTime @default(now()) @db.DateTime(0)
+}
+
+model contrato {
+  contratoID          Int               @id @default(autoincrement())
+  contratoclienteID   Int?
+  contratoFecha       DateTime?         @db.DateTime(0)
+  contratoMovimiento  String?           @db.VarChar(20)
+  contratoTipoCafe    Int?
+  contratoPrecio      Decimal?          @db.Decimal(15, 2)
+  contratoCantidadQQ  Decimal?          @db.Decimal(15, 2)
+  contratoTotalLps    Decimal?          @db.Decimal(15, 2)
+  contratoEn          String?           @db.VarChar(20)
+  contratoDescripcion String?           @db.VarChar(200)
+  estado              String?           @default("Pendiente") @db.VarChar(20)
+  contratoRetencionQQ Decimal?          @db.Decimal(15, 2)
+  cierrecontrato      cierrecontrato[]
+  cliente             cliente?          @relation(fields: [contratoclienteID], references: [clienteID], onDelete: Restrict, onUpdate: Restrict, map: "contrato_ibfk_1")
+  producto            producto?         @relation(fields: [contratoTipoCafe], references: [productID], onDelete: Restrict, onUpdate: Restrict, map: "contrato_ibfk_2")
+  deposito            deposito[]
+  detallecontrato     detallecontrato[]
+
+  @@index([contratoTipoCafe], map: "contratoTipoCafe")
+  @@index([contratoclienteID], map: "contratoclienteID")
+}
+
 model deposito {
   depositoID          Int                  @id @default(autoincrement())
   depositoFecha       DateTime?            @db.DateTime(0)
@@ -69,18 +146,17 @@ model deposito {
   @@index([contratoID], map: "fk_deposito_contrato")
 }
 
-model producto {
-  productID         Int                 @id @default(autoincrement())
-  productName       String              @unique(map: "UQ_Producto_Nombre") @db.VarChar(50)
-  tara              Decimal?            @default(0.00) @db.Decimal(5, 2)
-  descuento         Decimal?            @default(0.00) @db.Decimal(5, 2)
-  factorOro         Decimal?            @default(1.00) @db.Decimal(10, 2)
-  compra            compra[]
-  contrato          contrato[]
-  deposito          deposito[]
-  inventariocliente inventariocliente[]
-  inventarioempresa inventarioempresa?
-  liqdeposito       liqdeposito[]
+model detallecontrato {
+  detalleID      Int       @id @default(autoincrement())
+  contratoID     Int
+  cantidadQQ     Decimal   @db.Decimal(15, 2)
+  precioQQ       Decimal   @db.Decimal(15, 2)
+  tipoMovimiento String    @default("Entrega de contrato") @db.VarChar(50)
+  fecha          DateTime? @default(now()) @db.DateTime(0)
+  observaciones  String?   @db.VarChar(200)
+  contrato       contrato  @relation(fields: [contratoID], references: [contratoID], onUpdate: Restrict, map: "detallecontrato_ibfk_1")
+
+  @@index([contratoID], map: "contratoID")
 }
 
 model detalleliqdeposito {
@@ -119,57 +195,6 @@ model inventarioempresa {
   producto            producto @relation(fields: [productoID], references: [productID], onUpdate: Restrict, map: "inventarioempresa_ibfk_1")
 }
 
-model movimientoinventario {
-  movimientoID        Int                                 @id @default(autoincrement())
-  inventarioClienteID Int
-  fecha               DateTime                            @default(now()) @db.DateTime(0)
-  tipoMovimiento      movimientoinventario_tipoMovimiento
-  referenciaTipo      String?                             @db.VarChar(50)
-  referenciaID        Int?
-  cantidadQQ          Decimal                             @db.Decimal(15, 2)
-  cantidadSacos       Decimal                             @default(0.00) @db.Decimal(15, 2)
-  nota                String?                             @db.VarChar(200)
-  inventariocliente   inventariocliente                   @relation(fields: [inventarioClienteID], references: [inventarioClienteID], onUpdate: Restrict, map: "movimientoinventario_ibfk_1")
-
-  @@index([inventarioClienteID], map: "inventarioClienteID")
-}
-
-model contrato {
-  contratoID          Int               @id @default(autoincrement())
-  contratoclienteID   Int?
-  contratoFecha       DateTime?         @db.DateTime(0)
-  contratoMovimiento  String?           @db.VarChar(20)
-  contratoTipoCafe    Int?
-  contratoPrecio      Decimal?          @db.Decimal(15, 2)
-  contratoCantidadQQ  Decimal?          @db.Decimal(15, 2)
-  contratoTotalLps    Decimal?          @db.Decimal(15, 2)
-  contratoEn          String?           @db.VarChar(20)
-  contratoDescripcion String?           @db.VarChar(200)
-  estado              String?           @default("Pendiente") @db.VarChar(20)
-  contratoRetencionQQ Decimal?          @db.Decimal(15, 2)
-  cierrecontrato      cierrecontrato[]
-  cliente             cliente?          @relation(fields: [contratoclienteID], references: [clienteID], onDelete: Restrict, onUpdate: Restrict, map: "contrato_ibfk_1")
-  producto            producto?         @relation(fields: [contratoTipoCafe], references: [productID], onDelete: Restrict, onUpdate: Restrict, map: "contrato_ibfk_2")
-  deposito            deposito[]
-  detallecontrato     detallecontrato[]
-
-  @@index([contratoTipoCafe], map: "contratoTipoCafe")
-  @@index([contratoclienteID], map: "contratoclienteID")
-}
-
-model detallecontrato {
-  detalleID      Int       @id @default(autoincrement())
-  contratoID     Int
-  cantidadQQ     Decimal   @db.Decimal(15, 2)
-  precioQQ       Decimal   @db.Decimal(15, 2)
-  tipoMovimiento String    @default("Entrega de contrato") @db.VarChar(50)
-  fecha          DateTime? @default(now()) @db.DateTime(0)
-  observaciones  String?   @db.VarChar(200)
-  contrato       contrato  @relation(fields: [contratoID], references: [contratoID], onUpdate: Restrict, map: "detallecontrato_ibfk_1")
-
-  @@index([contratoID], map: "contratoID")
-}
-
 model liqdeposito {
   liqID              Int                  @id @default(autoincrement())
   liqFecha           DateTime?            @db.DateTime(0)
@@ -190,58 +215,33 @@ model liqdeposito {
   @@index([liqclienteID], map: "liqclienteID")
 }
 
-model cierrecontrato {
-  cierreID         Int       @id @default(autoincrement())
-  contratoID       Int
-  fechaCierre      DateTime? @default(now()) @db.DateTime(0)
-  totalEntregadoQQ Decimal   @db.Decimal(15, 2)
-  totalLps         Decimal   @db.Decimal(15, 2)
-  tipoMovimiento   String    @default("Cierre de contrato") @db.VarChar(50)
-  observaciones    String?   @db.VarChar(200)
-  contrato         contrato  @relation(fields: [contratoID], references: [contratoID], onUpdate: Restrict, map: "cierrecontrato_ibfk_1")
+model movimientoinventario {
+  movimientoID        Int                                 @id @default(autoincrement())
+  inventarioClienteID Int
+  fecha               DateTime                            @default(now()) @db.DateTime(0)
+  tipoMovimiento      movimientoinventario_tipoMovimiento
+  referenciaTipo      String?                             @db.VarChar(50)
+  referenciaID        Int?
+  cantidadQQ          Decimal                             @db.Decimal(15, 2)
+  cantidadSacos       Decimal                             @default(0.00) @db.Decimal(15, 2)
+  nota                String?                             @db.VarChar(200)
+  inventariocliente   inventariocliente                   @relation(fields: [inventarioClienteID], references: [inventarioClienteID], onUpdate: Restrict, map: "movimientoinventario_ibfk_1")
 
-  @@index([contratoID], map: "contratoID")
+  @@index([inventarioClienteID], map: "inventarioClienteID")
 }
 
-model compradores {
-  compradorId        Int      @id @default(autoincrement())
-  compradorNombre    String   @db.VarChar(255)
-  compradorRTN       String?  @unique(map: "compradorRTN") @db.VarChar(50)
-  compradorDireccion String?  @db.VarChar(300)
-  compradorTelefono  String   @db.VarChar(50)
-  compradorEmail     String   @db.VarChar(255)
-  createdAt          DateTime @default(now()) @db.DateTime(0)
-}
-
-model roles {
-  roleId    Int      @id @default(autoincrement())
-  roleName  String   @unique(map: "roleName") @db.VarChar(50)
-  createdAt DateTime @default(now()) @db.DateTime(0)
-  users     users[]
-}
-
-model users {
-  userId          Int               @id @default(autoincrement())
-  userEmail       String            @unique(map: "userEmail") @db.VarChar(255)
-  userPassword    String            @db.VarChar(255)
-  userName        String?           @db.VarChar(100)
-  roleId          Int
-  createdAt       DateTime          @default(now()) @db.DateTime(0)
-  password_resets password_resets[]
-  roles           roles             @relation(fields: [roleId], references: [roleId], onUpdate: Restrict, map: "users_ibfk_1")
-
-  @@index([roleId], map: "roleId")
-}
-
-model password_resets {
-  id        Int      @id @default(autoincrement()) @db.UnsignedInt
-  userId    Int
-  token     String   @unique(map: "idx_token") @db.VarChar(64)
-  expiresAt DateTime @db.DateTime(0)
-  createdAt DateTime @default(now()) @db.DateTime(0)
-  users     users    @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: Restrict, map: "password_resets_ibfk_1")
-
-  @@index([userId], map: "userId")
+model producto {
+  productID         Int                 @id @default(autoincrement())
+  productName       String              @unique(map: "UQ_Producto_Nombre") @db.VarChar(50)
+  tara              Decimal?            @default(0.00) @db.Decimal(5, 2)
+  descuento         Decimal?            @default(0.00) @db.Decimal(5, 2)
+  factorOro         Decimal?            @default(1.00) @db.Decimal(10, 2)
+  compra            compra[]
+  contrato          contrato[]
+  deposito          deposito[]
+  inventariocliente inventariocliente[]
+  inventarioempresa inventarioempresa?
+  liqdeposito       liqdeposito[]
 }
 
 enum movimientoinventario_tipoMovimiento {

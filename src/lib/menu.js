@@ -24,7 +24,8 @@ import {
   FileTextOutlined,
 } from "@ant-design/icons";
 
-const Ruta = "/private/page/";
+const RutaTransaccion = "/private/page/transacciones";
+const Ruta = "/private/page";
 // 📂 lib/menu.js
 
 export const menuItems = [
@@ -36,21 +37,31 @@ export const menuItems = [
       {
         id: 101,
         name: "Compra Directa",
-        href: Ruta + "/compra/",
+        href: RutaTransaccion + "/compra/",
         image: Compras,
       },
-      { id: 102, name: "Deposito", href: Ruta + "/deposito", image: Depo },
+      {
+        id: 102,
+        name: "Deposito",
+        href: RutaTransaccion + "/deposito",
+        image: Depo,
+      },
       {
         id: 103,
         name: "Liquidar Deposito",
-        href: Ruta + "deposito/liqDeposito",
+        href: RutaTransaccion + "deposito/liqDeposito",
         image: LiqDepo,
       },
-      { id: 104, name: "Contrato", href: Ruta + "/contrato", image: prestamo },
+      {
+        id: 104,
+        name: "Contrato",
+        href: RutaTransaccion + "/contrato",
+        image: prestamo,
+      },
       {
         id: 105,
         name: "Entregar Contrato",
-        href: Ruta + "/contrato/entrega",
+        href: RutaTransaccion + "/contrato/entrega",
         image: Contrato,
       },
     ],
@@ -63,7 +74,7 @@ export const menuItems = [
       {
         id: 201,
         name: "Venta Directa",
-        href: Ruta + "Venta/venta",
+        href: RutaTransaccion + "Venta/venta",
         image: Compras,
       },
     ],
@@ -79,6 +90,12 @@ export const menuItems = [
     name: "Informe",
     image: eventos,
     subItems: [
+      {
+        id: 400,
+        name: "General",
+        href: Ruta + "/informe/general",
+        image: deposito,
+      },
       {
         id: 401,
         name: "Saldo Por Deposito",
@@ -134,17 +151,17 @@ export const menuItem = [
       {
         key: "SaldoDisponible",
         label: "Saldo Por Deposito",
-        route: Ruta + "/deposito/vista",
+        route: RutaTransaccion + "/deposito/vista",
       },
       {
         key: "SaldoContratoDisponible",
         label: "Saldo Por Contrato",
-        route: Ruta + "/contrato/vista",
+        route: RutaTransaccion + "/contrato/vista",
       },
       {
         key: "detalleCompras",
         label: "Detalle de Compras",
-        route: Ruta + "/compra/vista",
+        route: RutaTransaccion + "/compra/vista",
       },
     ],
   },
@@ -157,27 +174,27 @@ export const menuItem = [
       {
         key: "compraDirecta",
         label: "Compra Directa",
-        route: Ruta + "/compra",
+        route: RutaTransaccion + "/compra",
       },
       {
         key: "compraDeposito",
         label: "Deposito",
-        route: Ruta + "/deposito",
+        route: RutaTransaccion + "/deposito",
       },
       {
         key: "compraLiqDeposito",
         label: "Liquidacion de Deposito",
-        route: Ruta + "/deposito/liqDeposito",
+        route: RutaTransaccion + "/deposito/liqDeposito",
       },
       {
         key: "compraContrato",
         label: "Contrato",
-        route: Ruta + "/contrato",
+        route: RutaTransaccion + "/contrato",
       },
       {
         key: "compraEntregaContrato",
         label: "Entrega Contrato",
-        route: Ruta + "/contrato/entrega",
+        route: RutaTransaccion + "/contrato/entrega",
       },
     ],
   },
@@ -189,7 +206,7 @@ export const menuItem = [
       {
         key: "venta-directa",
         label: "Venta Directa",
-        route: Ruta + "Venta/venta",
+        route: RutaTransaccion + "/Venta/venta",
       },
     ],
   },

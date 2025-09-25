@@ -1,4 +1,3 @@
-// app/(private)/layout.js
 "use client";
 import DashboardLayout from "@/components/MenuAnt";
 

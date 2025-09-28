@@ -29,10 +29,17 @@ export default function TarjetaMobile({
     );
   }
   return (
-    <Row gutter={[12, 12]} style={{ marginBottom: 20 }}>
+    <Row gutter={[12, 12]}>
       {data.map((item, idx) => (
-        <Col key={idx} xs={24} sm={12} md={8}>
-          <Card>
+        <Col key={idx} xs={24} sm={12} md={8} style={{ display: "flex" }}>
+          <Card
+            style={{
+              flex: 1,
+              marginBottom: 16,
+              borderRadius: 8,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            }}
+          >
             {columns.map((col, i) => {
               if (col.visible === false) return null;
               const value = col.render

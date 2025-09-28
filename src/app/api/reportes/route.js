@@ -48,21 +48,23 @@ export async function GET(req) {
     });
 
     // 🔹 Contratos (movimientos reales en CierreContrato)
-    const contratosEntradas = await prisma.cierrecontrato.aggregate({
-      _sum: { totalEntregadoQQ: true, totalLps: true },
+    const contratosEntradas = await prisma.detallecontrato.aggregate({
+      _sum: { cantidadQQ: true, precioQQ: true },
       where: {
         tipoMovimiento: "Entrada",
-        fechaCierre: { gte: desde, lte: hasta },
+        fecha: { gte: desde, lte: hasta },
       },
     });
 
-    const contratosSalidas = await prisma.cierrecontrato.aggregate({
-      _sum: { totalEntregadoQQ: true, totalLps: true },
+
+    const contratosSalidas = await prisma.detallecontrato.aggregate({
+      _sum: { cantidadQQ: true, precioQQ: true },
       where: {
         tipoMovimiento: "Salida",
-        fechaCierre: { gte: desde, lte: hasta },
+        fecha: { gte: desde, lte: hasta },
       },
     });
+
 
     // 🔹 Retenciones = tabla Contrato
     const contratosRetencion = await prisma.contrato.aggregate({

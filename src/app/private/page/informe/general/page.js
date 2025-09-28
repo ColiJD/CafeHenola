@@ -87,8 +87,8 @@ export default function ResumenMovimientos() {
 
   const contratosData = data
     ? formatearData(data.contratos.entradas, data.contratos.salidas, {
-        cantidad: "totalEntregadoQQ",
-        total: "totalLps",
+        cantidad: "cantidadQQ",
+        total: "precioQQ",
       })
     : [];
 
@@ -105,21 +105,21 @@ export default function ResumenMovimientos() {
         entradas: {
           cantidad:
             (Number(data.compras.entradas._sum.compraCantidadQQ) || 0) +
-            (Number(data.contratos.entradas._sum.totalEntregadoQQ) || 0) +
+            (Number(data.contratos.entradas._sum.cantidadQQ) || 0) +
             (Number(data.depositos.entradas._sum.cantidadQQ) || 0),
           total:
             (Number(data.compras.entradas._sum.compraTotal) || 0) +
-            (Number(data.contratos.entradas._sum.totalLps) || 0) +
+            (Number(data.contratos.entradas._sum.precioQQ) || 0) +
             (Number(data.depositos.entradas._sum.totalLps) || 0),
         },
         salidas: {
           cantidad:
             (Number(data.compras.salidas._sum.compraCantidadQQ) || 0) +
-            (Number(data.contratos.salidas._sum.totalEntregadoQQ) || 0) +
+            (Number(data.contratos.salidas._sum.cantidadQQ) || 0) +
             (Number(data.depositos.salidas._sum.cantidadQQ) || 0),
           total:
             (Number(data.compras.salidas._sum.compraTotal) || 0) +
-            (Number(data.contratos.salidas._sum.totalLps) || 0) +
+            (Number(data.contratos.salidas._sum.precioQQ) || 0) +
             (Number(data.depositos.salidas._sum.totalLps) || 0),
         },
       }

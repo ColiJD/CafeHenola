@@ -148,6 +148,11 @@ export const menuItem = [
         label: "General",
         route: Ruta + "/informe/general",
       },
+       {
+        key: "PorCLiente",
+        label: "Reporte Por Cliente",
+        route: Ruta + "/informe/reporteCliente",
+      },
       {
         key: "SaldoDisponible",
         label: "Saldo Por Deposito",

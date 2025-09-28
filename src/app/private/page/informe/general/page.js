@@ -1,247 +1,310 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Table, message, Card, Button } from "antd";
+
+import { useMemo } from "react";
+import { Table, Card, Divider, Typography, message } from "antd";
 import dayjs from "dayjs";
-import TarjetaMobile from "@/components/TarjetaMobile";
 import { formatNumber } from "@/components/Formulario";
+import { FileFilled } from "@ant-design/icons";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
+
 import Filtros from "@/components/Filtros";
-import TarjetasDeTotales from "@/components/DetallesCard";
-import { ReloadOutlined } from "@ant-design/icons";
+import SectionHeader from "@/components/ReportesElement/AccionesResporte";
+import { useFetchReport } from "@/hook/useFetchReport";
 import { exportPDFGeneral } from "@/Doc/Reportes/General";
+import TarjetaMobile from "@/components/TarjetaMobile";
+
+const { Title, Text } = Typography;
 
 export default function ResumenMovimientos() {
-  const hoy = dayjs().startOf("day"); // 🔹 Día actual
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [rangoFechas, setRangoFechas] = useState([hoy, hoy]);
+  const hoy = [dayjs().startOf("day"), dayjs().endOf("day")];
+  const {
+    data,
+    loading,
+    rangoFechas,
+    onFechasChange,
+    contextHolder,
+    messageApi,
+    fetchData,
+  } = useFetchReport("/api/reportes", hoy);
 
   const { mounted, isDesktop } = useClientAndDesktop();
 
-  // 🔹 Función para cargar datos desde la API
-  async function fetchData(desde, hasta) {
-    try {
-      setLoading(true);
-      let url = "/api/reportes";
+  // 🔹 Normalizamos la data en formato tabla
+  const datosTabla = useMemo(() => {
+    if (!data) return [];
 
-      if (desde && hasta) {
-        url += `?desde=${desde}&hasta=${hasta}`;
-      }
+    return [
+      {
+        key: "entradas",
+        tipo: "Entradas",
+        compraQQ: data?.compras?.entradas?._sum?.compraCantidadQQ ?? 0,
+        compraLps: data?.compras?.entradas?._sum?.compraTotal ?? 0,
+        depositoQQ: data?.depositos?.entradas?._sum?.cantidadQQ ?? 0,
+        depositoLps: data?.depositos?.entradas?._sum?.totalLps ?? 0,
+        contratoQQ: data?.contratos?.entradas?._sum?.cantidadQQ ?? 0,
+        contratoLps: data?.contratos?.entradas?._sum?.precioQQ ?? 0,
+      },
+      {
+        key: "salidas",
+        tipo: "Salidas (Venta)",
+        compraQQ: data?.compras?.salidas?._sum?.compraCantidadQQ ?? 0,
+        compraLps: data?.compras?.salidas?._sum?.compraTotal ?? 0,
+        depositoQQ: data?.depositos?.salidas?._sum?.cantidadQQ ?? 0,
+        depositoLps: data?.depositos?.salidas?._sum?.totalLps ?? 0,
+        contratoQQ: data?.contratos?.salidas?._sum?.cantidadQQ ?? 0,
+        contratoLps: data?.contratos?.salidas?._sum?.precioQQ ?? 0,
+      },
+    ];
+  }, [data]);
 
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("Error en la API");
-
-      const json = await res.json();
-      setData(json);
-    } catch (err) {
-      console.error(err);
-      message.error("⚠️ Error cargando datos.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // 🔹 Cargar datos del día actual por defecto
-  useEffect(() => {
-    const desde = hoy.startOf("day").toDate().toISOString();
-    const hasta = hoy.endOf("day").toDate().toISOString();
-    fetchData(desde, hasta);
-  }, []);
-
-  // 🔹 Manejar cambio de fechas
-  const onFechasChange = (val) => {
-    setRangoFechas(val);
-    if (!val || !val[0] || !val[1]) {
-      // si el usuario borra → traer mes actual
-      fetchData();
-      return;
-    }
-    const desde = val[0].startOf("day").toDate().toISOString();
-    const hasta = val[1].endOf("day").toDate().toISOString();
-    fetchData(desde, hasta);
-  };
-
-  // 🔹 preparar datos
-  const formatearData = (entradas, salidas, keys) => [
+  // 🔹 Columnas de la tabla con subcolumnas
+  const columnas = [
     {
-      key: "entrada",
-      movimiento: "📥 Entrada",
-      cantidad: formatNumber(entradas?._sum?.[keys.cantidad] || 0),
-      total: formatNumber(entradas?._sum?.[keys.total] || 0),
+      title: "",
+      dataIndex: "tipo",
+      key: "tipo",
+      fixed: "left",
     },
     {
-      key: "salida",
-      movimiento: "📤 Salida",
-      cantidad: formatNumber(salidas?._sum?.[keys.cantidad] || 0),
-      total: formatNumber(salidas?._sum?.[keys.total] || 0),
+      title: "Compra / Venta",
+      children: [
+        {
+          title: "QQ",
+          dataIndex: "compraQQ",
+          key: "compraQQ",
+          align: "right",
+          render: (v) => formatNumber(v),
+        },
+        {
+          title: "Lps",
+          dataIndex: "compraLps",
+          key: "compraLps",
+          align: "right",
+          render: (v) => `L. ${formatNumber(v)}`,
+        },
+      ],
+    },
+    {
+      title: "Depósito",
+      children: [
+        {
+          title: "QQ",
+          dataIndex: "depositoQQ",
+          key: "depositoQQ",
+          align: "right",
+          render: (v) => formatNumber(v),
+        },
+        {
+          title: "Lps",
+          dataIndex: "depositoLps",
+          key: "depositoLps",
+          align: "right",
+          render: (v) => `L. ${formatNumber(v)}`,
+        },
+      ],
+    },
+    {
+      title: "Contrato",
+      children: [
+        {
+          title: "QQ",
+          dataIndex: "contratoQQ",
+          key: "contratoQQ",
+          align: "right",
+          render: (v) => formatNumber(v),
+        },
+        {
+          title: "Lps",
+          dataIndex: "contratoLps",
+          key: "contratoLps",
+          align: "right",
+          render: (v) => `L. ${formatNumber(v)}`,
+        },
+      ],
     },
   ];
 
-  // 🔹 Datos específicos por sección
-  const comprasData = data
-    ? formatearData(data.compras.entradas, data.compras.salidas, {
-        cantidad: "compraCantidadQQ",
-        total: "compraTotal",
-      })
-    : [];
+  const columnasMobile = [
+    // Compra / Venta
+    {
+      label: "Tipo",
+      key: "compraLps",
 
-  const contratosData = data
-    ? formatearData(data.contratos.entradas, data.contratos.salidas, {
-        cantidad: "cantidadQQ",
-        total: "precioQQ",
-      })
-    : [];
+      render: (v, row) => {
+        const prefix = row.key === "salidas" ? "Venta QQ" : "Compra QQ";
+        return `${prefix}: ${formatNumber(row.compraQQ)} / L. ${formatNumber(
+          row.compraLps
+        )}`;
+      },
+    },
 
-  const depositosData = data
-    ? formatearData(data.depositos.entradas, data.depositos.salidas, {
-        cantidad: "cantidadQQ",
-        total: "totalLps",
-      })
-    : [];
+    // Depósito
+    {
+      label: "Depósito QQ",
+      key: "depositoQQ",
 
-  // 📌 Totales globales sumando compras + contratos + depósitos
-  const totales = data
-    ? {
-        entradas: {
-          cantidad:
-            (Number(data.compras.entradas._sum.compraCantidadQQ) || 0) +
-            (Number(data.contratos.entradas._sum.cantidadQQ) || 0) +
-            (Number(data.depositos.entradas._sum.cantidadQQ) || 0),
-          total:
-            (Number(data.compras.entradas._sum.compraTotal) || 0) +
-            (Number(data.contratos.entradas._sum.precioQQ) || 0) +
-            (Number(data.depositos.entradas._sum.totalLps) || 0),
-        },
-        salidas: {
-          cantidad:
-            (Number(data.compras.salidas._sum.compraCantidadQQ) || 0) +
-            (Number(data.contratos.salidas._sum.cantidadQQ) || 0) +
-            (Number(data.depositos.salidas._sum.cantidadQQ) || 0),
-          total:
-            (Number(data.compras.salidas._sum.compraTotal) || 0) +
-            (Number(data.contratos.salidas._sum.precioQQ) || 0) +
-            (Number(data.depositos.salidas._sum.totalLps) || 0),
-        },
-      }
-    : {
-        entradas: { cantidad: 0, total: 0 },
-        salidas: { cantidad: 0, total: 0 },
-      };
+      render: (v) => formatNumber(v),
+    },
+    {
+      label: "Depósito Lps",
+      key: "depositoLps",
 
-  // 🔹 columnas para tarjetas móviles
-  const columnasTarjetas = [
-    { label: "Movimiento", key: "movimiento" },
-    { label: "Cantidad QQ", key: "cantidad" },
-    { label: "Total Lps", key: "total" },
+      render: (v) => `L. ${formatNumber(v)}`,
+    },
+
+    // Contrato
+    {
+      label: "Contrato QQ",
+      key: "contratoQQ",
+
+      render: (v) => formatNumber(v),
+    },
+    {
+      label: "Contrato Lps",
+      key: "contratoLps",
+
+      render: (v) => `L. ${formatNumber(v)}`,
+    },
   ];
 
-  // 🔹 Columnas genéricas
-  const columnasGenericas = [
-    { title: "Movimiento", dataIndex: "movimiento" },
-    { title: "Cantidad QQ", dataIndex: "cantidad" },
-    { title: "Total Lps", dataIndex: "total" },
-  ];
+  const hayDatos = datosTabla.some(
+    (row) =>
+      row.compraQQ > 0 ||
+      row.compraLps > 0 ||
+      row.contratoQQ > 0 ||
+      row.contratoLps > 0 ||
+      row.depositoQQ > 0 ||
+      row.depositoLps > 0
+  );
 
-  // 🔹 Secciones a mostrar
-  const secciones = [
-    { titulo: "📊 Resumen de Compras", datos: comprasData },
-    { titulo: "📑 Resumen de Contratos", datos: contratosData },
-    { titulo: "🏦 Resumen de Depósitos", datos: depositosData },
-  ];
-
-  if (!mounted) return null; // evitar parpadeo inicial
+  if (!mounted) return <div style={{ padding: 24 }}>Cargando...</div>;
 
   return (
-    <div>
-      {/* Filtros */}
+    <div
+      style={{
+        padding: isDesktop ? "24px" : "12px",
+        background: "#f5f5f5",
+        minHeight: "100vh",
+      }}
+    >
+      {contextHolder}
+
       <Card>
-        <h2>Resumen de Movimientos</h2>
-        <TarjetasDeTotales
-          title="Totales Generales"
-          cards={[
+        <SectionHeader
+          isDesktop={isDesktop}
+          loading={loading}
+          icon={<FileFilled />}
+          titulo="Totales Generales"
+          subtitulo="Totales generales de entradas y salidas"
+          onRefresh={() => {
+            if (rangoFechas?.[0] && rangoFechas?.[1]) {
+              fetchData(
+                rangoFechas[0].startOf("day").toISOString(),
+                rangoFechas[1].endOf("day").toISOString()
+              );
+            } else {
+              fetchData();
+            }
+          }}
+          onExportPDF={async () => {
+            if (!hayDatos) {
+              messageApi.warning(
+                "No hay datos válidos para generar el reporte."
+              );
+              return;
+            }
+
+            const key = "generandoPDF";
+            messageApi.open({
+              key,
+              type: "loading",
+              content: "Generando reporte...",
+              duration: 0,
+            });
+
+            try {
+              await exportPDFGeneral(
+                datosTabla,
+                {
+                  fechaInicio: rangoFechas?.[0]?.toISOString(),
+                  fechaFin: rangoFechas?.[1]?.toISOString(),
+                },
+                columnas,
+                { title: "Reporte de Entradas y Salidas" }
+              );
+              messageApi.success({
+                content: "Reporte generado correctamente",
+                key,
+                duration: 2,
+              });
+            } catch (error) {
+              messageApi.error({
+                content: "Error al generar el reporte",
+                key,
+                duration: 2,
+              });
+            }
+          }}
+          disableExport={!hayDatos}
+        />
+
+        <Divider />
+
+        <Filtros
+          fields={[
             {
-              title: "📥 Entradas (QQ)",
-              value: totales.entradas.cantidad,
-              precision: 2,
-            },
-            {
-              title: "📥 Entradas (Lps)",
-              value: totales.entradas.total,
-              precision: 2,
-            },
-            {
-              title: "📤 Salidas (QQ)",
-              value: totales.salidas.cantidad,
-              precision: 2,
-            },
-            {
-              title: "📤 Salidas (Lps)",
-              value: totales.salidas.total,
-              precision: 2,
+              type: "date",
+              value: rangoFechas,
+              setter: onFechasChange,
+              placeholder: "Rango de fechas",
             },
           ]}
         />
-        <div
-          style={{
-            display: "flex",
-            gap: 12,
-            flexWrap: "wrap",
-            marginBottom: 16,
-          }}
-        >
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <Filtros
-              fields={[
-                {
-                  type: "date",
-                  value: rangoFechas,
-                  setter: onFechasChange,
-                  placeholder: "Rango de fechas",
-                },
-              ]}
-            />
-          </div>
-          <div style={{ width: 120 }}>
-            <Button
-              type="primary"
-              icon={<ReloadOutlined spin={loading} />}
-              onClick={() =>
-                fetchData(
-                  rangoFechas?.[0]?.startOf("day").toDate().toISOString(),
-                  rangoFechas?.[1]?.endOf("day").toDate().toISOString()
-                )
-              }
-              style={{ width: "100%" }}
-            >
-              Refrescar
-            </Button>
-          </div>
-          <div style={{ width: 120 }}>
-            <Button onClick={() => exportPDFGeneral(totales, secciones)}>
-              Imprimir PDF
-            </Button>
-          </div>
-        </div>
       </Card>
-      {secciones.map((sec, idx) => (
-        <Card key={idx} title={sec.titulo}>
-          {isDesktop ? (
-            <Table
-              columns={columnasGenericas}
-              dataSource={sec.datos}
-              loading={loading}
-              pagination={false}
-              bordered
-            />
-          ) : (
-            <TarjetaMobile
-              data={sec.datos}
-              columns={columnasTarjetas}
-              loading={loading}
-            />
-          )}
-        </Card>
-      ))}
+
+      <Card style={{ borderRadius: 6, marginTop: 16 }}>
+        <div style={{ marginBottom: isDesktop ? 16 : 12 }}>
+          <Title level={4} style={{ margin: 0, fontSize: isDesktop ? 16 : 14 }}>
+            Resumen General
+          </Title>
+          <Text type="secondary" style={{ fontSize: isDesktop ? 14 : 12 }}>
+            {rangoFechas?.[0] &&
+              rangoFechas?.[1] &&
+              `Período: ${rangoFechas[0].format(
+                "DD/MM/YYYY"
+              )} - ${rangoFechas[1].format("DD/MM/YYYY")}`}
+          </Text>
+        </div>
+
+        {isDesktop ? (
+          <Table
+            columns={columnas}
+            dataSource={datosTabla}
+            rowKey="key"
+            loading={loading}
+            pagination={false}
+            bordered
+            size="small"
+            scroll={{ x: "max-content" }}
+            onRow={(record) => {
+              const backgroundColor =
+                record.key === "entradas"
+                  ? "#e6f7ff"
+                  : record.key === "salidas"
+                  ? "#fff1f0"
+                  : "transparent";
+
+              return { style: { backgroundColor } };
+            }}
+          />
+        ) : (
+          <TarjetaMobile
+            data={datosTabla}
+            columns={columnasMobile}
+            loading={loading}
+          />
+        )}
+      </Card>
     </div>
   );
 }

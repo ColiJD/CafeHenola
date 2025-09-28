@@ -150,24 +150,10 @@ export const menuItem = [
       },
        {
         key: "PorCLiente",
-        label: "Reporte Por Cliente",
+        label: "Reporte de Entrada ",
         route: Ruta + "/informe/reporteCliente",
       },
-      {
-        key: "SaldoDisponible",
-        label: "Saldo Por Deposito",
-        route: RutaTransaccion + "/deposito/vista",
-      },
-      {
-        key: "SaldoContratoDisponible",
-        label: "Saldo Por Contrato",
-        route: RutaTransaccion + "/contrato/vista",
-      },
-      {
-        key: "detalleCompras",
-        label: "Detalle de Compras",
-        route: RutaTransaccion + "/compra/vista",
-      },
+     
     ],
   },
   {

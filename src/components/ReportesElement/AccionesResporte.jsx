@@ -2,6 +2,7 @@
 
 import { Row, Col, Space, Button, Typography, message } from "antd";
 import { ReloadOutlined, FilePdfOutlined } from "@ant-design/icons";
+import { useState } from "react";
 
 const { Title, Text } = Typography;
 
@@ -36,22 +37,55 @@ const RefreshButton = ({ isDesktop, loading, onClick }) => (
 );
 
 /** Botón de exportar PDF */
-const ExportPDFButton = ({ isDesktop, onClick, disableExport, messageApi }) => (
-  <Button
-    size={isDesktop ? "large" : "middle"}
-    icon={<FilePdfOutlined />}
-    onClick={() => {
-      if (disableExport) {
-        messageApi.warning("No hay datos para exportar.");
-        return;
-      }
-      onClick();
-    }}
-    style={{ borderRadius: 6 }}
-  >
-    {isDesktop ? "Exportar PDF" : "PDF"}
-  </Button>
-);
+const ExportPDFButton = ({ isDesktop, onClick, disableExport, messageApi }) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleClick = async () => {
+    if (disableExport) {
+      messageApi.warning("No hay datos para exportar.");
+      return;
+    }
+
+    setLoading(true); // activa el loading
+    const key = "generandoPDF";
+
+    messageApi.open({
+      key,
+      type: "loading",
+      content: "Generando reporte...",
+      duration: 0,
+    });
+
+    try {
+      await onClick(); // espera a que se genere el PDF
+      messageApi.success({
+        content: "Reporte generado correctamente",
+        key,
+        duration: 2,
+      });
+    } catch (error) {
+      messageApi.error({
+        content: "Error al generar el reporte",
+        key,
+        duration: 2,
+      });
+    } finally {
+      setLoading(false); // desactiva el loading
+    }
+  };
+
+  return (
+    <Button
+      size={isDesktop ? "large" : "middle"}
+      icon={<FilePdfOutlined />}
+      onClick={handleClick}
+      loading={loading}
+      style={{ borderRadius: 6 }}
+    >
+      {isDesktop ? "Exportar PDF" : "PDF"}
+    </Button>
+  );
+};
 
 /** Contenedor de acciones */
 const HeaderActions = ({

@@ -1,109 +1,180 @@
-// utils/exportPDF.js
+// /Doc/Reportes/General.js
+"use client";
+
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import dayjs from "dayjs";
 import { formatNumber } from "@/components/Formulario";
 
-// 🔹 Quitar emojis que dañan la exportación
-function removeEmojis(text) {
-  return text.replace(/[\p{Emoji_Presentation}\p{Emoji}\u200d]+/gu, "").trim();
-}
-
-export const exportPDFGeneral = (totales, secciones) => {
+/**
+ * Exporta resumen de movimientos a PDF con Entradas y Salidas separadas
+ * @param {Array} data - Datos de la tabla
+ * @param {Object} filtros - Fechas y filtros aplicados
+ * @param {Object} options - Opciones: title, colores, orientación
+ */
+export const exportPDFGeneral = (data, filtros = {}, options = {}) => {
   const doc = new jsPDF({
-    unit: "pt", // puntos tipográficos (1pt ≈ 1/72 pulgada)
-    format: "letter", // tamaño carta (estándar APA)
+    orientation: options.orientation || "landscape",
+    unit: "mm",
+    format: "a4",
   });
 
-  // 🔹 Configuración APA
-  const leftMargin = 72; // 1 pulgada
-  const rightMargin = 72;
-  const topMargin = 72;
-  const bottomMargin = 72;
+  const colorPrimario = options.colorPrimario || [41, 128, 185]; // Azul
+  const colorSecundario = options.colorSecundario || [236, 240, 241]; // Gris claro
+  const colorTexto = options.colorTexto || [44, 62, 80]; // Gris oscuro
 
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-
-  const fecha = new Date().toLocaleDateString("es-HN", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
+  // ENCABEZADO
+  doc.setFillColor(...colorPrimario);
+  doc.rect(0, 0, 297, 25, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
+  doc.text(options.title || "REPORTE DE ENTRADAS Y SALIDAS", 148.5, 12, {
+    align: "center",
   });
-
-  // 🔹 Encabezado y pie en todas las páginas
-  const addHeaderFooter = (data) => {
-    const pageSize = doc.internal.pageSize;
-    const width = pageSize.getWidth();
-    const height = pageSize.getHeight();
-
-    // Encabezado estilo APA
-    doc.setFont("times", "normal");
-    doc.setFontSize(12);
-
-    // Fecha a la izquierda
-    doc.text(`Generado el: ${fecha}`, leftMargin, 50);
-
-    // Número de página a la derecha
-    doc.text(String(data.pageNumber), width - rightMargin, 50, {
-      align: "right",
-    });
-
-    // Pie de página (institución o autor)
-    doc.setFontSize(10);
-    doc.text("Beneficio Cafe Henola", width / 2, height - 30, {
-      align: "center",
-    });
-  };
-
-  // 🔹 Título principal centrado (APA)
-  doc.setFont("times", "bold");
-  doc.setFontSize(16);
-  doc.text("Resumen de Movimientos", pageWidth / 2, topMargin, {
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Generado el: ${dayjs().format("DD/MM/YYYY HH:mm")}`, 148.5, 18, {
     align: "center",
   });
 
-  // 🔹 Tabla de totales (encabezado gris oscuro)
-  const totalesData = [
-    ["Entradas (QQ)", formatNumber(totales.entradas.cantidad)],
-    ["Entradas (Lps)", formatNumber(totales.entradas.total)],
-    ["Salidas (QQ)", formatNumber(totales.salidas.cantidad)],
-    ["Salidas (Lps)", formatNumber(totales.salidas.total)],
-  ];
+  // FILTROS
+  let yPosition = 35;
+  doc.setTextColor(...colorTexto);
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "bold");
+  doc.text("FILTROS APLICADOS:", 20, yPosition);
+  yPosition += 8;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
 
-  autoTable(doc, {
-    startY: topMargin + 30,
-    margin: { left: leftMargin, right: rightMargin },
-    head: [["Concepto", "Valor"]],
-    body: totalesData,
-    didDrawPage: addHeaderFooter,
-    styles: { font: "times", fontSize: 12 },
-    headStyles: { fillColor: [41, 128, 185], textColor: [255, 255, 255] }, // azul
-  });
+  if (filtros.fechaInicio && filtros.fechaFin) {
+    doc.text(
+      `• Período: ${dayjs(filtros.fechaInicio).format("DD/MM/YYYY")} - ${dayjs(
+        filtros.fechaFin
+      ).format("DD/MM/YYYY")}`,
+      20,
+      yPosition
+    );
+    yPosition += 6;
+  }
 
-  let startY = doc.lastAutoTable.finalY + 20;
+  if (!filtros.fechaInicio && !filtros.fechaFin) {
+    doc.text("• Sin filtros aplicados (todos los registros)", 20, yPosition);
+    yPosition += 6;
+  }
 
-  // 🔹 Tablas por sección (encabezado azul)
-  secciones.forEach((sec) => {
-    doc.setFont("times", "bold");
-    doc.setFontSize(14);
-    doc.text(removeEmojis(sec.titulo), leftMargin, startY);
+  yPosition += 5;
+
+  // Separar Entradas y Salidas
+  const entradas = data.filter((row) => row.key === "entradas");
+  const salidas = data.filter((row) => row.key === "salidas");
+
+  // TABLA ENTRADAS
+  if (entradas.length) {
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text("ENTRADAS", 20, yPosition);
+    yPosition += 8;
+
+    const entradasBody = entradas.map((row) => [
+      row.tipo || "",
+      formatNumber(row.compraQQ),
+      `L. ${formatNumber(row.compraLps)}`,
+      formatNumber(row.contratoQQ),
+      `L. ${formatNumber(row.contratoLps)}`,
+      formatNumber(row.depositoQQ),
+      `L. ${formatNumber(row.depositoLps)}`,
+    ]);
 
     autoTable(doc, {
-      startY: startY + 10,
-      margin: { left: leftMargin, right: rightMargin },
-      head: [["Movimiento", "Cantidad QQ", "Total Lps"]],
-      body: sec.datos.map((d) => [
-        removeEmojis(d.movimiento),
-        d.cantidad,
-        d.total,
-      ]),
-      didDrawPage: addHeaderFooter,
-      styles: { font: "times", fontSize: 12 },
-      headStyles: { fillColor: [41, 128, 185], textColor: [255, 255, 255] }, // azul
+      startY: yPosition,
+      head: [
+        [
+          "Tipo",
+          "Compra Directa QQ",
+          "Compra Directa Lps",
+          "Contrato QQ",
+          "Contrato Lps",
+          "Depósito QQ",
+          "Depósito Lps",
+        ],
+      ],
+      body: entradasBody,
+      theme: "grid",
+      headStyles: {
+        fillColor: colorPrimario,
+        textColor: [255, 255, 255],
+        fontSize: 10,
+        fontStyle: "bold",
+        halign: "center",
+      },
+      bodyStyles: { fontSize: 9, textColor: colorTexto },
+      alternateRowStyles: { fillColor: colorSecundario },
+      margin: { left: 20, right: 20 },
     });
 
-    startY = doc.lastAutoTable.finalY + 30;
-  });
+    yPosition = doc.lastAutoTable.finalY + 10;
+  }
 
-  // 🔹 Guardar
-  doc.save(`reporteGeneral_${fecha}.pdf`);
+  // TABLA SALIDAS
+  if (salidas.length) {
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text("SALIDAS", 20, yPosition);
+    yPosition += 8;
+
+    const salidasBody = salidas.map((row) => [
+      row.tipo || "",
+      formatNumber(row.compraQQ),
+      `L. ${formatNumber(row.compraLps)}`,
+      formatNumber(row.contratoQQ),
+      `L. ${formatNumber(row.contratoLps)}`,
+      formatNumber(row.depositoQQ),
+      `L. ${formatNumber(row.depositoLps)}`,
+    ]);
+
+    autoTable(doc, {
+      startY: yPosition,
+      head: [
+        [
+          "Tipo",
+          "Venta Directa QQ",
+          "Venta Directa Lps",
+          "Contrato QQ",
+          "Contrato Lps",
+          "Depósito QQ",
+          "Depósito Lps",
+        ],
+      ],
+      body: salidasBody,
+      theme: "grid",
+      headStyles: {
+        fillColor: [220, 53, 69],
+        textColor: [255, 255, 255],
+        fontSize: 10,
+        fontStyle: "bold",
+        halign: "center",
+      }, // Rojo para salidas
+      bodyStyles: { fontSize: 9, textColor: colorTexto },
+      alternateRowStyles: { fillColor: colorSecundario },
+      margin: { left: 20, right: 20 },
+    });
+
+    yPosition = doc.lastAutoTable.finalY + 10;
+  }
+
+  if (!entradas.length && !salidas.length) {
+    doc.setFontSize(12);
+    doc.setTextColor(200, 100, 100);
+    doc.text("No hay datos disponibles para mostrar", 148.5, yPosition + 20, {
+      align: "center",
+    });
+  }
+
+  const nombreArchivo = `reporte-movimientos-${dayjs().format(
+    "YYYY-MM-DD-HHmm"
+  )}.pdf`;
+  doc.save(nombreArchivo);
+  return doc;
 };

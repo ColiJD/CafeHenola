@@ -148,12 +148,11 @@ export const menuItem = [
         label: "General",
         route: Ruta + "/informe/general",
       },
-       {
+      {
         key: "PorCLiente",
         label: "Reporte de Entrada ",
         route: Ruta + "/informe/reporteCliente",
       },
-     
     ],
   },
   {
@@ -207,6 +206,8 @@ export const menuItem = [
     label: "Registros",
     children: [
       { key: "cliente", label: "Cliente", route: Ruta + "/cliente" },
+      { key: "Comprador", label: "Comprador", route: Ruta + "/compradores" },
+
       { key: "producto", label: "Producto", route: Ruta + "/producto" },
       {
         key: "registroCliente",

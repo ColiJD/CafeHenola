@@ -2,6 +2,8 @@ import { Form, Input, Button, Row, Col, Tooltip } from "antd";
 import React from "react";
 import Select from "react-select";
 import { InfoCircleOutlined } from "@ant-design/icons";
+import PhoneInput from "react-phone-input-2";
+import "react-phone-input-2/lib/style.css";
 
 // Funciones de formato
 export const formatNumber = (num, type) => {
@@ -21,6 +23,7 @@ export default function Formulario({
   onSubmit,
   submitting,
   button,
+  buttons,
 }) {
   const [rawValues, setRawValues] = React.useState({});
 
@@ -42,6 +45,23 @@ export default function Formulario({
       [label]: formatNumber(value ?? "", type),
     }));
   };
+  React.useEffect(() => {
+    // Si todos los campos vienen vacíos después de limpiar
+    if (
+      fields.every(
+        (f) => f.value === "" || f.value === null || f.value === undefined
+      )
+    ) {
+      setRawValues({});
+    }
+  }, [fields]);
+
+  const handlePhoneChange = (setter) => (phone) => {
+    // Asegurarse de guardar con +
+    const formatted = phone.startsWith("+") ? phone : "+" + phone;
+    setter(formatted);
+  };
+
   React.useEffect(() => {
     // Si todos los campos vienen vacíos después de limpiar
     if (
@@ -100,6 +120,25 @@ export default function Formulario({
                   onChange={(e) => f.setter(e.target.value)}
                   readOnly={f.readOnly}
                 />
+              ) : f.type === "phone" ? (
+                // 🔹 NUEVO: Soporte para campos de teléfono
+                <PhoneInput
+                  country={f.country || "hn"} // País por defecto: Honduras
+                  value={f.value || ""}
+                  onChange={handlePhoneChange(f.setter)}
+                  disabled={f.readOnly || f.disabled}
+                  inputProps={{
+                    name: f.key,
+                    maxLength: f.maxLength || 15,
+                  }}
+                  inputStyle={{
+                    width: "100%",
+                    borderColor: f.error ? "red" : "#d9d9d9",
+                    boxShadow: f.error ? "0 0 0 2px rgba(255,0,0,0.2)" : "none",
+                    backgroundColor: f.readOnly ? "#f5f5f5" : "white",
+                    cursor: f.readOnly ? "not-allowed" : "text",
+                  }}
+                />
               ) : f.type === "integer" || f.type === "Float" ? (
                 <Input
                   value={
@@ -144,17 +183,54 @@ export default function Formulario({
           </Col>
         ))}
       </Row>
-
       {/* Botón genérico */}
-      {button && (
-        <Button
-          type={button.type || "primary"}
-          htmlType={button.htmlType || "submit"}
-          onClick={button.onClick}
-          disabled={submitting || button.disabled}
-        >
-          {submitting ? "Enviando..." : button.text}
-        </Button>
+      {(buttons?.length > 0
+        ? buttons.map((btn, idx) =>
+            btn.render ? (
+              <React.Fragment key={idx}>{btn.render}</React.Fragment>
+            ) : (
+              <Button
+                key={idx}
+                type={btn.type || "primary"}
+                htmlType={btn.htmlType || "submit"}
+                onClick={btn.onClick}
+                disabled={submitting || btn.disabled}
+                danger={btn.type === "danger"}
+              >
+                {submitting ? "Enviando..." : btn.text}
+              </Button>
+            )
+          )
+        : button) && (
+        <div style={{ marginTop: 16, display: "flex", gap: 8 }}>
+          {buttons?.length > 0
+            ? buttons.map((btn, idx) =>
+                btn.render ? (
+                  <React.Fragment key={idx}>{btn.render}</React.Fragment>
+                ) : (
+                  <Button
+                    key={idx}
+                    type={btn.type || "primary"}
+                    htmlType={btn.htmlType || "submit"}
+                    onClick={btn.onClick}
+                    disabled={submitting || btn.disabled}
+                    danger={btn.type === "danger"}
+                  >
+                    {submitting ? "Enviando..." : btn.text}
+                  </Button>
+                )
+              )
+            : button && (
+                <Button
+                  type={button.type || "primary"}
+                  htmlType={button.htmlType || "submit"}
+                  onClick={button.onClick}
+                  disabled={submitting || button.disabled}
+                >
+                  {submitting ? "Enviando..." : button.text}
+                </Button>
+              )}
+        </div>
       )}
     </Form>
   );

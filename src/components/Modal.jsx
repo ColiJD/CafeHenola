@@ -13,8 +13,14 @@ export default function PreviewModal({
   extraButtons = [],
 }) {
   // Formatea números con comas
-  const formatValue = (value) => {
+  const formatValue = (label, value) => {
     if (value === undefined || value === null || value === "") return "-";
+
+    // No formatear estos campos
+    if (["Cédula", "Teléfono", "RTN","Clave IHCAFE"].includes(label)) {
+      return value.toString().trim();
+    }
+
     const numero = parseFloat(value);
     if (!isNaN(numero)) {
       return numero.toLocaleString("en-US", {
@@ -50,7 +56,8 @@ export default function PreviewModal({
     >
       {fields.map((field, index) => (
         <p key={index}>
-          <strong>{field.label}:</strong> {formatValue(field.value)}
+          <strong>{field.label}:</strong>{" "}
+          {formatValue(field.label, field.value)}
         </p>
       ))}
     </Modal>

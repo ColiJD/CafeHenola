@@ -12,6 +12,12 @@ export function validarCedula(value) {
   const regex = /^\d{4}-\d{4}-\d{5}$/;
   return regex.test(value);
 }
+// Valida correo electrónico
+export function validarEmail(value) {
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return regex.test(value);
+}
+
 
 // Valida RTN con formato 0703-2001-0079812 (2 números extra)
 export function validarRTN(value) {

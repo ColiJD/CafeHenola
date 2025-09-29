@@ -1,14 +1,14 @@
 import prisma from "@/lib/prisma";
-// import { checkRole } from "@/lib/checkRole";
+import { checkRole } from "@/lib/checkRole";
 
-export async function GET(req) {
-  // const sessionOrResponse = await checkRole(req, [
-  //   "ADMIN",
-  //   "GERENCIA",
-  //   "OPERARIOS",
-  //   "AUDITORES",
-  // ]);
-  // if (sessionOrResponse instanceof Response) return sessionOrResponse;
+export async function GET(request) {
+  const sessionOrResponse = await checkRole(request, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
   try {
     const { searchParams } = new URL(req.url);
     const desdeParam = searchParams.get("desde");

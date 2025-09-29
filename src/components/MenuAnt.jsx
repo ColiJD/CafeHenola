@@ -21,10 +21,9 @@ export default function DashboardLayout({ children }) {
   } = theme.useToken();
 
   useEffect(() => {
-    setMounted(true); // 🔹 Indicamos que ya estamos en cliente
+    setMounted(true); 
   }, []);
 
-  // 🔹 Ajustar collapsed en desktop cuando cambie la resolución
   useEffect(() => {
     if (mounted && screens.md) setCollapsed(false);
   }, [mounted, screens.md]);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { Form, Input, Button, Card, message, Modal, Row, Col } from "antd";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -29,6 +29,7 @@ export default function LoginComponent() {
     if (res.error) {
       messageApi.error(res.error);
     } else {
+      await getSession();
       messageApi.success("Bienvenido a Cafe Henola");
       router.push("/");
     }

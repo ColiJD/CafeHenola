@@ -1,16 +1,27 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useSession, getSession } from "next-auth/react";
 import { Spin, Result, Button } from "antd";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function ProtectedPage({ allowedRoles = [], children }) {
   const { data: session, status } = useSession();
+  const [currentSession, setCurrentSession] = useState(session);
   const router = useRouter();
 
+  // 🔹 Mantener sesión actualizada
+  useEffect(() => {
+    const checkSession = async () => {
+      const updated = await getSession();
+      setCurrentSession(updated);
+    };
+
+    checkSession(); // se ejecuta al montar y cuando cambia status
+  }, [status]);
+
   // 🔹 Mientras carga la sesión
-  if (status === "loading") {
-    // Nested pattern: Spin envuelve un contenido "placeholder"
+  if (status === "loading" || !currentSession) {
     return (
       <Spin tip="Cargando..." size="large">
         <div
@@ -20,15 +31,13 @@ export default function ProtectedPage({ allowedRoles = [], children }) {
             justifyContent: "center",
             alignItems: "center",
           }}
-        >
-          {/* Contenido placeholder mientras carga */}
-        </div>
+        />
       </Spin>
     );
   }
 
   // 🔹 Si no hay sesión
-  if (!session) {
+  if (!currentSession) {
     return (
       <Result
         status="403"
@@ -43,7 +52,10 @@ export default function ProtectedPage({ allowedRoles = [], children }) {
   }
 
   // 🔹 Si el rol no está permitido
-  if (allowedRoles.length > 0 && !allowedRoles.includes(session.user.role)) {
+  if (
+    allowedRoles.length > 0 &&
+    !allowedRoles.includes(currentSession.user.role)
+  ) {
     return (
       <Result
         status="403"

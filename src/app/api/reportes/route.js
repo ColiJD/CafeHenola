@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import { checkRole } from "@/lib/checkRole";
 
-export async function GET(req) {
+export async function GET(req, recus) {
   const sessionOrResponse = await checkRole(req, [
     "ADMIN",
     "GERENCIA",
@@ -10,7 +10,7 @@ export async function GET(req) {
   ]);
   if (sessionOrResponse instanceof Response) return sessionOrResponse;
   try {
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(recus.url);
     const desdeParam = searchParams.get("desde");
     const hastaParam = searchParams.get("hasta");
 

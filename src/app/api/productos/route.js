@@ -1,7 +1,15 @@
 import prisma from "@/lib/prisma";
+import { checkRole } from "@/lib/checkRole";
 
 // GET para obtener todos los productos
-export async function GET() {
+export async function GET(req) {
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
   try {
     const productos = await prisma.producto.findMany();
     return new Response(JSON.stringify(productos), { status: 200 });
@@ -15,6 +23,13 @@ export async function GET() {
 
 // POST para agregar un producto
 export async function POST(req) {
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
   try {
     const body = await req.json();
     const { productName, tara = 0, descuento = 0, factorOro = 1 } = body;

@@ -10,7 +10,7 @@ import TarjetaMobile from "@/components/TarjetaMobile";
 import dayjs from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
-
+import ProtectedPage from "@/components/ProtectedPage";
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 import customParseFormat from "dayjs/plugin/customParseFormat";
@@ -189,82 +189,88 @@ export default function DetalleCafePage() {
   ];
 
   return (
-    <div>
-      <h2>{`Detalles de: ${nombreCafe || "Cargando..."}`}</h2>
+    <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+      <div>
+        <h2>{`Detalles de: ${nombreCafe || "Cargando..."}`}</h2>
 
-      {/* Filtros */}
-      <Filtros
-        fields={[
-          {
-            type: "select",
-            value: movimientoFiltro || undefined,
-            setter: setMovimientoFiltro,
-            allowClear: true,
-            placeholder: "Movimiento",
-            options: [
-              { value: "Entrada", label: "Entrada" },
-              { value: "Salida", label: "Salida" },
-            ],
-          },
-          { type: "date", value: rangoFecha, setter: setRangoFecha },
-        ]}
-      />
-
-      <Row style={{ marginBottom: 16 }} gutter={16}>
-        <Col xs={12} sm={6} md={4}>
-          <Button onClick={cargarMovimientos} block>
-            Refrescar
-          </Button>
-        </Col>
-
-        <Col xs={12} sm={6} md={4}>
-          <Button onClick={exportarPDF} block type="default">
-            Exportar PDF
-          </Button>
-        </Col>
-
-        <Col xs={12} sm={6} md={4}>
-          <Button onClick={() => router.push("/page/inventario")} block danger>
-            Volver al Inventario
-          </Button>
-        </Col>
-      </Row>
-
-      {/* Tabla o Tarjetas mobile */}
-      {isMobile ? (
-        <TarjetaMobile
-          data={filteredData}
-          loading={loading}
-          columns={[
+        {/* Filtros */}
+        <Filtros
+          fields={[
             {
-              label: "Fecha",
-              key: "fecha",
-              render: (val) => new Date(val).toLocaleDateString(),
+              type: "select",
+              value: movimientoFiltro || undefined,
+              setter: setMovimientoFiltro,
+              allowClear: true,
+              placeholder: "Movimiento",
+              options: [
+                { value: "Entrada", label: "Entrada" },
+                { value: "Salida", label: "Salida" },
+              ],
             },
-            { label: "Movimiento", key: "tipoMovimiento" },
-            {
-              label: "Cantidad (QQ)",
-              key: "cantidadQQ",
-              render: truncarDosDecimalesSinRedondear,
-            },
-            {
-              label: "Cliente",
-              key: (_, rec) => `${rec.clienteNombre} ${rec.clienteApellido}`,
-            },
-            { label: "Referencia", key: "referenciaTipo" },
+            { type: "date", value: rangoFecha, setter: setRangoFecha },
           ]}
-          detailsKey="detalles"
-          detailsColumns={[]} // no hay sub-detalles por movimiento
         />
-      ) : (
-        <Table
-          dataSource={filteredData}
-          columns={columns}
-          rowKey="movimientoID"
-          loading={loading}
-          bordered
-        />
-      )}
-    </div>
+
+        <Row style={{ marginBottom: 16 }} gutter={16}>
+          <Col xs={12} sm={6} md={4}>
+            <Button onClick={cargarMovimientos} block>
+              Refrescar
+            </Button>
+          </Col>
+
+          <Col xs={12} sm={6} md={4}>
+            <Button onClick={exportarPDF} block type="default">
+              Exportar PDF
+            </Button>
+          </Col>
+
+          <Col xs={12} sm={6} md={4}>
+            <Button
+              onClick={() => router.push("/page/inventario")}
+              block
+              danger
+            >
+              Volver al Inventario
+            </Button>
+          </Col>
+        </Row>
+
+        {/* Tabla o Tarjetas mobile */}
+        {isMobile ? (
+          <TarjetaMobile
+            data={filteredData}
+            loading={loading}
+            columns={[
+              {
+                label: "Fecha",
+                key: "fecha",
+                render: (val) => new Date(val).toLocaleDateString(),
+              },
+              { label: "Movimiento", key: "tipoMovimiento" },
+              {
+                label: "Cantidad (QQ)",
+                key: "cantidadQQ",
+                render: truncarDosDecimalesSinRedondear,
+              },
+              {
+                label: "Cliente",
+                key: (_, rec) => `${rec.clienteNombre} ${rec.clienteApellido}`,
+              },
+              { label: "Referencia", key: "referenciaTipo" },
+            ]}
+            detailsKey="detalles"
+            detailsColumns={[]} // no hay sub-detalles por movimiento
+          />
+        ) : (
+          <Table
+            dataSource={filteredData}
+            columns={columns}
+            rowKey="movimientoID"
+            loading={loading}
+            bordered
+          />
+        )}
+      </div>
+    </ProtectedPage>
   );
 }

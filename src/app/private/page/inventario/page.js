@@ -6,6 +6,7 @@ import TarjetasDeTotales from "@/components/DetallesCard";
 import Filtros from "@/components/Filtros";
 import { useRouter } from "next/navigation";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
+import ProtectedPage from "@/components/ProtectedPage";
 
 export default function InventarioActualPage() {
   const { mounted, isDesktop } = useClientAndDesktop();
@@ -55,11 +56,7 @@ export default function InventarioActualPage() {
       dataIndex: "tipoCafe",
       key: "tipoCafe",
       render: (text, record) => (
-        <a
-          onClick={() =>
-            router.push(`/page/inventario/${record.productoID}`)
-          }
-        >
+        <a onClick={() => router.push(`/private/page/inventario/${record.productoID}`)}>
           {text}
         </a>
       ),
@@ -85,60 +82,62 @@ export default function InventarioActualPage() {
   ];
 
   return (
-    <div>
-      <TarjetasDeTotales
-        title="Inventario Actual"
-        cards={[
-          {
-            title: "Total Entradas",
-            value: truncarDosDecimalesSinRedondear(totalEntradas),
-          },
-          {
-            title: "Total Salidas",
-            value: truncarDosDecimalesSinRedondear(totalSalidas),
-          },
-          {
-            title: "Saldo Total",
-            value: truncarDosDecimalesSinRedondear(totalSaldo),
-          },
-        ]}
-      />
+    <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS", "AUDITORES"]}>
+      <div>
+        <TarjetasDeTotales
+          title="Inventario Actual"
+          cards={[
+            {
+              title: "Total Entradas",
+              value: truncarDosDecimalesSinRedondear(totalEntradas),
+            },
+            {
+              title: "Total Salidas",
+              value: truncarDosDecimalesSinRedondear(totalSalidas),
+            },
+            {
+              title: "Saldo Total",
+              value: truncarDosDecimalesSinRedondear(totalSaldo),
+            },
+          ]}
+        />
 
-      {/* Filtros */}
-      <Filtros
-        fields={[
-          {
-            type: "select",
-            placeholder: "Tipo de café",
-            value: tipoCafeFiltro || undefined,
-            setter: setTipoCafeFiltro,
-            allowClear: true,
-            options: [...new Set(data.map((d) => d.tipoCafe))],
-          },
-        ]}
-      />
+        {/* Filtros */}
+        <Filtros
+          fields={[
+            {
+              type: "select",
+              placeholder: "Tipo de café",
+              value: tipoCafeFiltro || undefined,
+              setter: setTipoCafeFiltro,
+              allowClear: true,
+              options: [...new Set(data.map((d) => d.tipoCafe))],
+            },
+          ]}
+        />
 
-      <Row style={{ marginBottom: 16 }}>
-        <Col xs={24} sm={6} md={4}>
-          <Button onClick={cargarDatos} block>
-            Refrescar
-          </Button>
-        </Col>
-      </Row>
+        <Row style={{ marginBottom: 16 }}>
+          <Col xs={24} sm={6} md={4}>
+            <Button onClick={cargarDatos} block>
+              Refrescar
+            </Button>
+          </Col>
+        </Row>
 
-      {/* Tabla */}
-      <Table
-        columns={columns}
-        dataSource={
-          tipoCafeFiltro
-            ? data.filter((d) => d.tipoCafe === tipoCafeFiltro)
-            : data
-        }
-        rowKey="productoID"
-        loading={loading}
-        bordered
-        size="middle"
-      />
-    </div>
+        {/* Tabla */}
+        <Table
+          columns={columns}
+          dataSource={
+            tipoCafeFiltro
+              ? data.filter((d) => d.tipoCafe === tipoCafeFiltro)
+              : data
+          }
+          rowKey="productoID"
+          loading={loading}
+          bordered
+          size="middle"
+        />
+      </div>
+    </ProtectedPage>
   );
 }

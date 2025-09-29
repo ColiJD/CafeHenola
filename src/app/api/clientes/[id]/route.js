@@ -1,10 +1,18 @@
 import prisma from "@/lib/prisma";
+import { checkRole } from "@/lib/checkRole";
 
 export async function DELETE(req, { params }) {
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
   try {
     // 1️⃣ Validar que params.id sea un número
     const id = parseInt(params.id);
-    
+
     if (isNaN(id) || id <= 0) {
       return new Response(JSON.stringify({ error: "ID inválido" }), {
         status: 400,
@@ -74,6 +82,13 @@ export async function DELETE(req, { params }) {
 }
 
 export async function PUT(req, context) {
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
   try {
     // 1️⃣ Obtener params de manera segura (sin await)
     const { params } = await context;

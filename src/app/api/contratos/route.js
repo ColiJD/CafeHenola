@@ -1,6 +1,14 @@
 import prisma from "@/lib/prisma";
+import { checkRole } from "@/lib/checkRole";
 
-export async function POST(request) {
+export async function POST(request,req) {
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
   try {
     const body = await request.json();
     const {
@@ -55,7 +63,14 @@ export async function POST(request) {
   }
 }
 
-export async function GET() {
+export async function GET(req) {
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
   try {
     // Usamos query raw para traer todo de la vista
     const depositos = await prisma.$queryRawUnsafe(`
@@ -65,6 +80,8 @@ export async function GET() {
     return new Response(JSON.stringify(depositos), { status: 200 });
   } catch (error) {
     console.error("Error al obtener vista vw_SaldoPorContrato:", error);
-    return new Response(JSON.stringify({ error: "Error interno" }), { status: 500 });
+    return new Response(JSON.stringify({ error: "Error interno" }), {
+      status: 500,
+    });
   }
 }

@@ -1,7 +1,15 @@
 import prisma from "@/lib/prisma";
+import { checkRole } from "@/lib/checkRole";
 
 // Eliminar producto
 export async function DELETE(req, context) {
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
   const { params } = context; // ✅ correcto
   const id = parseInt(params.id);
 
@@ -48,7 +56,14 @@ export async function DELETE(req, context) {
 
 // Actualizar producto
 export async function PUT(req, { params }) {
-  const id = parseInt(params.id );
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
+  const id = parseInt(params.id);
 
   if (isNaN(id) || id <= 0) {
     return new Response(JSON.stringify({ error: "ID inválido" }), {

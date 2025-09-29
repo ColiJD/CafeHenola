@@ -244,163 +244,164 @@ export default function TablaResumenContrato() {
   ];
 
   return (
-    <div>
-      {/* Tarjetas de totales */}
-      <TarjetasDeTotales
-        title="Registro de Contrato"
-        cards={[
-          {
-            title:
-              estadoFiltro === "Pendiente" ? "Total (QQ)" : "Liquidado (QQ)",
-            value: truncarDosDecimalesSinRedondear(totalQQ),
-          },
-          {
-            title:
-              estadoFiltro === "Pendiente"
-                ? "Saldo Pendiente (QQ)"
-                : "Total (Lps)",
-            value: truncarDosDecimalesSinRedondear(totalSaldo),
-          },
-          // 🔹 Solo mostrar “Total Entregado” cuando es Pendiente
-          ...(estadoFiltro === "Pendiente"
-            ? [
-                {
-                  title: "Total Entregado Lps",
-                  value: truncarDosDecimalesSinRedondear(totalEntregado),
-                },
-              ]
-            : []),
-        ]}
-      />
+    <div>En Desarrollo</div>
+    // <div>
+    //   {/* Tarjetas de totales */}
+    //   <TarjetasDeTotales
+    //     title="Registro de Contrato"
+    //     cards={[
+    //       {
+    //         title:
+    //           estadoFiltro === "Pendiente" ? "Total (QQ)" : "Liquidado (QQ)",
+    //         value: truncarDosDecimalesSinRedondear(totalQQ),
+    //       },
+    //       {
+    //         title:
+    //           estadoFiltro === "Pendiente"
+    //             ? "Saldo Pendiente (QQ)"
+    //             : "Total (Lps)",
+    //         value: truncarDosDecimalesSinRedondear(totalSaldo),
+    //       },
+    //       // 🔹 Solo mostrar “Total Entregado” cuando es Pendiente
+    //       ...(estadoFiltro === "Pendiente"
+    //         ? [
+    //             {
+    //               title: "Total Entregado Lps",
+    //               value: truncarDosDecimalesSinRedondear(totalEntregado),
+    //             },
+    //           ]
+    //         : []),
+    //     ]}
+    //   />
 
-      {/* Filtros */}
-      <Filtros
-        fields={[
-          {
-            type: "input",
-            placeholder: "Buscar por nombre",
-            value: nombreFiltro,
-            setter: setNombreFiltro,
-          },
-          {
-            type: "select",
-            placeholder: "Tipo de café",
-            value: tipoCafeFiltro || undefined,
-            setter: setTipoCafeFiltro,
-            allowClear: true,
-            options: [...new Set(data.map((d) => d.tipoCafe))].map((cafe) => ({
-              value: cafe,
-              label: cafe,
-            })),
-          },
-          {
-            type: "select",
-            value: estadoFiltro,
-            setter: setEstadoFiltro,
-            options: [
-              { value: "Pendiente", label: "Pendiente" },
-              { value: "Liquidado", label: "Liquidado" },
-            ],
-          },
-          { type: "date", value: rangoFecha, setter: setRangoFecha },
-        ]}
-      />
+    //   {/* Filtros */}
+    //   <Filtros
+    //     fields={[
+    //       {
+    //         type: "input",
+    //         placeholder: "Buscar por nombre",
+    //         value: nombreFiltro,
+    //         setter: setNombreFiltro,
+    //       },
+    //       {
+    //         type: "select",
+    //         placeholder: "Tipo de café",
+    //         value: tipoCafeFiltro || undefined,
+    //         setter: setTipoCafeFiltro,
+    //         allowClear: true,
+    //         options: [...new Set(data.map((d) => d.tipoCafe))].map((cafe) => ({
+    //           value: cafe,
+    //           label: cafe,
+    //         })),
+    //       },
+    //       {
+    //         type: "select",
+    //         value: estadoFiltro,
+    //         setter: setEstadoFiltro,
+    //         options: [
+    //           { value: "Pendiente", label: "Pendiente" },
+    //           { value: "Liquidado", label: "Liquidado" },
+    //         ],
+    //       },
+    //       { type: "date", value: rangoFecha, setter: setRangoFecha },
+    //     ]}
+    //   />
 
-      <Row style={{ marginBottom: 16 }}>
-        <Col xs={24} sm={6} md={4}>
-          <Button onClick={cargarDatos} block>
-            Refrescar
-          </Button>
-        </Col>
-      </Row>
+    //   <Row style={{ marginBottom: 16 }}>
+    //     <Col xs={24} sm={6} md={4}>
+    //       <Button onClick={cargarDatos} block>
+    //         Refrescar
+    //       </Button>
+    //     </Col>
+    //   </Row>
 
-      {/* Tabla o tarjetas según dispositivo */}
-      {isMobile ? (
-        <TarjetaMobile
-          loading={loading}
-          data={filteredData.map((item) => ({
-            ...item,
-            detalles: item.detalles || [],
-          }))}
-          columns={[
-            { label: "Cliente", key: "clienteNombreCompleto" },
-            { label: "Contrato", key: "contratoID" },
-            { label: "Tipo Café", key: "tipoCafe" },
-            {
-              label: "Cantidad Contrato (QQ)",
-              key: "cantidadContratoQQ",
-              render: truncarDosDecimalesSinRedondear,
-            },
-            {
-              label: "Precio QQ",
-              key: "precioQQ",
-              render: truncarDosDecimalesSinRedondear,
-            },
-            {
-              label: "Total Contratado (Lps)",
-              key: "totalContratoLps",
-              render: truncarDosDecimalesSinRedondear,
-            },
-            {
-              label: "Total Entregado (Lps)",
-              key: "totalEntregadoLps",
-              render: truncarDosDecimalesSinRedondear,
-            },
-            {
-              label: "Saldo Restante (QQ)",
-              key: "saldoRestanteQQ",
-              render: truncarDosDecimalesSinRedondear,
-              color: (val) => (val > 0 ? "red" : "green"),
-            },
-            { label: "Estado", key: "contratoEstado" },
-          ]}
-          detailsKey="detalles"
-          detailsColumns={[
-            { label: "Detalle ID", key: "detalleID" },
-            {
-              label: "Fecha",
-              key: "fechaDetalle",
-              render: (val) => new Date(val).toLocaleDateString("es-HN"),
-            },
-            {
-              label: "Cantidad (QQ)",
-              key: "cantidadDetalleQQ",
-              render: truncarDosDecimalesSinRedondear,
-            },
-            {
-              label: "Precio QQ",
-              key: "precioDetalleQQ",
-              render: truncarDosDecimalesSinRedondear,
-            },
-            {
-              label: "Total (Lps)",
-              key: "totalDetalleLps",
-              render: truncarDosDecimalesSinRedondear,
-            },
-          ]}
-        />
-      ) : (
-        <Table
-          columns={columns}
-          dataSource={filteredData}
-          rowKey="resumenID"
-          loading={loading}
-          bordered
-          expandable={{
-            expandedRowRender: (record) => (
-              <Table
-                columns={detalleColumns}
-                dataSource={record.detalles}
-                rowKey="detalleID"
-                pagination={false}
-                size="small"
-                bordered
-                scroll={{ x: "max-content" }}
-              />
-            ),
-          }}
-        />
-      )}
-    </div>
+    //   {/* Tabla o tarjetas según dispositivo */}
+    //   {isMobile ? (
+    //     <TarjetaMobile
+    //       loading={loading}
+    //       data={filteredData.map((item) => ({
+    //         ...item,
+    //         detalles: item.detalles || [],
+    //       }))}
+    //       columns={[
+    //         { label: "Cliente", key: "clienteNombreCompleto" },
+    //         { label: "Contrato", key: "contratoID" },
+    //         { label: "Tipo Café", key: "tipoCafe" },
+    //         {
+    //           label: "Cantidad Contrato (QQ)",
+    //           key: "cantidadContratoQQ",
+    //           render: truncarDosDecimalesSinRedondear,
+    //         },
+    //         {
+    //           label: "Precio QQ",
+    //           key: "precioQQ",
+    //           render: truncarDosDecimalesSinRedondear,
+    //         },
+    //         {
+    //           label: "Total Contratado (Lps)",
+    //           key: "totalContratoLps",
+    //           render: truncarDosDecimalesSinRedondear,
+    //         },
+    //         {
+    //           label: "Total Entregado (Lps)",
+    //           key: "totalEntregadoLps",
+    //           render: truncarDosDecimalesSinRedondear,
+    //         },
+    //         {
+    //           label: "Saldo Restante (QQ)",
+    //           key: "saldoRestanteQQ",
+    //           render: truncarDosDecimalesSinRedondear,
+    //           color: (val) => (val > 0 ? "red" : "green"),
+    //         },
+    //         { label: "Estado", key: "contratoEstado" },
+    //       ]}
+    //       detailsKey="detalles"
+    //       detailsColumns={[
+    //         { label: "Detalle ID", key: "detalleID" },
+    //         {
+    //           label: "Fecha",
+    //           key: "fechaDetalle",
+    //           render: (val) => new Date(val).toLocaleDateString("es-HN"),
+    //         },
+    //         {
+    //           label: "Cantidad (QQ)",
+    //           key: "cantidadDetalleQQ",
+    //           render: truncarDosDecimalesSinRedondear,
+    //         },
+    //         {
+    //           label: "Precio QQ",
+    //           key: "precioDetalleQQ",
+    //           render: truncarDosDecimalesSinRedondear,
+    //         },
+    //         {
+    //           label: "Total (Lps)",
+    //           key: "totalDetalleLps",
+    //           render: truncarDosDecimalesSinRedondear,
+    //         },
+    //       ]}
+    //     />
+    //   ) : (
+    //     <Table
+    //       columns={columns}
+    //       dataSource={filteredData}
+    //       rowKey="resumenID"
+    //       loading={loading}
+    //       bordered
+    //       expandable={{
+    //         expandedRowRender: (record) => (
+    //           <Table
+    //             columns={detalleColumns}
+    //             dataSource={record.detalles}
+    //             rowKey="detalleID"
+    //             pagination={false}
+    //             size="small"
+    //             bordered
+    //             scroll={{ x: "max-content" }}
+    //           />
+    //         ),
+    //       }}
+    //     />
+    //   )}
+    // </div>
   );
 }

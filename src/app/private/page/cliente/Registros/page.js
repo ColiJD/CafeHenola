@@ -10,6 +10,7 @@ import TarjetaMobile from "@/components/TarjetaMobile";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
 import { useFetchReport } from "@/hook/useFetchReport";
 import { exportPDFClientes } from "@/Doc/Reportes/ClientesRegistrados";
+import ProtectedPage from "@/components/ProtectedPage";
 
 const { Title, Text } = Typography;
 
@@ -107,103 +108,108 @@ export default function ReporteClientes() {
   if (!mounted) return null;
 
   return (
-    <div
-      style={{
-        padding: isDesktop ? "24px" : "12px",
-        background: "#f5f5f5",
-        minHeight: "100vh",
-      }}
-    >
-      {contextHolder}
+    <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+      <div
+        style={{
+          padding: isDesktop ? "24px" : "12px",
+          background: "#f5f5f5",
+          minHeight: "100vh",
+        }}
+      >
+        {contextHolder}
 
-      {/* Header */}
-      <Card>
-        <SectionHeader
-          isDesktop={isDesktop}
-          loading={loading}
-          icon={<CalendarOutlined />}
-          titulo="Clientes Registrados"
-          subtitulo="Listado completo de clientes"
-          onRefresh={() => fetchData()}
-          onExportPDF={() =>
-            exportPDFClientes(
-              datosFiltrados,
-              {
-                nombreFiltro,
-              },
-              columnasDesktop,
-              { title: "Clientes Registrados" }
-            )
-          }
-          disableExport={!datosFiltrados.length}
-        />
-
-        <Divider />
-
-        <Filtros
-          fields={[
-            {
-              type: "input",
-              placeholder: "Buscar por nombre de cliente",
-              value: nombreFiltro,
-              setter: setNombreFiltro,
-              allowClear: true,
-            },
-          ]}
-        />
-
-        {estadisticas && (
-          <>
-            <Divider />
-            <EstadisticasCards
-              isDesktop={isDesktop}
-              data={[
+        {/* Header */}
+        <Card>
+          <SectionHeader
+            isDesktop={isDesktop}
+            loading={loading}
+            icon={<CalendarOutlined />}
+            titulo="Clientes Registrados"
+            subtitulo="Listado completo de clientes"
+            onRefresh={() => fetchData()}
+            onExportPDF={() =>
+              exportPDFClientes(
+                datosFiltrados,
                 {
-                  titulo: "Clientes",
-                  valor: estadisticas.totalClientes,
-                  icon: <UserOutlined style={{ color: "#1890ff" }} />,
-                  color: "#1890ff",
+                  nombreFiltro,
                 },
-              ]}
+                columnasDesktop,
+                { title: "Clientes Registrados" }
+              )
+            }
+            disableExport={!datosFiltrados.length}
+          />
+
+          <Divider />
+
+          <Filtros
+            fields={[
+              {
+                type: "input",
+                placeholder: "Buscar por nombre de cliente",
+                value: nombreFiltro,
+                setter: setNombreFiltro,
+                allowClear: true,
+              },
+            ]}
+          />
+
+          {estadisticas && (
+            <>
+              <Divider />
+              <EstadisticasCards
+                isDesktop={isDesktop}
+                data={[
+                  {
+                    titulo: "Clientes",
+                    valor: estadisticas.totalClientes,
+                    icon: <UserOutlined style={{ color: "#1890ff" }} />,
+                    color: "#1890ff",
+                  },
+                ]}
+              />
+            </>
+          )}
+        </Card>
+
+        {/* Tabla */}
+        <Card style={{ borderRadius: 6 }}>
+          <div style={{ marginBottom: isDesktop ? 16 : 12 }}>
+            <Title
+              level={4}
+              style={{ margin: 0, fontSize: isDesktop ? 16 : 14 }}
+            >
+              Detalle de Clientes ({datosFiltrados.length} registros)
+            </Title>
+          </div>
+
+          {isDesktop ? (
+            <Table
+              columns={columnasDesktop}
+              dataSource={datosFiltrados}
+              rowKey="clienteID"
+              loading={loading}
+              bordered
+              scroll={{ x: "max-content" }}
+              size="small"
+              expandable={expandable}
+              pagination={{
+                showTotal: (total, range) => (
+                  <Text type="secondary">
+                    {range[0]}-{range[1]} de {total} registros
+                  </Text>
+                ),
+              }}
             />
-          </>
-        )}
-      </Card>
-
-      {/* Tabla */}
-      <Card style={{ borderRadius: 6 }}>
-        <div style={{ marginBottom: isDesktop ? 16 : 12 }}>
-          <Title level={4} style={{ margin: 0, fontSize: isDesktop ? 16 : 14 }}>
-            Detalle de Clientes ({datosFiltrados.length} registros)
-          </Title>
-        </div>
-
-        {isDesktop ? (
-          <Table
-            columns={columnasDesktop}
-            dataSource={datosFiltrados}
-            rowKey="clienteID"
-            loading={loading}
-            bordered
-            scroll={{ x: "max-content" }}
-            size="small"
-            expandable={expandable}
-            pagination={{
-              showTotal: (total, range) => (
-                <Text type="secondary">
-                  {range[0]}-{range[1]} de {total} registros
-                </Text>
-              ),
-            }}
-          />
-        ) : (
-          <TarjetaMobile
-            data={datosFiltrados}
-            columns={columnasMobile}
-            loading={loading}
-          />
-        )}
-      </Card>
-    </div>
+          ) : (
+            <TarjetaMobile
+              data={datosFiltrados}
+              columns={columnasMobile}
+              loading={loading}
+            />
+          )}
+        </Card>
+      </div>
+    </ProtectedPage>
   );
 }

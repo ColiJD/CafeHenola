@@ -4,6 +4,7 @@ import { message } from "antd";
 import Formulario from "@/components/Formulario";
 import PreviewModal from "@/components/Modal";
 import { obtenerProductosSelect, obtenerSelectData } from "@/lib/consultas";
+import ProtectedPage from "@/components/ProtectedPage";
 import {
   limpiarFormulario,
   validarFloatPositivo,
@@ -206,7 +207,7 @@ export default function DepositoForm() {
 
       if (res.ok) {
         const result = await res.json();
-       
+
         messageApi.success(
           `Liquidación registrada. Saldo restante: ${result.saldoDespues}`
         );
@@ -332,35 +333,37 @@ export default function DepositoForm() {
   // Renderizado del formulario y modal de previsualización
   // ------------------------------
   return (
-    <>
-      {contextHolder}
-      <Formulario
-        key={cliente?.value || "empty"}
-        title="Liquidar Depósito"
-        fields={fields}
-        onSubmit={handleRegistrarClick}
-        submitting={submitting}
-        button={{
-          text: "Registrar Liquidación",
-          onClick: handleRegistrarClick,
-          type: "primary",
-          disabled: formState.saldoPendiente <= 0 || submitting,
-        }}
-      />
-      <PreviewModal
-        open={previewVisible}
-        title="Previsualización de la liquidación"
-        onCancel={() => setPreviewVisible(false)}
-        onConfirm={handleConfirmar}
-        confirmLoading={submitting}
-        fields={fields.map((f) => ({
-          label: f.label,
-          value:
-            f.type === "select"
-              ? f.options?.find((o) => o.value === f.value?.value)?.label
-              : f.value || "-",
-        }))}
-      />
-    </>
+    <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+      <>
+        {contextHolder}
+        <Formulario
+          key={cliente?.value || "empty"}
+          title="Liquidar Depósito"
+          fields={fields}
+          onSubmit={handleRegistrarClick}
+          submitting={submitting}
+          button={{
+            text: "Registrar Liquidación",
+            onClick: handleRegistrarClick,
+            type: "primary",
+            disabled: formState.saldoPendiente <= 0 || submitting,
+          }}
+        />
+        <PreviewModal
+          open={previewVisible}
+          title="Previsualización de la liquidación"
+          onCancel={() => setPreviewVisible(false)}
+          onConfirm={handleConfirmar}
+          confirmLoading={submitting}
+          fields={fields.map((f) => ({
+            label: f.label,
+            value:
+              f.type === "select"
+                ? f.options?.find((o) => o.value === f.value?.value)?.label
+                : f.value || "-",
+          }))}
+        />
+      </>
+    </ProtectedPage>
   );
 }

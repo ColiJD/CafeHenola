@@ -6,6 +6,7 @@ import CreatableSelect from "react-select/creatable";
 import Formulario from "@/components/Formulario";
 import PreviewModal from "@/components/Modal";
 import { obtenerSelectData } from "@/lib/consultas";
+import ProtectedPage from "@/components/ProtectedPage";
 
 import {
   capitalizarNombre,
@@ -229,97 +230,99 @@ export default function CompradorForm() {
   };
 
   return (
-    <>
-      {contextHolder}
+    <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+      <>
+        {contextHolder}
 
-      <div style={{ marginBottom: "1rem" }}>
-        <label
-          style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}
-        >
-          Buscar comprador existente
-        </label>
-        <CreatableSelect
-          ref={selectRef}
-          options={compradoresOptions}
-          placeholder="Seleccione un comprador"
-          value={selectedComprador}
-          getOptionValue={(option) => option.value}
-          getOptionLabel={(option) => option.label}
-          formatCreateLabel={(inputValue) =>
-            `Crear nuevo comprador: "${inputValue}"`
-          }
-          onCreateOption={(inputValue) => {
-            const newOption = {
-              value: inputValue,
-              label: inputValue,
-              data: { compradorNombre: inputValue },
-            };
-            setSelectedComprador(newOption);
-            setFormState((prev) => ({
-              ...prev,
-              compradorNombre: inputValue,
-            }));
-          }}
-          onChange={(selected) => {
-            if (selected?.data) {
-              handleCompradorSelect(selected);
-            } else {
-              setSelectedComprador(selected);
-              setFormState({
-                compradorNombre: selected?.label || "",
-                compradorRTN: "",
-                compradorDireccion: "",
-                compradorTelefono: "",
-                compradorEmail: "",
-              });
+        <div style={{ marginBottom: "1rem" }}>
+          <label
+            style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}
+          >
+            Buscar comprador existente
+          </label>
+          <CreatableSelect
+            ref={selectRef}
+            options={compradoresOptions}
+            placeholder="Seleccione un comprador"
+            value={selectedComprador}
+            getOptionValue={(option) => option.value}
+            getOptionLabel={(option) => option.label}
+            formatCreateLabel={(inputValue) =>
+              `Crear nuevo comprador: "${inputValue}"`
             }
-          }}
-          isClearable
-          autoFocus
+            onCreateOption={(inputValue) => {
+              const newOption = {
+                value: inputValue,
+                label: inputValue,
+                data: { compradorNombre: inputValue },
+              };
+              setSelectedComprador(newOption);
+              setFormState((prev) => ({
+                ...prev,
+                compradorNombre: inputValue,
+              }));
+            }}
+            onChange={(selected) => {
+              if (selected?.data) {
+                handleCompradorSelect(selected);
+              } else {
+                setSelectedComprador(selected);
+                setFormState({
+                  compradorNombre: selected?.label || "",
+                  compradorRTN: "",
+                  compradorDireccion: "",
+                  compradorTelefono: "",
+                  compradorEmail: "",
+                });
+              }
+            }}
+            isClearable
+            autoFocus
+          />
+        </div>
+
+        <Formulario
+          title="Comprador"
+          fields={fields}
+          onSubmit={handleSubmitClick}
+          submitting={submitting}
+          buttons={[
+            {
+              text: selectedComprador?.data?.compradorId
+                ? "Actualizar Comprador"
+                : "Crear Comprador",
+              type: "primary",
+              onClick: handleSubmitClick,
+            },
+            selectedComprador?.data?.compradorId && {
+              render: (
+                <Popconfirm
+                  title="¿Seguro que quieres eliminar este comprador?"
+                  okText="Sí"
+                  cancelText="No"
+                  onConfirm={() =>
+                    handleDelete(selectedComprador.data.compradorId)
+                  }
+                >
+                  <Button danger>Eliminar Comprador</Button>
+                </Popconfirm>
+              ),
+            },
+          ].filter(Boolean)}
         />
-      </div>
 
-      <Formulario
-        title="Comprador"
-        fields={fields}
-        onSubmit={handleSubmitClick}
-        submitting={submitting}
-        buttons={[
-          {
-            text: selectedComprador?.data?.compradorId
-              ? "Actualizar Comprador"
-              : "Crear Comprador",
-            type: "primary",
-            onClick: handleSubmitClick,
-          },
-          selectedComprador?.data?.compradorId && {
-            render: (
-              <Popconfirm
-                title="¿Seguro que quieres eliminar este comprador?"
-                okText="Sí"
-                cancelText="No"
-                onConfirm={() =>
-                  handleDelete(selectedComprador.data.compradorId)
-                }
-              >
-                <Button danger>Eliminar Comprador</Button>
-              </Popconfirm>
-            ),
-          },
-        ].filter(Boolean)}
-      />
-
-      <PreviewModal
-        open={previewVisible}
-        title="Previsualización del Comprador"
-        onCancel={() => setPreviewVisible(false)}
-        onConfirm={handleConfirmar}
-        confirmLoading={submitting}
-        fields={fields.map((f) => ({
-          label: f.label,
-          value: (f.value || "-").toString(),
-        }))}
-      />
-    </>
+        <PreviewModal
+          open={previewVisible}
+          title="Previsualización del Comprador"
+          onCancel={() => setPreviewVisible(false)}
+          onConfirm={handleConfirmar}
+          confirmLoading={submitting}
+          fields={fields.map((f) => ({
+            label: f.label,
+            value: (f.value || "-").toString(),
+          }))}
+        />
+      </>
+    </ProtectedPage>
   );
 }

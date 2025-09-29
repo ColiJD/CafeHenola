@@ -7,6 +7,7 @@ import PreviewModal from "@/components/Modal";
 import { obtenerClientesSelect, obtenerProductosSelect } from "@/lib/consultas";
 import { calcularCafeDesdeProducto } from "@/lib/calculoCafe";
 import { exportCompraDirecta } from "@/Doc/Documentos/compra";
+import ProtectedPage from "@/components/ProtectedPage";
 import {
   limpiarFormulario,
   validarEnteroNoNegativo,
@@ -280,35 +281,37 @@ export default function CompraForm() {
     },
   ];
   return (
-    <>
-      {contextHolder}
-      <Formulario
-        title="Registrar Compra Directa"
-        fields={fields}
-        onSubmit={handleRegistrarClick}
-        submitting={submitting}
-        button={{
-          text: "Registrar Compra",
-          onClick: handleRegistrarClick,
-          type: "primary",
-        }}
-      />
-      <PreviewModal
-        open={previewVisible}
-        title="Previsualización de la compra "
-        onCancel={() => setPreviewVisible(false)}
-        onConfirm={handleConfirmar}
-        confirmLoading={submitting}
-        fields={fields.map((f) => ({
-          label: f.label,
-          value:
-            f.label === "Total Sacos" && producto?.label === "Cafe Lata"
-              ? 0
-              : f.type === "select"
-              ? f.options?.find((o) => o.value === f.value?.value)?.label
-              : f.value || (f.label === "Compra en" ? "Compra Directa" : "-"),
-        }))}
-      />
-    </>
+    <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+      <>
+        {contextHolder}
+        <Formulario
+          title="Registrar Compra Directa"
+          fields={fields}
+          onSubmit={handleRegistrarClick}
+          submitting={submitting}
+          button={{
+            text: "Registrar Compra",
+            onClick: handleRegistrarClick,
+            type: "primary",
+          }}
+        />
+        <PreviewModal
+          open={previewVisible}
+          title="Previsualización de la compra "
+          onCancel={() => setPreviewVisible(false)}
+          onConfirm={handleConfirmar}
+          confirmLoading={submitting}
+          fields={fields.map((f) => ({
+            label: f.label,
+            value:
+              f.label === "Total Sacos" && producto?.label === "Cafe Lata"
+                ? 0
+                : f.type === "select"
+                ? f.options?.find((o) => o.value === f.value?.value)?.label
+                : f.value || (f.label === "Compra en" ? "Compra Directa" : "-"),
+          }))}
+        />
+      </>
+    </ProtectedPage>
   );
 }

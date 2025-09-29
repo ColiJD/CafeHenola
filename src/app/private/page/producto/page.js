@@ -9,6 +9,7 @@ import {
   validarFloatPositivo,
 } from "@/config/validacionesForm";
 import { validarDatos } from "@/lib/validacionesForm";
+import ProtectedPage from "@/components/ProtectedPage";
 export default function FormProducto() {
   const [productos, setProductos] = useState([]);
   const [selectedProducto, setSelectedProducto] = useState(null);
@@ -223,38 +224,40 @@ export default function FormProducto() {
   ];
 
   return (
-    <>
-      {contextHolder}
+    <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+      <>
+        {contextHolder}
 
-      <Formulario
-        title={selectedProducto ? "Editar Producto" : "Agregar Producto"}
-        fields={fields}
-        onSubmit={handleRegistrarClick}
-        submitting={submitting}
-        button={{
-          text: selectedProducto ? "Actualizar Producto" : "Guardar Producto",
-          onClick: handleRegistrarClick,
-          type: "primary",
-        }}
-      />
+        <Formulario
+          title={selectedProducto ? "Editar Producto" : "Agregar Producto"}
+          fields={fields}
+          onSubmit={handleRegistrarClick}
+          submitting={submitting}
+          button={{
+            text: selectedProducto ? "Actualizar Producto" : "Guardar Producto",
+            onClick: handleRegistrarClick,
+            type: "primary",
+          }}
+        />
 
-      <PreviewModal
-        open={previewVisible}
-        title="Previsualización del Producto"
-        onCancel={() => setPreviewVisible(false)}
-        onConfirm={handleConfirmar}
-        confirmLoading={submitting}
-        fields={fields.map((f) => ({ label: f.label, value: f.value }))}
-      />
+        <PreviewModal
+          open={previewVisible}
+          title="Previsualización del Producto"
+          onCancel={() => setPreviewVisible(false)}
+          onConfirm={handleConfirmar}
+          confirmLoading={submitting}
+          fields={fields.map((f) => ({ label: f.label, value: f.value }))}
+        />
 
-      <Table
-        dataSource={productos}
-        columns={columnas}
-        rowKey="value"
-        pagination={{ pageSize: 3 }}
-        bordered
-        style={{ marginTop: 24 }}
-      />
-    </>
+        <Table
+          dataSource={productos}
+          columns={columnas}
+          rowKey="value"
+          pagination={{ pageSize: 3 }}
+          bordered
+          style={{ marginTop: 24 }}
+        />
+      </>
+    </ProtectedPage>
   );
 }

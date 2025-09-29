@@ -73,7 +73,7 @@ export default function DashboardLayout({ children }) {
   const isMobile = !screens.md;
 
   return (
-    <ProtectedPage allowedRoles={["ADMIN", "USER"]}>
+    <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS","AUDITORES"]}>
       <SessionTimeout warnBeforeSeconds={60} />
       <Layout style={{ minHeight: "100vh" }}>
         {/* 🔹 Desktop Sider */}

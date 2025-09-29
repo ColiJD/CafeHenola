@@ -1,6 +1,14 @@
 import prisma from "@/lib/prisma";
+import { checkRole } from "@/lib/checkRole";
 
-export async function POST(request) {
+export async function POST(request,req) {
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
   try {
     const {
       clienteID,
@@ -122,7 +130,14 @@ export async function POST(request) {
 //   }
 // }
 
-export async function GET(request) {
+export async function GET(request,req) {
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
   try {
     const { searchParams } = new URL(request.url);
     const clienteID = searchParams.get("clienteID");

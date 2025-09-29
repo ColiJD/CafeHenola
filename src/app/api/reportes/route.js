@@ -1,6 +1,14 @@
 import prisma from "@/lib/prisma";
+import { checkRole } from "@/lib/checkRole";
 
 export async function GET(req) {
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
   try {
     const { searchParams } = new URL(req.url);
     const desdeParam = searchParams.get("desde");
@@ -56,7 +64,6 @@ export async function GET(req) {
       },
     });
 
-
     const contratosSalidas = await prisma.detallecontrato.aggregate({
       _sum: { cantidadQQ: true, precioQQ: true },
       where: {
@@ -64,7 +71,6 @@ export async function GET(req) {
         fecha: { gte: desde, lte: hasta },
       },
     });
-
 
     // 🔹 Retenciones = tabla Contrato
     const contratosRetencion = await prisma.contrato.aggregate({

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Table, Button, Modal, Form, Input, Select, message } from "antd";
+import ProtectedPage from "@/components/ProtectedPage";
 
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
@@ -60,6 +61,7 @@ export default function UsersPage() {
   ];
 
   return (
+      <ProtectedPage allowedRoles={["ADMIN", "GERENCIA"]}>
     <div className="p-6">
       <h1 className="text-xl font-bold mb-4">Gestión de Usuarios</h1>
       <Button type="primary" onClick={() => setOpen(true)}>
@@ -125,5 +127,6 @@ export default function UsersPage() {
         </Form>
       </Modal>
     </div>
+    </ProtectedPage>
   );
 }

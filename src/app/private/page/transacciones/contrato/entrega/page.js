@@ -6,6 +6,7 @@ import PreviewModal from "@/components/Modal";
 import { limpiarFormulario } from "@/config/validacionesForm";
 import { validarDatos } from "@/lib/validacionesForm";
 import { exportEntregaContrato } from "@/Doc/Documentos/entregaContrato";
+import ProtectedPage from "@/components/ProtectedPage";
 import {
   obtenerClientesPendientesContratos,
   obtenerProductosSelect,
@@ -249,7 +250,6 @@ export default function LiquidacionContratoForm() {
       });
 
       const result = await res.json();
-     
 
       if (res.ok) {
         messageApi.success(
@@ -479,53 +479,55 @@ export default function LiquidacionContratoForm() {
   }));
 
   return (
-    <>
-      {contextHolder}
-      <Formulario
-        key={formState.cliente?.value || "empty"}
-        title="Entrega de Contrato"
-        fields={fields}
-        onSubmit={handleRegistrarClick}
-        submitting={submitting}
-        button={{
-          text: "Registrar Entrega",
-          onClick: handleRegistrarClick,
-          type: "primary",
-          disabled: submitting || formState.saldoDisponibleQQ <= 0,
-        }}
-      />
-      <PreviewModal
-        open={previewVisible}
-        title="Previsualización de la liquidación"
-        onCancel={() => setPreviewVisible(false)}
-        onConfirm={handleConfirmar}
-        confirmLoading={submitting}
-        fields={fields
-          .filter((f) =>
-            [
-              "Cliente",
-              "Contrato Pendiente",
-              "Peso Bruto (lbs)",
-              "Total de Sacos",
-              "Tipo de Café",
-              "Quintales Oro Ingresados",
-              "Precio (Lps)",
-              "Total a pagar (Lps)",
-              "Retención (QOro)",
-              "Descripción",
-            ].includes(f.label)
-          )
-          .map((f) => ({
-            label: f.label,
-            value:
-              f.label === "Total Sacos" &&
-              formState.tipoCafeNombre === "Cafe Lata"
-                ? 0
-                : f.type === "select"
-                ? f.options?.find((o) => o.value === f.value?.value)?.label
-                : f.value || "-",
-          }))}
-      />
-    </>
+    <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+      <>
+        {contextHolder}
+        <Formulario
+          key={formState.cliente?.value || "empty"}
+          title="Entrega de Contrato"
+          fields={fields}
+          onSubmit={handleRegistrarClick}
+          submitting={submitting}
+          button={{
+            text: "Registrar Entrega",
+            onClick: handleRegistrarClick,
+            type: "primary",
+            disabled: submitting || formState.saldoDisponibleQQ <= 0,
+          }}
+        />
+        <PreviewModal
+          open={previewVisible}
+          title="Previsualización de la liquidación"
+          onCancel={() => setPreviewVisible(false)}
+          onConfirm={handleConfirmar}
+          confirmLoading={submitting}
+          fields={fields
+            .filter((f) =>
+              [
+                "Cliente",
+                "Contrato Pendiente",
+                "Peso Bruto (lbs)",
+                "Total de Sacos",
+                "Tipo de Café",
+                "Quintales Oro Ingresados",
+                "Precio (Lps)",
+                "Total a pagar (Lps)",
+                "Retención (QOro)",
+                "Descripción",
+              ].includes(f.label)
+            )
+            .map((f) => ({
+              label: f.label,
+              value:
+                f.label === "Total Sacos" &&
+                formState.tipoCafeNombre === "Cafe Lata"
+                  ? 0
+                  : f.type === "select"
+                  ? f.options?.find((o) => o.value === f.value?.value)?.label
+                  : f.value || "-",
+            }))}
+        />
+      </>
+    </ProtectedPage>
   );
 }

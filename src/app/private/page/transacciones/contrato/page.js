@@ -12,6 +12,7 @@ import {
 import { validarDatos } from "@/lib/validacionesForm"; // Validación general del formulario
 
 import { exportContratoCafe } from "@/Doc/Documentos/contrato";
+import ProtectedPage from "@/components/ProtectedPage";
 
 export default function ContratoForm() {
   // 🔹 Estados de datos seleccionables
@@ -220,37 +221,39 @@ export default function ContratoForm() {
   };
 
   return (
-    <>
-      {contextHolder} {/* Contenedor de mensajes Ant Design */}
-      {/* Componente de formulario principal */}
-      <Formulario
-        key={formState.cliente?.value || "empty"}
-        title="Registrar Contrato"
-        fields={fields}
-        onSubmit={handleRegistrarClick}
-        submitting={submitting}
-        button={{
-          text: "Registrar Contrato",
-          onClick: handleRegistrarClick,
-          type: "primary",
-        }}
-      />
-      {/* Modal de previsualización antes de confirmar */}
-      <PreviewModal
-        open={previewVisible}
-        title="Previsualización del contrato"
-        onCancel={() => setPreviewVisible(false)}
-        onConfirm={handleConfirmar}
-        confirmLoading={submitting}
-        fields={fields.map((f) => ({
-          label: f.label,
-          value:
-            f.type === "select"
-              ? f.options?.find((o) => o.value === f.value?.value)?.label
-              : f.value ||
-                (f.label === "Contrato en" ? "Contrato Directo" : "-"),
-        }))}
-      />
-    </>
+    <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+      <>
+        {contextHolder} {/* Contenedor de mensajes Ant Design */}
+        {/* Componente de formulario principal */}
+        <Formulario
+          key={formState.cliente?.value || "empty"}
+          title="Registrar Contrato"
+          fields={fields}
+          onSubmit={handleRegistrarClick}
+          submitting={submitting}
+          button={{
+            text: "Registrar Contrato",
+            onClick: handleRegistrarClick,
+            type: "primary",
+          }}
+        />
+        {/* Modal de previsualización antes de confirmar */}
+        <PreviewModal
+          open={previewVisible}
+          title="Previsualización del contrato"
+          onCancel={() => setPreviewVisible(false)}
+          onConfirm={handleConfirmar}
+          confirmLoading={submitting}
+          fields={fields.map((f) => ({
+            label: f.label,
+            value:
+              f.type === "select"
+                ? f.options?.find((o) => o.value === f.value?.value)?.label
+                : f.value ||
+                  (f.label === "Contrato en" ? "Contrato Directo" : "-"),
+          }))}
+        />
+      </>
+    </ProtectedPage>
   );
 }

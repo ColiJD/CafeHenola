@@ -12,6 +12,7 @@ import SectionHeader from "@/components/ReportesElement/AccionesResporte";
 import { useFetchReport } from "@/hook/useFetchReport";
 import { exportPDFGeneral } from "@/Doc/Reportes/General";
 import TarjetaMobile from "@/components/TarjetaMobile";
+import ProtectedPage from "@/components/ProtectedPage";
 
 const { Title, Text } = Typography;
 
@@ -180,131 +181,136 @@ export default function ResumenMovimientos() {
   if (!mounted) return <div style={{ padding: 24 }}>Cargando...</div>;
 
   return (
-    <div
-      style={{
-        padding: isDesktop ? "24px" : "12px",
-        background: "#f5f5f5",
-        minHeight: "100vh",
-      }}
-    >
-      {contextHolder}
+    <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS","AUDITORES"]}>
+      <div
+        style={{
+          padding: isDesktop ? "24px" : "12px",
+          background: "#f5f5f5",
+          minHeight: "100vh",
+        }}
+      >
+        {contextHolder}
 
-      <Card>
-        <SectionHeader
-          isDesktop={isDesktop}
-          loading={loading}
-          icon={<FileFilled />}
-          titulo="Totales Generales"
-          subtitulo="Totales generales de entradas y salidas"
-          onRefresh={() => {
-            if (rangoFechas?.[0] && rangoFechas?.[1]) {
-              fetchData(
-                rangoFechas[0].startOf("day").toISOString(),
-                rangoFechas[1].endOf("day").toISOString()
-              );
-            } else {
-              fetchData();
-            }
-          }}
-          onExportPDF={async () => {
-            if (!hayDatos) {
-              messageApi.warning(
-                "No hay datos válidos para generar el reporte."
-              );
-              return;
-            }
-
-            const key = "generandoPDF";
-            messageApi.open({
-              key,
-              type: "loading",
-              content: "Generando reporte...",
-              duration: 0,
-            });
-
-            try {
-              await exportPDFGeneral(
-                datosTabla,
-                {
-                  fechaInicio: rangoFechas?.[0]?.toISOString(),
-                  fechaFin: rangoFechas?.[1]?.toISOString(),
-                },
-                columnas,
-                { title: "Reporte de Entradas y Salidas" }
-              );
-              messageApi.success({
-                content: "Reporte generado correctamente",
-                key,
-                duration: 2,
-              });
-            } catch (error) {
-              messageApi.error({
-                content: "Error al generar el reporte",
-                key,
-                duration: 2,
-              });
-            }
-          }}
-          disableExport={!hayDatos}
-        />
-
-        <Divider />
-
-        <Filtros
-          fields={[
-            {
-              type: "date",
-              value: rangoFechas,
-              setter: onFechasChange,
-              placeholder: "Rango de fechas",
-            },
-          ]}
-        />
-      </Card>
-
-      <Card style={{ borderRadius: 6, marginTop: 16 }}>
-        <div style={{ marginBottom: isDesktop ? 16 : 12 }}>
-          <Title level={4} style={{ margin: 0, fontSize: isDesktop ? 16 : 14 }}>
-            Resumen General
-          </Title>
-          <Text type="secondary" style={{ fontSize: isDesktop ? 14 : 12 }}>
-            {rangoFechas?.[0] &&
-              rangoFechas?.[1] &&
-              `Período: ${rangoFechas[0].format(
-                "DD/MM/YYYY"
-              )} - ${rangoFechas[1].format("DD/MM/YYYY")}`}
-          </Text>
-        </div>
-
-        {isDesktop ? (
-          <Table
-            columns={columnas}
-            dataSource={datosTabla}
-            rowKey="key"
+        <Card>
+          <SectionHeader
+            isDesktop={isDesktop}
             loading={loading}
-            pagination={false}
-            bordered
-            size="small"
-            scroll={{ x: "max-content" }}
-            onRow={(record) => {
-              const backgroundColor =
-                record.key === "entradas"
-                  ? "#e6f7ff"
-                  : record.key === "salidas"
-                  ? "#fff1f0"
-                  : "transparent";
-
-              return { style: { backgroundColor } };
+            icon={<FileFilled />}
+            titulo="Totales Generales"
+            subtitulo="Totales generales de entradas y salidas"
+            onRefresh={() => {
+              if (rangoFechas?.[0] && rangoFechas?.[1]) {
+                fetchData(
+                  rangoFechas[0].startOf("day").toISOString(),
+                  rangoFechas[1].endOf("day").toISOString()
+                );
+              } else {
+                fetchData();
+              }
             }}
+            onExportPDF={async () => {
+              if (!hayDatos) {
+                messageApi.warning(
+                  "No hay datos válidos para generar el reporte."
+                );
+                return;
+              }
+
+              const key = "generandoPDF";
+              messageApi.open({
+                key,
+                type: "loading",
+                content: "Generando reporte...",
+                duration: 0,
+              });
+
+              try {
+                await exportPDFGeneral(
+                  datosTabla,
+                  {
+                    fechaInicio: rangoFechas?.[0]?.toISOString(),
+                    fechaFin: rangoFechas?.[1]?.toISOString(),
+                  },
+                  columnas,
+                  { title: "Reporte de Entradas y Salidas" }
+                );
+                messageApi.success({
+                  content: "Reporte generado correctamente",
+                  key,
+                  duration: 2,
+                });
+              } catch (error) {
+                messageApi.error({
+                  content: "Error al generar el reporte",
+                  key,
+                  duration: 2,
+                });
+              }
+            }}
+            disableExport={!hayDatos}
           />
-        ) : (
-          <TarjetaMobile
-            data={datosTabla}
-            columns={columnasMobile}
-            loading={loading}
+
+          <Divider />
+
+          <Filtros
+            fields={[
+              {
+                type: "date",
+                value: rangoFechas,
+                setter: onFechasChange,
+                placeholder: "Rango de fechas",
+              },
+            ]}
           />
-        )}
-      </Card>
-    </div>
+        </Card>
+
+        <Card style={{ borderRadius: 6, marginTop: 16 }}>
+          <div style={{ marginBottom: isDesktop ? 16 : 12 }}>
+            <Title
+              level={4}
+              style={{ margin: 0, fontSize: isDesktop ? 16 : 14 }}
+            >
+              Resumen General
+            </Title>
+            <Text type="secondary" style={{ fontSize: isDesktop ? 14 : 12 }}>
+              {rangoFechas?.[0] &&
+                rangoFechas?.[1] &&
+                `Período: ${rangoFechas[0].format(
+                  "DD/MM/YYYY"
+                )} - ${rangoFechas[1].format("DD/MM/YYYY")}`}
+            </Text>
+          </div>
+
+          {isDesktop ? (
+            <Table
+              columns={columnas}
+              dataSource={datosTabla}
+              rowKey="key"
+              loading={loading}
+              pagination={false}
+              bordered
+              size="small"
+              scroll={{ x: "max-content" }}
+              onRow={(record) => {
+                const backgroundColor =
+                  record.key === "entradas"
+                    ? "#e6f7ff"
+                    : record.key === "salidas"
+                    ? "#fff1f0"
+                    : "transparent";
+
+                return { style: { backgroundColor } };
+              }}
+            />
+          ) : (
+            <TarjetaMobile
+              data={datosTabla}
+              columns={columnasMobile}
+              loading={loading}
+            />
+          )}
+        </Card>
+      </div>
+    </ProtectedPage>
   );
 }

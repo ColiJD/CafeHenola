@@ -1,6 +1,14 @@
 import prisma from "@/lib/prisma";
+import { checkRole } from "@/lib/checkRole";
 
 export async function GET(req, { params }) {
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
   const { id } = params; // productoID dinámico
 
   try {

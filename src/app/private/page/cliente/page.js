@@ -13,6 +13,7 @@ import {
   validarTelefono,
 } from "@/config/validacionesForm";
 import { validarDatos } from "@/lib/validacionesForm";
+import ProtectedPage from "@/components/ProtectedPage";
 
 export default function ClienteForm() {
   // 🔹 Estados de datos seleccionables
@@ -325,109 +326,111 @@ export default function ClienteForm() {
   };
 
   return (
-    <>
-      {contextHolder}
+    <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+      <>
+        {contextHolder}
 
-      {/* Selector de cliente existente */}
-      <div style={{ marginBottom: "1rem" }}>
-        <label
-          style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}
-        >
-          Buscar cliente existente
-        </label>
-        <CreatableSelect
-          ref={selectRef}
-          options={clientesOptions}
-          placeholder="Seleccione un cliente"
-          value={selectedCliente}
-          getOptionValue={(option) => option.value}
-          getOptionLabel={(option) => option.label}
-          formatCreateLabel={(inputValue) =>
-            `Crear nuevo cliente: "${inputValue}"`
-          }
-          onCreateOption={(inputValue) => {
-            const newOption = {
-              value: inputValue,
-              label: inputValue,
-              data: { clienteNombre: inputValue },
-            };
-            setSelectedCliente(newOption);
-            setFormState((prev) => ({
-              ...prev,
-              clienteNombre: inputValue,
-            }));
-          }}
-          onChange={(selected) => {
-            setSelectedCliente(selected);
-            if (selected?.data) {
-              handleClienteSelect(selected);
-            } else {
-              setFormState({
-                clienteNombre: selected?.label || "",
-                clienteApellido: "",
-                clienteCedula: "",
-                clienteDirecion: "",
-                clienteDepartament: null,
-                clienteMunicipio: null,
-                claveIHCAFE: "",
-                clienteTelefono: "",
-                clienteRTN: "",
-              });
-              setMunicipiosOptions([]);
+        {/* Selector de cliente existente */}
+        <div style={{ marginBottom: "1rem" }}>
+          <label
+            style={{ display: "block", marginBottom: "8px", fontWeight: "500" }}
+          >
+            Buscar cliente existente
+          </label>
+          <CreatableSelect
+            ref={selectRef}
+            options={clientesOptions}
+            placeholder="Seleccione un cliente"
+            value={selectedCliente}
+            getOptionValue={(option) => option.value}
+            getOptionLabel={(option) => option.label}
+            formatCreateLabel={(inputValue) =>
+              `Crear nuevo cliente: "${inputValue}"`
             }
+            onCreateOption={(inputValue) => {
+              const newOption = {
+                value: inputValue,
+                label: inputValue,
+                data: { clienteNombre: inputValue },
+              };
+              setSelectedCliente(newOption);
+              setFormState((prev) => ({
+                ...prev,
+                clienteNombre: inputValue,
+              }));
+            }}
+            onChange={(selected) => {
+              setSelectedCliente(selected);
+              if (selected?.data) {
+                handleClienteSelect(selected);
+              } else {
+                setFormState({
+                  clienteNombre: selected?.label || "",
+                  clienteApellido: "",
+                  clienteCedula: "",
+                  clienteDirecion: "",
+                  clienteDepartament: null,
+                  clienteMunicipio: null,
+                  claveIHCAFE: "",
+                  clienteTelefono: "",
+                  clienteRTN: "",
+                });
+                setMunicipiosOptions([]);
+              }
+            }}
+            isClearable
+            autoFocus
+          />
+        </div>
+
+        {/* Componente de formulario principal */}
+        <Formulario
+          title="Cliente"
+          fields={fields}
+          onSubmit={handleSubmitClick}
+          submitting={submitting}
+          button={{
+            text: selectedCliente?.data?.clienteID
+              ? "Actualizar Cliente"
+              : "Crear Cliente",
+            onClick: handleSubmitClick,
+            type: "primary",
           }}
-          isClearable
-          autoFocus
         />
-      </div>
+        {/* Botón de eliminar si es cliente existente */}
+        {selectedCliente?.data?.clienteID && (
+          <Row style={{ marginTop: "1rem", justifyContent: "flex-start" }}>
+            <Col>
+              <Popconfirm
+                title="¿Seguro que quieres eliminar?"
+                onConfirm={() => handleDelete(selectedCliente.data.clienteID)}
+                okText="Sí"
+                cancelText="No"
+              >
+                <Button danger disabled={submitting}>
+                  Eliminar Cliente
+                </Button>
+              </Popconfirm>
+            </Col>
+          </Row>
+        )}
 
-      {/* Componente de formulario principal */}
-      <Formulario
-        title="Cliente"
-        fields={fields}
-        onSubmit={handleSubmitClick}
-        submitting={submitting}
-        button={{
-          text: selectedCliente?.data?.clienteID
-            ? "Actualizar Cliente"
-            : "Crear Cliente",
-          onClick: handleSubmitClick,
-          type: "primary",
-        }}
-      />
-      {/* Botón de eliminar si es cliente existente */}
-      {selectedCliente?.data?.clienteID && (
-        <Row style={{marginTop: "1rem", justifyContent: "flex-start"}}>
-          <Col>
-            <Popconfirm
-              title="¿Seguro que quieres eliminar?"
-              onConfirm={() => handleDelete(selectedCliente.data.clienteID)}
-              okText="Sí"
-              cancelText="No"
-            >
-              <Button danger disabled={submitting}>
-                Eliminar Cliente
-              </Button>
-            </Popconfirm>
-          </Col>
-        </Row>
-      )}
-
-      {/* Modal de previsualización */}
-      <PreviewModal
-        open={previewVisible}
-        title="Previsualización del Cliente"
-        onCancel={() => setPreviewVisible(false)}
-        onConfirm={handleConfirmar}
-        confirmLoading={submitting}
-        fields={fields.map((f) => ({
-          label: f.label,
-          value:
-            f.type === "select"
-              ? (f.value?.label || "-").toString()
-              : (f.value || "-").toString(),
-        }))}
-      />
-    </>
+        {/* Modal de previsualización */}
+        <PreviewModal
+          open={previewVisible}
+          title="Previsualización del Cliente"
+          onCancel={() => setPreviewVisible(false)}
+          onConfirm={handleConfirmar}
+          confirmLoading={submitting}
+          fields={fields.map((f) => ({
+            label: f.label,
+            value:
+              f.type === "select"
+                ? (f.value?.label || "-").toString()
+                : (f.value || "-").toString(),
+          }))}
+        />
+      </>
+    </ProtectedPage>
   );
 }

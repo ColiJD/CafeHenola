@@ -7,9 +7,17 @@ import {
   validarRequerido,
   validarDatosGenerico,
 } from "@/lib/validacionesBackend";
+import { checkRole } from "@/lib/checkRole";
 
 // PUT: actualizar comprador
 export async function PUT(req, { params }) {
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
   try {
     const id = parseInt(params.id);
     if (isNaN(id) || id <= 0) {
@@ -99,6 +107,13 @@ export async function PUT(req, { params }) {
 
 // DELETE: eliminar comprador
 export async function DELETE(req, { params }) {
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
   try {
     const id = parseInt(params.id);
     if (isNaN(id) || id <= 0) {

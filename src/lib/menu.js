@@ -153,6 +153,22 @@ export const menuItem = [
         label: "Reporte de Entrada ",
         route: Ruta + "/informe/reporteCliente",
       },
+      {
+        key: "Deposito",
+        label: "Saldo Por Deposito",
+        route: RutaTransaccion + "/deposito/vista",
+      },
+      {
+        key: "Contrato",
+        label: "Saldo Por Contrato",
+        route: RutaTransaccion + "/contrato/vista",
+      },
+      {
+        key: "DetalleCompra",
+        label: "Detalle de Compras",
+        route: RutaTransaccion + "/compra/vista",
+      }
+
     ],
   },
   {
@@ -205,19 +221,39 @@ export const menuItem = [
     icon: <SettingOutlined />,
     label: "Registros",
     children: [
-      { key: "cliente", label: "Registro de Cliente", route: Ruta + "/cliente" },
-      { key: "Comprador", label: "Registro de Comprador", route: Ruta + "/compradores" },
-
-      { key: "producto", label: "Registro de Producto", route: Ruta + "/producto" },
       {
-        key: "registroCliente",
-        label: "Hiltorial de Cliente",
-        route: Ruta + "/cliente/Registros",
+        key: "cliente",
+        label: "Registro de Cliente",
+        route: Ruta + "/cliente",
       },
       {
+        key: "Comprador",
+        label: "Registro de Comprador",
+        route: Ruta + "/compradores",
+      },
+
+      {
+        key: "producto",
+        label: "Registro de Producto",
+        route: Ruta + "/producto",
+      },
+
+      {
         key: "Registrar Usuario",
-        label: "Registrar Usuario",
+        label: "Registro de Usuario",
         route: Ruta + "/user",
+      },
+    ],
+  },
+  {
+    key: "Listado",
+    icon: <UserOutlined />,
+    label: "Listado",
+    children: [
+      {
+        key: "registroCliente",
+        label: "Historial de Cliente",
+        route: Ruta + "/cliente/Registros",
       },
     ],
   },

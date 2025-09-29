@@ -4,19 +4,18 @@ import { useState, useEffect } from "react";
 import { message } from "antd";
 import Formulario from "@/components/Formulario";
 import PreviewModal from "@/components/Modal";
-import { obtenerClientesSelect, obtenerProductosSelect } from "@/lib/consultas";
+
 import { calcularCafeDesdeProducto } from "@/lib/calculoCafe";
-import {
-  limpiarFormulario,
-  validarFloatPositivo,
-  validarEnteroNoNegativo,
-} from "@/config/validacionesForm";
+import { obtenerProductosSelect, obtenerSelectData } from "@/lib/consultas";
+import ProtectedPage from "@/components/ProtectedPage";
+
+import { limpiarFormulario } from "@/config/validacionesForm";
 
 export default function VentaForm() {
-  const [clientes, setClientes] = useState([]);
+  const [compradores, setCompradores] = useState([]);
   const [productos, setProductos] = useState([]);
 
-  const [cliente, setCliente] = useState(null);
+  const [comprador, setComprador] = useState(null);
   const [producto, setProducto] = useState(null);
   const [ventaCantidadQQ, setVentaCantidadQQ] = useState(""); // peso bruto
   const [ventaTotalSacos, setVentaTotalSacos] = useState("");
@@ -34,13 +33,20 @@ export default function VentaForm() {
   useEffect(() => {
     async function cargarDatos() {
       try {
-        const clientesData = await obtenerClientesSelect(messageApi);
+        const compradoresData = await obtenerSelectData({
+          url: "/api/compradores", // 👈 endpoint de tu API
+          messageApi,
+          valueField: "compradorId",
+          labelField: "compradorNombre",
+        });
+
         const productosData = await obtenerProductosSelect(messageApi);
-        setClientes(clientesData);
+
+        setCompradores(compradoresData);
         setProductos(productosData);
       } catch (err) {
         console.error(err);
-        messageApi.error("Error cargando clientes o productos");
+        messageApi.error("Error cargando compradores o productos");
       }
     }
     cargarDatos();
@@ -64,7 +70,7 @@ export default function VentaForm() {
 
   const validarDatos = () => {
     const newErrors = {};
-    if (!cliente) newErrors["Cliente"] = "Seleccione un cliente";
+    if (!comprador) newErrors["Comprador"] = "Seleccione un comprador";
     if (!producto) newErrors["Tipo de Café"] = "Seleccione un café";
     if (!ventaCantidadQQ || parseFloat(ventaCantidadQQ) <= 0)
       newErrors["Peso Bruto"] = "Ingrese un valor mayor a 0";
@@ -87,7 +93,7 @@ export default function VentaForm() {
     setSubmitting(true);
 
     const data = {
-      clienteID: cliente.value,
+      compradorID: comprador.value, // 👈 ahora comprador
       compraTipoCafe: producto.value,
       compraCantidadQQ: parseFloat(ventaOro), // ⚡ enviar oro
       compraTotalSacos: parseInt(ventaTotalSacos || 0, 10),
@@ -112,7 +118,7 @@ export default function VentaForm() {
         messageApi.success("Venta registrada exitosamente");
         setPreviewVisible(false);
         limpiarFormulario({
-          setCliente,
+          setCliente: setComprador, // 👈 limpieza comprador
           setProducto,
           setVentaCantidadQQ,
           setVentaTotalSacos,
@@ -137,13 +143,13 @@ export default function VentaForm() {
 
   const fields = [
     {
-      label: "Cliente",
-      value: cliente,
-      setter: setCliente,
+      label: "Comprador",
+      value: comprador,
+      setter: setComprador,
       type: "select",
-      options: clientes,
+      options: compradores,
       required: true,
-      error: errors["Cliente"],
+      error: errors["Comprador"],
     },
     {
       label: "Tipo de Café",
@@ -205,33 +211,35 @@ export default function VentaForm() {
   ];
 
   return (
-    <>
-      {contextHolder}
-      <Formulario
-        title="Registrar Venta Directa"
-        fields={fields}
-        onSubmit={handleRegistrarClick}
-        submitting={submitting}
-        button={{
-          text: "Registrar Venta",
-          onClick: handleRegistrarClick,
-          type: "primary",
-        }}
-      />
-      <PreviewModal
-        open={previewVisible}
-        title="Previsualización de la venta"
-        onCancel={() => setPreviewVisible(false)}
-        onConfirm={handleConfirmar}
-        confirmLoading={submitting}
-        fields={fields.map((f) => ({
-          label: f.label,
-          value:
-            f.type === "select"
-              ? f.options.find((o) => o.value === f.value?.value)?.label
-              : f.value || "-",
-        }))}
-      />
-    </>
+    <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+      <>
+        {contextHolder}
+        <Formulario
+          title="Registrar Venta Directa"
+          fields={fields}
+          onSubmit={handleRegistrarClick}
+          submitting={submitting}
+          button={{
+            text: "Registrar Venta",
+            onClick: handleRegistrarClick,
+            type: "primary",
+          }}
+        />
+        <PreviewModal
+          open={previewVisible}
+          title="Previsualización de la venta"
+          onCancel={() => setPreviewVisible(false)}
+          onConfirm={handleConfirmar}
+          confirmLoading={submitting}
+          fields={fields.map((f) => ({
+            label: f.label,
+            value:
+              f.type === "select"
+                ? f.options.find((o) => o.value === f.value?.value)?.label
+                : f.value || "-",
+          }))}
+        />
+      </>
+    </ProtectedPage>
   );
 }

@@ -1,12 +1,22 @@
 import prisma from "@/lib/prisma";
+import { checkRole } from "@/lib/checkRole";
 
-export async function POST(request) {
+export async function POST(request, req) {
+  // Verificar roles
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
+
   try {
     const body = await request.json();
     const {
-      clienteID,
+      compradorID, // ahora usamos compradorID
       compraTipoCafe,
-      compraCantidadQQ, // ⚡ debe ser oro
+      compraCantidadQQ,
       compraTotalSacos,
       compraPrecioQQ,
       compraTotal,
@@ -18,7 +28,7 @@ export async function POST(request) {
     const cantidadQQ = parseFloat(compraCantidadQQ);
     const cantidadSacos = compraTotalSacos ? parseFloat(compraTotalSacos) : 0;
 
-    if (!clienteID || !compraTipoCafe || !cantidadQQ || !compraPrecioQQ) {
+    if (!compradorID || !compraTipoCafe || !cantidadQQ || !compraPrecioQQ) {
       console.log("⚠️ Faltan datos obligatorios");
       return new Response(
         JSON.stringify({ error: "Faltan datos obligatorios" }),
@@ -26,19 +36,16 @@ export async function POST(request) {
       );
     }
 
-    // 1️⃣ Obtener inventario total por producto
+    // 1️⃣ Obtener inventario total de clientes por producto
     const totalInventario = await prisma.inventariocliente.aggregate({
       where: { productoID: Number(compraTipoCafe) },
       _sum: { cantidadQQ: true, cantidadSacos: true },
     });
 
-    console.log("📊 Inventario total:", totalInventario._sum);
-
     if (
       !totalInventario._sum.cantidadQQ ||
       totalInventario._sum.cantidadQQ < cantidadQQ
     ) {
-      console.log("❌ Inventario total insuficiente");
       return new Response(
         JSON.stringify({ error: "Inventario total insuficiente" }),
         { status: 400 }
@@ -49,17 +56,16 @@ export async function POST(request) {
       !totalInventario._sum.cantidadSacos ||
       totalInventario._sum.cantidadSacos < cantidadSacos
     ) {
-      console.log("❌ No hay suficientes sacos en inventario");
       return new Response(
         JSON.stringify({ error: "No hay suficientes sacos en inventario" }),
         { status: 400 }
       );
     }
 
-    // 2️⃣ Registrar la venta
+    // 2️⃣ Registrar la venta con compradorID
     const registro = await prisma.compra.create({
       data: {
-        clienteID: Number(clienteID),
+        compradorID: Number(compradorID),
         compraFecha: new Date(),
         compraTipoCafe: Number(compraTipoCafe),
         compraCantidadQQ: cantidadQQ,
@@ -74,13 +80,11 @@ export async function POST(request) {
 
     console.log("✅ Venta registrada:", registro);
 
-    // 3️⃣ Distribuir la venta entre inventarios existentes
+    // 3️⃣ Distribuir la venta entre inventarios de clientes
     const inventarios = await prisma.inventariocliente.findMany({
       where: { productoID: Number(compraTipoCafe) },
       orderBy: { inventarioClienteID: "asc" },
     });
-
-    console.log("🔄 Inventarios a procesar:", inventarios);
 
     let restanteQQ = cantidadQQ;
     let restanteSacos = cantidadSacos;
@@ -90,10 +94,6 @@ export async function POST(request) {
 
       const descontarQQ = Math.min(restanteQQ, inv.cantidadQQ);
       const descontarSacos = Math.min(restanteSacos, inv.cantidadSacos);
-
-      console.log(
-        `➡️ Descontando del inventario ${inv.inventarioClienteID}: QQ=${descontarQQ}, Sacos=${descontarSacos}`
-      );
 
       await prisma.inventariocliente.update({
         where: { inventarioClienteID: inv.inventarioClienteID },
@@ -111,20 +111,15 @@ export async function POST(request) {
           referenciaID: registro.compraId,
           cantidadQQ: descontarQQ,
           cantidadSacos: descontarSacos,
-          nota: "Salida de café por venta distribuida",
+          nota: `Salida de café por venta a comprador ${compradorID}`,
         },
       });
 
       restanteQQ -= descontarQQ;
       restanteSacos -= descontarSacos;
-
-      console.log(
-        `🔹 Restante por distribuir: QQ=${restanteQQ}, Sacos=${restanteSacos}`
-      );
     }
 
     console.log("✅ Distribución de inventario completada");
-    console.log("📊 Inventario total:", totalInventario._sum);
     return new Response(JSON.stringify(registro), { status: 201 });
   } catch (error) {
     console.error("🔥 Error al registrar la venta:", error);

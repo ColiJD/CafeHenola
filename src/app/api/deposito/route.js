@@ -1,6 +1,13 @@
 import prisma from "@/lib/prisma";
-
-export async function POST(request) {
+import { checkRole } from "@/lib/checkRole";
+export async function POST(request,req) {
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
   try {
     const body = await request.json();
     const {
@@ -14,7 +21,12 @@ export async function POST(request) {
     } = body;
 
     // 🔹 Validaciones básicas
-    if (!clienteID || !depositoTipoCafe || !depositoCantidadQQ || !depositoTotalSacos) {
+    if (
+      !clienteID ||
+      !depositoTipoCafe ||
+      !depositoCantidadQQ ||
+      !depositoTotalSacos
+    ) {
       return new Response(
         JSON.stringify({ error: "Faltan datos obligatorios" }),
         { status: 400 }
@@ -63,8 +75,9 @@ export async function POST(request) {
         depositoEn,
         depositoDescripcion: depositoDescripcion || "",
         estado: "Pendiente",
-        depositoRetencionQQ: depositoRetencion ? parseFloat(depositoRetencion) : 0,
-
+        depositoRetencionQQ: depositoRetencion
+          ? parseFloat(depositoRetencion)
+          : 0,
       },
     });
 
@@ -111,7 +124,14 @@ export async function POST(request) {
   }
 }
 
-export async function GET() {
+export async function GET(req) {
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
   try {
     // Usamos query raw para traer todo de la vista
     const depositos = await prisma.$queryRawUnsafe(`

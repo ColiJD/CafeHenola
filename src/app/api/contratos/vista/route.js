@@ -1,6 +1,14 @@
 import prisma from "@/lib/prisma";
+import { checkRole } from "@/lib/checkRole";
 
-export async function GET() {
+export async function GET(req) {
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
   try {
     // Usamos query raw para traer todo de la vista
     const resumen = await prisma.$queryRawUnsafe(`

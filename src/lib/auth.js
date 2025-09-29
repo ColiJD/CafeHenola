@@ -79,11 +79,11 @@ export const authOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 40 * 60, // 5 minutos
+    maxAge: 5 * 60, // 5 minutos
     updateAge: 60, // intentar renovar cada 1 minuto si hay actividad
   },
   jwt: {
-    maxAge: 40 * 60, // 5 minutos
+    maxAge: 5 * 60, // 5 minutos
   },
   secret: process.env.NEXTAUTH_SECRET,
   pages: {

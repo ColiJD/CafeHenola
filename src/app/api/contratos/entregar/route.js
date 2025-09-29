@@ -1,7 +1,15 @@
 import prisma from "@/lib/prisma";
 import { truncarDosDecimalesSinRedondear } from "@/lib/calculoCafe";
+import { checkRole } from "@/lib/checkRole";
 
-export async function POST(request) {
+export async function POST(request, req) {
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
   try {
     const {
       contratoID,

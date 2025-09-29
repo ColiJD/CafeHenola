@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { message } from "antd";
 import Formulario from "@/components/Formulario";
 import PreviewModal from "@/components/Modal";
+import ProtectedPage from "@/components/ProtectedPage";
 import { obtenerClientesSelect, obtenerProductosSelect } from "@/lib/consultas";
 import {
   limpiarFormulario,
@@ -248,38 +249,40 @@ export default function FormDeposito() {
   ];
 
   return (
-    <>
-      {contextHolder}
-      <Formulario
-        title="Registrar Depósito"
-        fields={fields}
-        onSubmit={handleRegistrarClick}
-        submitting={submitting}
-        button={{
-          text: "Registrar Depósito",
-          onClick: handleRegistrarClick,
-          type: "primary",
-        }}
-      />
-      <PreviewModal
-        open={previewVisible}
-        title="Previsualización del Depósito"
-        onCancel={() => setPreviewVisible(false)}
-        onConfirm={handleConfirmar}
-        confirmLoading={submitting}
-        fields={fields.map((f) => ({
-          label: f.label,
-          value:
-            f.type === "select"
-              ? f.options?.find((o) => o.value === f.value?.value)?.label
-              : f.value ||
-                (f.label === "Total Sacos"
-                  ? 0
-                  : f.label === "Depósito en"
-                  ? "Depósito"
-                  : "-"),
-        }))}
-      />
-    </>
+    <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+      <>
+        {contextHolder}
+        <Formulario
+          title="Registrar Depósito"
+          fields={fields}
+          onSubmit={handleRegistrarClick}
+          submitting={submitting}
+          button={{
+            text: "Registrar Depósito",
+            onClick: handleRegistrarClick,
+            type: "primary",
+          }}
+        />
+        <PreviewModal
+          open={previewVisible}
+          title="Previsualización del Depósito"
+          onCancel={() => setPreviewVisible(false)}
+          onConfirm={handleConfirmar}
+          confirmLoading={submitting}
+          fields={fields.map((f) => ({
+            label: f.label,
+            value:
+              f.type === "select"
+                ? f.options?.find((o) => o.value === f.value?.value)?.label
+                : f.value ||
+                  (f.label === "Total Sacos"
+                    ? 0
+                    : f.label === "Depósito en"
+                    ? "Depósito"
+                    : "-"),
+          }))}
+        />
+      </>
+    </ProtectedPage>
   );
 }

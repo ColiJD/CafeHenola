@@ -70,34 +70,39 @@ model cliente {
 }
 
 model compra {
-  compraId            Int       @id @default(autoincrement())
+  compraId            Int          @id @default(autoincrement())
   clienteID           Int?
-  compraFecha         DateTime? @db.DateTime(0)
-  compraTipoDocumento String?   @db.VarChar(20)
-  compraMovimiento    String?   @db.VarChar(20)
+  compraFecha         DateTime?    @db.DateTime(0)
+  compraTipoDocumento String?      @db.VarChar(20)
+  compraMovimiento    String?      @db.VarChar(20)
   compraTipoCafe      Int?
-  compraPrecioQQ      Decimal?  @db.Decimal(15, 2)
-  compraCantidadQQ    Decimal?  @db.Decimal(15, 2)
-  compraTotal         Decimal?  @db.Decimal(15, 2)
-  compraTotalSacos    Decimal?  @db.Decimal(15, 2)
-  compraRetencio      Decimal?  @db.Decimal(15, 2)
-  compraEn            String?   @db.VarChar(20)
-  compraDescripcion   String?   @db.VarChar(200)
-  cliente             cliente?  @relation(fields: [clienteID], references: [clienteID], onDelete: Restrict, onUpdate: Restrict, map: "compra_ibfk_1")
-  producto            producto? @relation(fields: [compraTipoCafe], references: [productID], onDelete: Restrict, onUpdate: Restrict, map: "compra_ibfk_2")
+  compraPrecioQQ      Decimal?     @db.Decimal(15, 2)
+  compraCantidadQQ    Decimal?     @db.Decimal(15, 2)
+  compraTotal         Decimal?     @db.Decimal(15, 2)
+  compraTotalSacos    Decimal?     @db.Decimal(15, 2)
+  compraRetencio      Decimal?     @db.Decimal(15, 2)
+  compraEn            String?      @db.VarChar(20)
+  compraDescripcion   String?      @db.VarChar(200)
+  compradorID         Int?
+  cliente             cliente?     @relation(fields: [clienteID], references: [clienteID], onDelete: Restrict, onUpdate: Restrict, map: "compra_ibfk_1")
+  producto            producto?    @relation(fields: [compraTipoCafe], references: [productID], onDelete: Restrict, onUpdate: Restrict, map: "compra_ibfk_2")
+  compradores         compradores? @relation(fields: [compradorID], references: [compradorId], onDelete: Restrict, onUpdate: Restrict, map: "fk_compra_comprador")
 
   @@index([clienteID], map: "clienteID")
   @@index([compraTipoCafe], map: "compraTipoCafe")
+  @@index([compradorID], map: "fk_compra_comprador")
 }
 
 model compradores {
-  compradorId        Int      @id @default(autoincrement())
-  compradorNombre    String   @db.VarChar(255)
-  compradorRTN       String?  @unique(map: "compradorRTN") @db.VarChar(50)
-  compradorDireccion String?  @db.VarChar(300)
-  compradorTelefono  String   @db.VarChar(50)
-  compradorEmail     String   @db.VarChar(255)
-  createdAt          DateTime @default(now()) @db.DateTime(0)
+  compradorId        Int                 @id @default(autoincrement())
+  compradorNombre    String              @db.VarChar(255)
+  compradorRTN       String?             @unique(map: "compradorRTN") @db.VarChar(50)
+  compradorDireccion String?             @db.VarChar(300)
+  compradorTelefono  String              @db.VarChar(50)
+  compradorEmail     String              @db.VarChar(255)
+  createdAt          DateTime            @default(now()) @db.DateTime(0)
+  compra             compra[]
+  inventariocliente  inventariocliente[]
 }
 
 model contrato {
@@ -179,12 +184,15 @@ model inventariocliente {
   productoID           Int
   cantidadQQ           Decimal                @default(0.00) @db.Decimal(15, 2)
   cantidadSacos        Decimal                @default(0.00) @db.Decimal(15, 2)
+  compradorID          Int?
+  compradores          compradores?           @relation(fields: [compradorID], references: [compradorId], onDelete: Restrict, onUpdate: Restrict, map: "fk_inventario_comprador")
   cliente              cliente                @relation(fields: [clienteID], references: [clienteID], onUpdate: Restrict, map: "inventariocliente_ibfk_1")
   producto             producto               @relation(fields: [productoID], references: [productID], onUpdate: Restrict, map: "inventariocliente_ibfk_2")
   movimientoinventario movimientoinventario[]
 
   @@unique([clienteID, productoID], map: "uq_cliente_producto")
   @@index([productoID], map: "productoID")
+  @@index([compradorID], map: "fk_inventario_comprador")
 }
 
 model inventarioempresa {

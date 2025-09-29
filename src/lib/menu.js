@@ -205,13 +205,13 @@ export const menuItem = [
     icon: <SettingOutlined />,
     label: "Registros",
     children: [
-      { key: "cliente", label: "Cliente", route: Ruta + "/cliente" },
-      { key: "Comprador", label: "Comprador", route: Ruta + "/compradores" },
+      { key: "cliente", label: "Registro de Cliente", route: Ruta + "/cliente" },
+      { key: "Comprador", label: "Registro de Comprador", route: Ruta + "/compradores" },
 
-      { key: "producto", label: "Producto", route: Ruta + "/producto" },
+      { key: "producto", label: "Registro de Producto", route: Ruta + "/producto" },
       {
         key: "registroCliente",
-        label: "Registros de Clientes",
+        label: "Hiltorial de Cliente",
         route: Ruta + "/cliente/Registros",
       },
       {

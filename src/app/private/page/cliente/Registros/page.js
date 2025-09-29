@@ -1,200 +1,209 @@
 "use client";
-import ProtectedPage from "@/components/ProtectedPage";
-import { useEffect, useState } from "react";
-import { Table, Input, Card, Row, Col, Grid, Button ,message} from "antd";
-import { SearchOutlined } from "@ant-design/icons";
-import { obtenerClientesSelect } from "@/lib/consultas";
+
+import { useState, useMemo } from "react";
+import { Table, Card, Typography, Divider } from "antd";
+import { UserOutlined, CalendarOutlined } from "@ant-design/icons";
+import SectionHeader from "@/components/ReportesElement/AccionesResporte";
+import Filtros from "@/components/Filtros";
+import EstadisticasCards from "@/components/ReportesElement/DatosEstadisticos";
 import TarjetaMobile from "@/components/TarjetaMobile";
+import useClientAndDesktop from "@/hook/useClientAndDesktop";
+import { useFetchReport } from "@/hook/useFetchReport";
+import { exportPDFClientes } from "@/Doc/Reportes/ClientesRegistrados";
 
-const { useBreakpoint } = Grid;
+const { Title, Text } = Typography;
 
-export default function ClientesPage() {
-  const [data, setData] = useState([]);
-  const [filteredData, setFilteredData] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [searchText, setSearchText] = useState("");
+export default function ReporteClientes() {
+  const { mounted, isDesktop } = useClientAndDesktop();
+  const [nombreFiltro, setNombreFiltro] = useState("");
 
-  const screens = useBreakpoint();
-  const isMobile = !screens.md;
-  const [messageApi, contextHolder] = message.useMessage();
+  // Hook para traer clientes
+  const {
+    data,
+    loading,
+    rangoFechas,
+    onFechasChange,
+    contextHolder,
+    fetchData,
+  } = useFetchReport("/api/clientes");
 
-  // 🔹 Cargar clientes usando la función exportada
-  const cargarClientes = async () => {
-    setLoading(true);
-    try {
-      const clientesSelect = await obtenerClientesSelect(messageApi);
-      setData(clientesSelect);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Filtrado por nombre
+  const datosFiltrados = useMemo(() => {
+    return data.filter((item) =>
+      !nombreFiltro
+        ? true
+        : `${item.clienteNombre} ${item.clienteApellido}`
+            ?.toLowerCase()
+            .includes(nombreFiltro.toLowerCase())
+    );
+  }, [data, nombreFiltro]);
 
-  useEffect(() => {
-    cargarClientes();
-  }, []);
+  // Estadísticas simples
+  const estadisticas = useMemo(() => {
+    if (!datosFiltrados.length) return null;
+    return {
+      totalClientes: datosFiltrados.length,
+    };
+  }, [datosFiltrados]);
 
-  // 🔎 Filtrar por nombre y apellido
-  const handleSearch = (value) => {
-    setSearchText(value);
-    if (value) {
-      const filtro = data.filter((c) =>
-        `${c.clienteNombre || ""} ${c.clienteApellido || ""}`
-          .toLowerCase()
-          .includes(value.toLowerCase())
-      );
-      setFilteredData(filtro);
-    } else {
-      setFilteredData(data);
-    }
-  };
-
-  // Departamentos únicos para filtros de tabla
-  const departamentos = [
-    ...new Set(data.map((c) => c.clienteDepartament).filter(Boolean)),
-  ];
-
-  // 👀 Columnas principales
-  const columns = [
-    { title: "ID", dataIndex: "clienteID", key: "id", width: 70 },
+  // Columnas principales visibles
+  const columnasDesktop = [
+    {
+      title: "ID Cliente",
+      dataIndex: "clienteID",
+      width: 90,
+      align: "center",
+      fixed: "left",
+      render: (text) => <Text strong>{text}</Text>,
+    },
     {
       title: "Nombre",
-      dataIndex: "clienteNombre",
-      key: "nombre",
-      sorter: (a, b) =>
-        (a.clienteNombre || "").localeCompare(b.clienteNombre || ""),
+      render: (_, r) => (
+        <Text style={{ color: "#1890ff" }}>
+          {r.clienteNombre} {r.clienteApellido}
+        </Text>
+      ),
     },
-    {
-      title: "Apellido",
-      dataIndex: "clienteApellido",
-      key: "apellido",
-      sorter: (a, b) =>
-        (a.clienteApellido || "").localeCompare(b.clienteApellido || ""),
-    },
-    { title: "Teléfono", dataIndex: "clienteTelefono", key: "telefono" },
-    { title: "Cédula", dataIndex: "clienteCedula", key: "cedula" },
-    {
-      title: "Departamento",
-      dataIndex: "clienteDepartament",
-      key: "departamento",
-      filters: departamentos.map((d) => ({ text: d, value: d })),
-      onFilter: (value, record) => record.clienteDepartament === value,
-    },
+    { title: "Teléfono", dataIndex: "clienteTelefono" },
+    { title: "Cédula", dataIndex: "clienteCedula" },
+    { title: "Departamento", dataIndex: "clienteDepartament" },
   ];
 
+  // Configuración para expandir y mostrar más info
+  const expandable = {
+    expandedRowRender: (record) => (
+      <div style={{ padding: "8px 16px" }}>
+        <p>
+          <b>RTN:</b> {record.clienteRTN || "N/A"}
+        </p>
+        <p>
+          <b>Dirección:</b> {record.clienteDirecion || "N/A"}
+        </p>
+        <p>
+          <b>Municipio:</b> {record.clienteMunicipio || "N/A"}
+        </p>
+        <p>
+          <b>IHCAFE:</b> {record.claveIHCAFE || "N/A"}
+        </p>
+      </div>
+    ),
+    rowExpandable: (record) =>
+      record.clienteRTN ||
+      record.clienteDirecion ||
+      record.clienteMunicipio ||
+      record.claveIHCAFE,
+  };
+
+  // Versión mobile: mostramos los mismos principales
+  const columnasMobile = [
+    { label: "ID", key: "clienteID" },
+    { label: "Nombre", key: "clienteNombre" },
+    { label: "Apellido", key: "clienteApellido" },
+    { label: "Teléfono", key: "clienteTelefono" },
+    { label: "Cédula", key: "clienteCedula" },
+    { label: "Departamento", key: "clienteDepartament" },
+  ];
+
+  if (!mounted) return null;
+
   return (
-    <ProtectedPage allowedRoles={["ADMIN"]}>
+    <div
+      style={{
+        padding: isDesktop ? "24px" : "12px",
+        background: "#f5f5f5",
+        minHeight: "100vh",
+      }}
+    >
       {contextHolder}
-      <div style={{ padding: 16 }}>
-        <h2 style={{ fontSize: screens.xs ? "18px" : "22px" }}>
-          Lista de Clientes
-        </h2>
 
-        <Row gutter={[16, 16]} style={{ marginBottom: 16 }} align="middle">
-          <Col xs={24} sm={12} md={6}>
-            <Input.Search
-              placeholder="Buscar por nombre o apellido"
-              allowClear
-              enterButton={<SearchOutlined />}
-              onSearch={handleSearch}
-              onChange={(e) => handleSearch(e.target.value)}
-              style={{ width: "100%" }}
-              value={searchText}
+      {/* Header */}
+      <Card>
+        <SectionHeader
+          isDesktop={isDesktop}
+          loading={loading}
+          icon={<CalendarOutlined />}
+          titulo="Clientes Registrados"
+          subtitulo="Listado completo de clientes"
+          onRefresh={() => fetchData()}
+          onExportPDF={() =>
+            exportPDFClientes(
+              datosFiltrados,
+              {
+                nombreFiltro,
+              },
+              columnasDesktop,
+              { title: "Clientes Registrados" }
+            )
+          }
+          disableExport={!datosFiltrados.length}
+        />
+
+        <Divider />
+
+        <Filtros
+          fields={[
+            {
+              type: "input",
+              placeholder: "Buscar por nombre de cliente",
+              value: nombreFiltro,
+              setter: setNombreFiltro,
+              allowClear: true,
+            },
+          ]}
+        />
+
+        {estadisticas && (
+          <>
+            <Divider />
+            <EstadisticasCards
+              isDesktop={isDesktop}
+              data={[
+                {
+                  titulo: "Clientes",
+                  valor: estadisticas.totalClientes,
+                  icon: <UserOutlined style={{ color: "#1890ff" }} />,
+                  color: "#1890ff",
+                },
+              ]}
             />
-          </Col>
-          <Col xs={24} sm={12} md={4}>
-            <Button onClick={cargarClientes} block>
-              Refrescar
-            </Button>
-          </Col>
-        </Row>
+          </>
+        )}
+      </Card>
 
-        {/* 👀 Vista móvil → tarjetas */}
-        {isMobile ? (
-          <TarjetaMobile
-            data={filteredData}
-            loading={loading} // 🔹 Spinner mientras carga
-            columns={[
-              {
-                label: "Nombre",
-                key: "clienteNombreCompleto",
-                render: (v, item) =>
-                  `${item.clienteNombre || ""} ${item.clienteApellido || ""}`,
-              },
-              { label: "ID", key: "clienteID" },
-            ]}
-            detailsKey="detalles"
-            detailsColumns={[
-              {
-                label: "Teléfono",
-                key: "clienteTelefono",
-                render: (v) => v || "N/A",
-              },
-              {
-                label: "Municipio",
-                key: "clienteMunicipio",
-                render: (v) => v || "N/A",
-              },
-              {
-                label: "Departamento",
-                key: "clienteDepartament",
-                render: (v) => v || "N/A",
-              },
-              {
-                label: "Cédula",
-                key: "clienteCedula",
-                render: (v) => v || "N/A",
-              },
-              { label: "RTN", key: "clienteRTN", render: (v) => v || "N/A" },
-              {
-                label: "Clave IHCAFE",
-                key: "claveIHCAFE",
-                render: (v) => v || "N/A",
-              },
-              {
-                label: "Dirección",
-                key: "clienteDirecion",
-                render: (v) => v || "N/A",
-              },
-            ]}
-          />
-        ) : (
-          // 👀 Vista tablet/desktop → tabla con expandibles
+      {/* Tabla */}
+      <Card style={{ borderRadius: 6 }}>
+        <div style={{ marginBottom: isDesktop ? 16 : 12 }}>
+          <Title level={4} style={{ margin: 0, fontSize: isDesktop ? 16 : 14 }}>
+            Detalle de Clientes ({datosFiltrados.length} registros)
+          </Title>
+        </div>
+
+        {isDesktop ? (
           <Table
-            columns={columns}
-            dataSource={filteredData}
+            columns={columnasDesktop}
+            dataSource={datosFiltrados}
             rowKey="clienteID"
             loading={loading}
+            bordered
             scroll={{ x: "max-content" }}
-            pagination={{ pageSize: 5 }}
-            expandable={{
-              expandedRowRender: (record) => (
-                <Card size="small" title="Detalles del Cliente" type="inner">
-                  <Row gutter={[16, 8]}>
-                    <Col xs={24} sm={12}>
-                      <p>
-                        <b>Municipio:</b> {record.clienteMunicipio || "N/A"}
-                      </p>
-                      <p>
-                        <b>Clave IHCAFE:</b> {record.claveIHCAFE || "N/A"}
-                      </p>
-                    </Col>
-                    <Col xs={24} sm={12}>
-                      <p>
-                        <b>RTN:</b> {record.clienteRTN || "N/A"}
-                      </p>
-                      <p>
-                        <b>Dirección:</b> {record.clienteDirecion || "N/A"}
-                      </p>
-                    </Col>
-                  </Row>
-                </Card>
+            size="small"
+            expandable={expandable}
+            pagination={{
+              showTotal: (total, range) => (
+                <Text type="secondary">
+                  {range[0]}-{range[1]} de {total} registros
+                </Text>
               ),
             }}
           />
+        ) : (
+          <TarjetaMobile
+            data={datosFiltrados}
+            columns={columnasMobile}
+            loading={loading}
+          />
         )}
-      </div>
-    </ProtectedPage>
+      </Card>
+    </div>
   );
 }

@@ -60,7 +60,7 @@ export async function POST(request,req) {
 
     const lastLiq = await prisma.$queryRaw`
       SELECT liqID 
-      FROM LiqDeposito
+      FROM liqdeposito
       WHERE liqclienteID = ${clienteID} AND liqTipoCafe = ${tipoCafe}
       ORDER BY liqFecha DESC
       LIMIT 1

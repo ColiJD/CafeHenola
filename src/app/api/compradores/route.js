@@ -10,7 +10,12 @@ import {
 } from "@/lib/validacionesBackend";
 
 export async function GET(req) {
-  const sessionOrResponse = await checkRole(req, ["ADMIN"]);
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
   if (sessionOrResponse instanceof Response) return sessionOrResponse;
 
   try {
@@ -25,7 +30,12 @@ export async function GET(req) {
 }
 
 export async function POST(req) {
-  const sessionOrResponse = await checkRole(req, ["ADMIN"]);
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
   if (sessionOrResponse instanceof Response) return sessionOrResponse;
 
   try {

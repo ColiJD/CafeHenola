@@ -61,7 +61,7 @@ export default function UsersPage() {
   ];
 
   return (
-      <ProtectedPage allowedRoles={["ADMIN", "GERENCIA"]}>
+      <ProtectedPage allowedRoles={["ADMIN",]}>
     <div className="p-6">
       <h1 className="text-xl font-bold mb-4">Gestión de Usuarios</h1>
       <Button type="primary" onClick={() => setOpen(true)}>

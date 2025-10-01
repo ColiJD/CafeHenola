@@ -125,13 +125,13 @@ export async function processImageToGray(imgUrl, opacity = 0.15) {
 
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   for (let i = 0; i < imageData.data.length; i += 4) {
-    const r = imageData.data[i];
-    const g = imageData.data[i + 1];
-    const b = imageData.data[i + 2];
-    const gray = 0.3 * r + 0.59 * g + 0.11 * b;
-    imageData.data[i] = gray;
-    imageData.data[i + 1] = gray;
-    imageData.data[i + 2] = gray;
+    // const r = imageData.data[i];
+    // const g = imageData.data[i + 1];
+    // const b = imageData.data[i + 2];
+    // const gray = 0.3 * r + 0.59 * g + 0.11 * b;
+    // imageData.data[i] = gray;
+    // imageData.data[i + 1] = gray;
+    // imageData.data[i + 2] = gray;
     imageData.data[i + 3] = 255 * opacity; // opacidad
   }
   ctx.putImageData(imageData, 0, 0);

@@ -2,8 +2,12 @@ import JsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { formatNumber } from "@/components/Formulario";
 import fondoImg from "@/img/frijoles.png";
-import { numeroALetras,cleanText, processImageToGray, getLogoScaled} from "@/Doc/Documentos/funcionesdeDocumentos";
-
+import {
+  numeroALetras,
+  cleanText,
+  processImageToGray,
+  getLogoScaled,
+} from "@/Doc/Documentos/funcionesdeDocumentos";
 
 export const exportCompraDirecta = async (formState) => {
   const doc = new JsPDF({ unit: "pt", format: "letter" });
@@ -13,9 +17,7 @@ export const exportCompraDirecta = async (formState) => {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
-  // Fondo en gris con opacidad
   const fondoGray = await processImageToGray(fondoImg.src, 0.15);
-  doc.addImage(fondoGray, "PNG", 0, 0, pageWidth, pageHeight);
 
   const fecha = new Date().toLocaleDateString("es-HN", {
     year: "numeric",
@@ -24,20 +26,6 @@ export const exportCompraDirecta = async (formState) => {
   });
 
   const logo = await getLogoScaled(fondoImg.src, 100, 100);
-  doc.addImage(logo.src, "PNG", leftMargin, 20, logo.width, logo.height);
-
-  doc.setFont("times", "bold");
-  doc.setFontSize(20);
-  doc.text("BENEFICIO CAFÉ HENOLA", pageWidth / 2, 60, { align: "center" });
-  doc.setFont("times", "normal");
-  doc.setFontSize(14);
-  doc.text("COMPROBANTE DE COMPRA DIRECTA", pageWidth / 2, 85, {
-    align: "center",
-  });
-  doc.setFontSize(12);
-  doc.text("Teléfono: (504) 3271-3188", pageWidth / 2, 105, {
-    align: "center",
-  });
 
   const cliente = formState?.cliente?.label || "Cliente";
   const productos = formState?.productos || [];
@@ -46,90 +34,144 @@ export const exportCompraDirecta = async (formState) => {
   const cantidadLetras = numeroALetras(formState?.total || 0);
   const formaPago = formState?.formaPago || "";
 
-  let startY = topMargin + 110;
-  doc.text(`Comprobante No: ${comprobanteID}`, leftMargin, startY);
-  doc.text(`Fecha: ${fecha}`, pageWidth - rightMargin, startY, {
-    align: "right",
-  });
+  // 🔹 CAMBIO: función que dibuja el comprobante con un desplazamiento vertical (offsetY)
+  const drawComprobante = (offsetY = 0) => {
+    const imgWidth = pageWidth * 0.8; // 50% del ancho de la página
+    const imgHeight = (imgWidth / pageWidth) * (pageHeight / 2); // proporción parecida
+    const imgX = (pageWidth - imgWidth) / 2; // centrado horizontal
+    const imgY = offsetY + pageHeight / 4 - imgHeight / 2; // ce
+    // Fondo
+    doc.addImage(fondoGray, "PNG", imgX, imgY, imgWidth, imgHeight);
 
-  startY += 30;
-  doc.setFont("times", "bold");
-  doc.text(`Cliente: ${cliente}`, leftMargin, startY);
-  startY += 20;
+    // Logo
+    doc.addImage(
+      logo.src,
+      "PNG",
+      leftMargin,
+      20 + offsetY,
+      logo.width,
+      logo.height
+    );
 
-  const bodyProductos = productos.map((p) => [
-    cleanText(p.nombre),
-    formatNumber(p.cantidad),
-    `L. ${formatNumber(p.precio)}`,
-    `L. ${formatNumber(p.total)}`,
-  ]);
+    // Encabezado
+    doc.setFont("times", "bold");
+    doc.setFontSize(20);
+    doc.text("BENEFICIO CAFÉ HENOLA", pageWidth / 2, 60 + offsetY, {
+      align: "center",
+    });
+    doc.setFont("times", "normal");
+    doc.setFontSize(14);
+    doc.text("COMPROBANTE DE COMPRA DIRECTA", pageWidth / 2, 85 + offsetY, {
+      align: "center",
+    });
+    doc.setFontSize(12);
+    doc.text("Teléfono: (504) 3271-3188", pageWidth / 2, 105 + offsetY, {
+      align: "center",
+    });
 
-  autoTable(doc, {
-    startY,
-    margin: { left: leftMargin, right: rightMargin },
-    head: [["Producto", "Cantidad (QQ)", "Precio (LPS)", "Total (LPS)"]],
-    body: bodyProductos,
-    styles: { font: "times", fontSize: 12 },
-    headStyles: { fillColor: [41, 128, 185], textColor: [255, 255, 255] },
-  });
+    // 🔹 Título "Cosecha" y años a la derecha
+    const cosechaX = pageWidth - rightMargin - 80; // ajusta según espacio
+    doc.setFont("times", "bold");
+    doc.setFontSize(12);
+    doc.text("Cosecha", cosechaX, 60 + offsetY); // a la altura del logo
 
-  startY = doc.lastAutoTable.finalY + 20;
+    doc.setFont("times", "normal");
+    doc.setFontSize(12);
+    doc.text("2024  2025", cosechaX, 80 + offsetY);
 
-  // Cantidad en letras
-  doc.setFont("times", "normal");
+    let startY = topMargin + 60 + offsetY;
+    doc.text(`Comprobante No: ${comprobanteID}`, leftMargin, startY);
+    doc.text(`Fecha: ${fecha}`, pageWidth - rightMargin, startY, {
+      align: "right",
+    });
 
-  doc.text(`Cantidad en Letras: ${cantidadLetras}`, leftMargin, startY);
+    startY += 30;
+    doc.setFont("times", "bold");
+    doc.text(`Cliente: ${cliente}`, leftMargin, startY);
+    startY += 20;
 
-  startY += 25;
+    // Tabla de productos
+    const bodyProductos = productos.map((p) => [
+      cleanText(p.nombre),
+      formatNumber(p.cantidad),
+      `L. ${formatNumber(p.precio)}`,
+      `L. ${formatNumber(p.total)}`,
+    ]);
 
-  // Forma de Pago
-  doc.text("Forma de Pago:", leftMargin, startY);
-  const formas = ["Efectivo", "Transferencia", "Cheque"];
-  let x = leftMargin + 100;
-  formas.forEach((f) => {
-    // Dibujar cuadro alineado con el texto
-    doc.rect(x, startY - 8, 12, 12);
-    if (formaPago === f) {
-      doc.text("X", x + 3.5, startY + 1); // centrar la X en el cuadro
-    }
-    doc.text(f, x + 20, startY + 2); // texto alineado al centro del cuadro
-    x += 120; // espacio entre opciones
-  });
+    autoTable(doc, {
+      startY,
+      margin: { left: leftMargin, right: rightMargin },
+      head: [["Producto", "Cantidad (QQ)", "Precio (LPS)", "Total (LPS)"]],
+      body: bodyProductos,
+      styles: { font: "times", fontSize: 12 },
+      headStyles: { fillColor: [41, 128, 185], textColor: [255, 255, 255] },
+    });
 
-  startY += 40; // salto después de forma de pago
+    startY = doc.lastAutoTable.finalY + 20;
 
-  // Observaciones
-  doc.setFont("times", "bold");
-  doc.text("Observaciones:", leftMargin, startY);
-  startY += 15;
-  doc.setFont("times", "normal");
-  doc.text(cleanText(observaciones), leftMargin, startY, {
-    maxWidth: pageWidth - leftMargin - rightMargin,
-  });
+    // Cantidad en letras
+    doc.setFont("times", "normal");
+    doc.text(`Cantidad en Letras: ${cantidadLetras}`, leftMargin, startY);
 
-  startY += 60; // espacio antes de firmas
+    startY += 25;
 
-  // Firmas justo después de la info
-  const firmaWidth = 200;
-  doc.line(leftMargin, startY, leftMargin + firmaWidth, startY);
-  doc.text("FIRMA", leftMargin, startY + 15);
+    // Forma de Pago
+    doc.text("Forma de Pago:", leftMargin, startY);
+    const formas = ["Efectivo", "Transferencia", "Cheque"];
+    let x = leftMargin + 100;
+    formas.forEach((f) => {
+      doc.rect(x, startY - 8, 12, 12);
+      if (formaPago === f) {
+        doc.text("X", x + 3.5, startY + 1);
+      }
+      doc.text(f, x + 20, startY + 2);
+      x += 120;
+    });
 
-  doc.line(
-    pageWidth - rightMargin - firmaWidth,
-    startY,
-    pageWidth - rightMargin,
-    startY
-  );
-  doc.text("LUGAR", pageWidth - rightMargin - firmaWidth, startY + 15);
+    startY += 30;
 
-  // Footer siempre al pie de página
-  doc.setFontSize(10);
-  doc.text(
-    "Beneficio Café Henola - El Paraíso, Honduras",
-    pageWidth / 2,
-    pageHeight - 30,
-    { align: "center" }
-  );
+    // Observaciones
+    doc.setFont("times", "bold");
+    doc.text("Observaciones:", leftMargin, startY);
+    startY += 15;
+    doc.setFont("times", "normal");
+    doc.text(cleanText(observaciones), leftMargin, startY, {
+      maxWidth: pageWidth - leftMargin - rightMargin,
+    });
+
+    startY += 25;
+
+    // Firmas
+    const firmaWidth = 200;
+    doc.line(leftMargin, startY, leftMargin + firmaWidth, startY);
+    doc.text("FIRMA", leftMargin, startY + 15);
+
+    doc.line(
+      pageWidth - rightMargin - firmaWidth,
+      startY,
+      pageWidth - rightMargin,
+      startY
+    );
+    doc.text("LUGAR", pageWidth - rightMargin - firmaWidth, startY + 15);
+
+    // Footer
+    doc.setFontSize(10);
+    doc.text(
+      "Beneficio Café Henola - El Paraíso, Honduras",
+      pageWidth / 2,
+      offsetY + pageHeight / 2 - 15,
+      { align: "center" }
+    );
+  };
+
+  // 🔹 CAMBIO: dibujar dos comprobantes (arriba y abajo)
+  drawComprobante(0);
+  drawComprobante(pageHeight / 2);
+
+  // 🔹 CAMBIO: agregar línea punteada de corte en el centro
+  doc.setLineDash([5, 3]); // patrón punteado
+  doc.line(40, pageHeight / 2, pageWidth - 40, pageHeight / 2);
+  doc.setLineDash(); // reset estilo de línea
 
   const nombreArchivo = `CompraDirecta_${cliente.replace(
     /\s+/g,

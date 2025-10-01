@@ -49,7 +49,7 @@ export const menuItems = [
       {
         id: 103,
         name: "Liquidar Deposito",
-        href: RutaTransaccion + "deposito/liqDeposito",
+        href: RutaTransaccion + "/deposito/liqDeposito",
         image: LiqDepo,
       },
       {
@@ -74,7 +74,7 @@ export const menuItems = [
       {
         id: 201,
         name: "Venta Directa",
-        href: RutaTransaccion + "Venta/venta",
+        href: RutaTransaccion + "/Venta/venta",
         image: Compras,
       },
     ],
@@ -99,19 +99,19 @@ export const menuItems = [
       {
         id: 401,
         name: "Saldo Por Deposito",
-        href: Ruta + "/deposito/vista",
+        href: RutaTransaccion + "/deposito/vista",
         image: contrato,
       },
       {
         id: 402,
         name: "Saldo Por Contrato",
-        href: Ruta + "/contrato/vista",
+        href: RutaTransaccion + "/contrato/vista",
         image: prestamo,
       },
       {
         id: 403,
         name: "Detalle de Compras",
-        href: Ruta + "/compra/vista",
+        href: RutaTransaccion + "/compra/vista",
         image: Reportes,
       },
     ],

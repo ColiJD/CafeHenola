@@ -90,7 +90,7 @@ export const exportEntregaContrato = async (formState) => {
 
     doc.setFont("times", "normal");
     doc.setFontSize(12);
-    doc.text("2024  2025", cosechaX, 80 + offsetY);
+    doc.text("2025  2026", cosechaX, 80 + offsetY);
     // Datos del comprobante
     let startY = topMargin + 60 + offsetY;
     doc.text(`Comprobante No: ${comprobanteID}`, leftMargin, startY);

@@ -84,7 +84,7 @@ export const exportLiquidacionDeposito = async (formState) => {
     doc.text("Cosecha", cosechaX, 65 + offsetY);
     doc.setFont("times", "normal");
     doc.setFontSize(12);
-    doc.text("2024  2025", cosechaX, 85 + offsetY);
+    doc.text("2025  2026", cosechaX, 85 + offsetY);
 
     // Datos del comprobante
     let startY = topMargin + 60 + offsetY;

@@ -78,7 +78,7 @@ export const exportDeposito = async (formState) => {
 
     doc.setFont("times", "normal");
     doc.setFontSize(12);
-    doc.text("2024  2025", cosechaX, 80 + offsetY);
+    doc.text("2025  2026", cosechaX, 80 + offsetY);
 
     let startY = topMargin + 60 + offsetY;
     doc.setFont("times", "normal");

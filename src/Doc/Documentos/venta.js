@@ -71,7 +71,7 @@ export const exportVentaDirecta = async (formState) => {
     doc.setFontSize(12 * scale);
     doc.text("COMPROBANTE DE VENTA DIRECTA", pageWidth / 2, 70 + offsetY, { align: "center" });
     doc.text("Propietario Enri Lagos", pageWidth / 2, 85 + offsetY, { align: "center" });
-    doc.text("Teléfono: (504) 3271-3188", pageWidth / 2, 100 + offsetY, { align: "center" });
+    doc.text("Teléfono: (504) 3271-3188, (504) 9877-8789", pageWidth / 2, 100 + offsetY, { align: "center" });
 
     let startY = topMargin + 50 + offsetY;
     doc.setFontSize(10 * scale);

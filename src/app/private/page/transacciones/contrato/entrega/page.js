@@ -39,7 +39,7 @@ export default function LiquidacionContratoForm() {
     oro: "0.00",
     retencion: "0.00",
     producto: null,
-    descripcion: "Entrega de contrato",
+    descripcion: "",
     pesoBrutoContrato: "0.00",
   });
 
@@ -237,10 +237,11 @@ export default function LiquidacionContratoForm() {
       precioQQ: formState.precioQQ,
       totalSacos: parseInt(formState.totalSacos),
       tipoDocumento: "EntregaContrato",
-      descripcion: "Liquidación de contrato",
+      descripcion: formState.descripcion,
       liqEn: "Bodega",
       liqDescripcion: formState.descripcion,
     };
+    console.log(data);
 
     try {
       const res = await fetch("/api/contratos/entregar", {
@@ -278,12 +279,12 @@ export default function LiquidacionContratoForm() {
             quintalesIngresados: parseFloat(formState.oro),
             precio: parseFloat(formState.precioQQ),
             totalPagar: parseFloat(formState.totalLiquidacion),
-            retencion: parseFloat(formState.retencion),
             saldoRestanteQQ: result.saldoDespuesQQ,
             saldoRestanteLps: result.saldoDespuesLps,
             formaPago: formState.formaPago,
             observaciones: formState.descripcion,
           });
+
           messageApi.destroy("generandoComprobante");
           messageApi.success("Comprobante generado correctamente");
         } catch (err) {
@@ -463,11 +464,11 @@ export default function LiquidacionContratoForm() {
       readOnly: true,
     },
     {
-      key: "Descripcion",
+      key: "descripcion",
       label: "Descripción",
       type: "textarea",
       readOnly: false,
-      value: "Liquidación de contrato",
+      value: formState.descripcion,
     },
   ];
 

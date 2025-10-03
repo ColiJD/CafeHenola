@@ -102,7 +102,7 @@ export const exportDeposito = async (formState) => {
       align: "center",
     });
     doc.setFontSize(12);
-    doc.text("Teléfono: (504) 3271-3188", pageWidth / 2, 115 + offsetY, {
+    doc.text("Teléfono: (504) 3271-3188, (504) 9877-8789", pageWidth / 2, 115 + offsetY, {
       align: "center",
     });
 

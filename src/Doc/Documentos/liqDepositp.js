@@ -105,7 +105,7 @@ export const exportLiquidacionDeposito = async (formState) => {
     doc.text("Propietario Enri Lagos", pageWidth / 2, 85 + offsetY, {
       align: "center",
     });
-    doc.text("Teléfono: (504) 3271-3188", pageWidth / 2, 100 + offsetY, {
+    doc.text("Teléfono: (504) 3271-3188,(504) 9877-8789", pageWidth / 2, 100 + offsetY, {
       align: "center",
     });
 

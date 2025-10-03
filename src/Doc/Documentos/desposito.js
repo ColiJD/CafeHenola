@@ -1,6 +1,9 @@
 import JsPDF from "jspdf";
 import { formatNumber } from "@/components/Formulario";
 import fondoImg from "@/img/frijoles.png";
+import frijol from "@/img/imagenfrijoles.png";
+import sello from "@/img/logo_transparente.png";
+import tasa from "@/img/tasa.png";
 import {
   numeroALetras,
   cleanText,
@@ -16,33 +19,38 @@ export const exportDeposito = async (formState) => {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
-  // 🔹 Fondo a color con opacidad
+  // Fondo en escala de grises
   const fondoGray = await processImageToGray(fondoImg.src, 0.15);
 
+  // Fecha
   const fecha = new Date().toLocaleDateString("es-HN", {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
 
-  const logo = await getLogoScaled(fondoImg.src, 100, 100);
+  // Escalamos imágenes
+  const logo = await getLogoScaled(tasa.src, 80, 80);
+  const frijolimg = await getLogoScaled(frijol.src, 80, 80);
+  const selloimg = await getLogoScaled(sello.src, 60, 60);
 
+  // Datos del comprobante
   const cliente = formState?.cliente?.label || "Cliente";
   const cantidad = formState?.total || 0;
   const observaciones = formState?.observaciones || "N/A";
   const comprobanteID = formState?.comprobanteID || "0000";
   const cantidadLetras = numeroALetras(cantidad, "QQ de oro");
 
-  // 🔹 CAMBIO: función que dibuja el comprobante con desplazamiento vertical
+  // Función que dibuja un comprobante
   const drawComprobante = (offsetY = 0) => {
-    // Fondo compacto y centrado
-    const imgWidth = pageWidth * 0.5; // 50% del ancho
-    const imgHeight = (imgWidth / pageWidth) * pageHeight; // mantiene proporción
+    // Fondo
+    const imgWidth = pageWidth * 0.6;
+    const imgHeight = (imgWidth / pageWidth) * pageHeight;
     const imgX = (pageWidth - imgWidth) / 2;
     const imgY = offsetY + pageHeight / 4 - imgHeight / 2;
     doc.addImage(fondoGray, "PNG", imgX, imgY, imgWidth, imgHeight);
 
-    // Logo
+    // Logo izquierda
     doc.addImage(
       logo.src,
       "PNG",
@@ -50,6 +58,32 @@ export const exportDeposito = async (formState) => {
       20 + offsetY,
       logo.width,
       logo.height
+    );
+
+    // Imagen frijol a la derecha
+    const frijolY = 20 + offsetY;
+    doc.addImage(
+      frijolimg.src,
+      "PNG",
+      pageWidth - rightMargin - frijolimg.width,
+      frijolY,
+      frijolimg.width,
+      frijolimg.height
+    );
+
+    // Cosecha junto a frijol
+    doc.setFont("times", "bold");
+    doc.setFontSize(12);
+    doc.text(
+      "Cosecha",
+      pageWidth - rightMargin - frijolimg.width,
+      frijolY + frijolimg.height + 20
+    );
+    doc.setFont("times", "normal");
+    doc.text(
+      "2025  2026",
+      pageWidth - rightMargin - frijolimg.width,
+      frijolY + frijolimg.height + 30
     );
 
     // Encabezado
@@ -64,22 +98,15 @@ export const exportDeposito = async (formState) => {
     doc.text("COMPROBANTE DE DEPÓSITO", pageWidth / 2, 85 + offsetY, {
       align: "center",
     });
-
+    doc.text("Propietario Enri Lagos", pageWidth / 2, 100 + offsetY, {
+      align: "center",
+    });
     doc.setFontSize(12);
-    doc.text("Teléfono: (504) 3271-3188", pageWidth / 2, 105 + offsetY, {
+    doc.text("Teléfono: (504) 3271-3188", pageWidth / 2, 115 + offsetY, {
       align: "center",
     });
 
-    // 🔹 Título "Cosecha" y años a la derecha
-    const cosechaX = pageWidth - rightMargin - 80; // ajusta según espacio
-    doc.setFont("times", "bold");
-    doc.setFontSize(12);
-    doc.text("Cosecha", cosechaX, 60 + offsetY); // a la altura del logo
-
-    doc.setFont("times", "normal");
-    doc.setFontSize(12);
-    doc.text("2025  2026", cosechaX, 80 + offsetY);
-
+    // Datos
     let startY = topMargin + 60 + offsetY;
     doc.setFont("times", "normal");
     doc.text(`Comprobante No: ${comprobanteID}`, leftMargin, startY);
@@ -89,7 +116,7 @@ export const exportDeposito = async (formState) => {
 
     startY += 30;
     doc.setFont("times", "bold");
-    doc.text(`Cliente: ${cliente}`, leftMargin, startY);
+    doc.text(`Productor: ${cliente}`, leftMargin, startY);
 
     startY += 20;
     doc.setFont("times", "normal");
@@ -101,21 +128,35 @@ export const exportDeposito = async (formState) => {
     startY += 20;
     doc.text(`En Letras: ${cantidadLetras}`, leftMargin, startY);
 
+    // Observaciones
     startY += 40;
     doc.setFont("times", "bold");
     doc.text("Observaciones:", leftMargin, startY);
     startY += 15;
     doc.setFont("times", "normal");
-    doc.text(cleanText(observaciones), leftMargin, startY, {
+    doc.text(String(observaciones || ""), leftMargin, startY, {
       maxWidth: pageWidth - leftMargin - rightMargin,
     });
 
-    startY += 60;
     // Firmas
-    const firmaWidth = 200;
+    startY += 80;
+    const firmaWidth = 180;
+
+    // Línea y texto firma cliente
     doc.line(leftMargin, startY, leftMargin + firmaWidth, startY);
     doc.text("FIRMA", leftMargin, startY + 15);
 
+    // Sello sobre la firma cliente
+    doc.addImage(
+      selloimg.src,
+      "PNG",
+      leftMargin + firmaWidth / 2 - selloimg.width / 2,
+      startY - selloimg.height - 5,
+      selloimg.width,
+      selloimg.height
+    );
+
+    // Línea y texto lugar
     doc.line(
       pageWidth - rightMargin - firmaWidth,
       startY,
@@ -124,24 +165,33 @@ export const exportDeposito = async (formState) => {
     );
     doc.text("LUGAR", pageWidth - rightMargin - firmaWidth, startY + 15);
 
+    // Texto "El Paraíso" sobre la línea de LUGAR
+    doc.setFont("times", "bold");
+    doc.text(
+      "El Paraíso",
+      pageWidth - rightMargin - firmaWidth + 40,
+      startY - 5
+    );
+    doc.setFont("times", "normal");
+
     // Footer
     doc.setFontSize(10);
     doc.text(
       "Beneficio Café Henola - El Paraíso, Honduras",
       pageWidth / 2,
-      offsetY + pageHeight / 2 -15,
+      offsetY + pageHeight / 2 - 15,
       { align: "center" }
     );
   };
 
-  // 🔹 CAMBIO: dibujar dos comprobantes (arriba y abajo)
+  // Dibuja dos comprobantes en la misma hoja
   drawComprobante(0);
   drawComprobante(pageHeight / 2);
 
-  // 🔹 CAMBIO: línea punteada de corte en el centro
+  // Línea punteada de corte
   doc.setLineDash([5, 3]);
   doc.line(40, pageHeight / 2, pageWidth - 40, pageHeight / 2);
-  doc.setLineDash(); // reset
+  doc.setLineDash();
 
   const nombreArchivo = `Deposito_${cliente.replace(
     /\s+/g,

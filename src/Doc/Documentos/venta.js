@@ -2,6 +2,9 @@ import JsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { formatNumber } from "@/components/Formulario";
 import fondoImg from "@/img/frijoles.png";
+import frijol from "@/img/imagenfrijoles.png";
+import sello from "@/img/logo_transparente.png";
+import tasa from "@/img/tasa.png";
 import {
   numeroALetras,
   cleanText,
@@ -11,19 +14,24 @@ import {
 
 export const exportVentaDirecta = async (formState) => {
   const doc = new JsPDF({ unit: "pt", format: "letter" });
-  const leftMargin = 72;
-  const rightMargin = 72;
-  const topMargin = 72;
+  const leftMargin = 50;
+  const rightMargin = 50;
+  const topMargin = 50;
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
   const fondoGray = await processImageToGray(fondoImg.src, 0.15);
+
   const fecha = new Date().toLocaleDateString("es-HN", {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
-  const logo = await getLogoScaled(fondoImg.src, 100, 100);
+
+  const scale = 1.1;
+  const logo = await getLogoScaled(tasa.src, 80 * scale, 80 * scale);
+  const frijolimg = await getLogoScaled(frijol.src, 80 * scale, 80 * scale);
+  const selloimg = await getLogoScaled(sello.src, 50 * scale, 50 * scale);
 
   const comprador = formState?.comprador?.label || "Comprador";
   const productos = formState?.productos || [];
@@ -33,55 +41,49 @@ export const exportVentaDirecta = async (formState) => {
   const formaPago = formState?.formaPago || "";
 
   const drawComprobante = (offsetY = 0) => {
-    const imgWidth = pageWidth * 0.8;
-    const imgHeight = (imgWidth / pageWidth) * (pageHeight / 2);
+    // Fondo
+    const imgWidth = pageWidth * 0.9 * scale;
+    const imgHeight = pageHeight * 0.45 * scale;
     const imgX = (pageWidth - imgWidth) / 2;
-    const imgY = offsetY + pageHeight / 4 - imgHeight / 2;
-
+    const imgY = offsetY + pageHeight * 0.05;
     doc.addImage(fondoGray, "PNG", imgX, imgY, imgWidth, imgHeight);
-    doc.addImage(
-      logo.src,
-      "PNG",
-      leftMargin,
-      20 + offsetY,
-      logo.width,
-      logo.height
-    );
 
+    // Logo izquierda
+    doc.addImage(logo.src, "PNG", leftMargin, 20 + offsetY, logo.width, logo.height);
+
+    // Frijol derecha
+    const frijolY = 20 + offsetY;
+    doc.addImage(frijolimg.src, "PNG", pageWidth - rightMargin - frijolimg.width, frijolY, frijolimg.width, frijolimg.height);
+
+    // Cosecha al lado del frijol
     doc.setFont("times", "bold");
-    doc.setFontSize(20);
-    doc.text("BENEFICIO CAFÉ HENOLA", pageWidth / 2, 60 + offsetY, {
-      align: "center",
-    });
+    doc.setFontSize(10 * scale);
+    doc.text("Cosecha", pageWidth - rightMargin - frijolimg.width, frijolY + frijolimg.height + 25);
     doc.setFont("times", "normal");
-    doc.setFontSize(14);
-    doc.text("COMPROBANTE DE VENTA DIRECTA", pageWidth / 2, 85 + offsetY, {
-      align: "center",
-    });
-    doc.setFontSize(12);
-    doc.text("Teléfono: (504) 3271-3188", pageWidth / 2, 105 + offsetY, {
-      align: "center",
-    });
+    doc.text("2025  2026", pageWidth - rightMargin - frijolimg.width, frijolY + frijolimg.height + 40);
 
-    const cosechaX = pageWidth - rightMargin - 80;
+    // Encabezado
     doc.setFont("times", "bold");
-    doc.setFontSize(12);
-    doc.text("Cosecha", cosechaX, 60 + offsetY);
-    doc.setFont("times", "normal");
-    doc.setFontSize(12);
-    doc.text("2025  2026", cosechaX, 80 + offsetY);
+    doc.setFontSize(16 * scale);
+    doc.text("BENEFICIO CAFÉ HENOLA", pageWidth / 2, 50 + offsetY, { align: "center" });
 
-    let startY = topMargin + 60 + offsetY;
+    doc.setFont("times", "normal");
+    doc.setFontSize(12 * scale);
+    doc.text("COMPROBANTE DE VENTA DIRECTA", pageWidth / 2, 70 + offsetY, { align: "center" });
+    doc.text("Propietario Enri Lagos", pageWidth / 2, 85 + offsetY, { align: "center" });
+    doc.text("Teléfono: (504) 3271-3188", pageWidth / 2, 100 + offsetY, { align: "center" });
+
+    let startY = topMargin + 50 + offsetY;
+    doc.setFontSize(10 * scale);
     doc.text(`Comprobante No: ${comprobanteID}`, leftMargin, startY);
-    doc.text(`Fecha: ${fecha}`, pageWidth - rightMargin, startY, {
-      align: "right",
-    });
+    doc.text(`Fecha: ${fecha}`, pageWidth - rightMargin, startY, { align: "right" });
 
-    startY += 30;
+    startY += 25;
     doc.setFont("times", "bold");
     doc.text(`Comprador: ${comprador}`, leftMargin, startY);
     startY += 20;
 
+    // Tabla productos sin color, solo borde negro
     const bodyProductos = productos.map((p) => [
       cleanText(p.nombre),
       formatNumber(p.cantidad),
@@ -94,54 +96,76 @@ export const exportVentaDirecta = async (formState) => {
       margin: { left: leftMargin, right: rightMargin },
       head: [["Producto", "Cantidad (QQ)", "Precio (LPS)", "Total (LPS)"]],
       body: bodyProductos,
-      styles: { font: "times", fontSize: 12 },
-      headStyles: { fillColor: [41, 128, 185], textColor: [255, 255, 255] },
+      styles: {
+        font: "times",
+        fontSize: 10 * scale,
+        lineColor: [0, 0, 0],
+        lineWidth: 0.5,
+      },
+      headStyles: {
+        fillColor: [255, 255, 255],
+        textColor: [0, 0, 0],
+        lineColor: [0, 0, 0],
+        lineWidth: 0.5,
+      },
+      didDrawCell: (data) => {
+        doc.setDrawColor(0, 0, 0);
+        doc.setLineWidth(0.5);
+        doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height);
+      },
     });
 
-    startY = doc.lastAutoTable.finalY + 20;
+    startY = doc.lastAutoTable.finalY + 15;
+
+    // Cantidad en letras
     doc.setFont("times", "normal");
     doc.text(`Cantidad en Letras: ${cantidadLetras}`, leftMargin, startY);
 
-    startY += 25;
+    startY += 20;
+
+    // Forma de Pago
     doc.text("Forma de Pago:", leftMargin, startY);
     const formas = ["Efectivo", "Transferencia", "Cheque"];
     let x = leftMargin + 100;
     formas.forEach((f) => {
-      doc.rect(x, startY - 8, 12, 12);
-      if (formaPago === f) doc.text("X", x + 3.5, startY + 1);
-      doc.text(f, x + 20, startY + 2);
-      x += 120;
+      doc.rect(x, startY - 7, 10, 10);
+      if (formaPago === f) doc.text("X", x + 2, startY + 1);
+      doc.text(f, x + 15, startY + 1);
+      x += 100;
     });
 
-    startY += 30;
+    startY += 25;
+
+    // Observaciones
     doc.setFont("times", "bold");
     doc.text("Observaciones:", leftMargin, startY);
-
-    startY += 15;
+    startY += 12;
     doc.setFont("times", "normal");
     doc.text(String(observaciones || ""), leftMargin, startY, {
       maxWidth: pageWidth - leftMargin - rightMargin,
     });
 
-    startY += 25;
-    const firmaWidth = 200;
-    doc.line(leftMargin, startY, leftMargin + firmaWidth, startY);
-    doc.text("FIRMA", leftMargin, startY + 15);
-    doc.line(
-      pageWidth - rightMargin - firmaWidth,
-      startY,
-      pageWidth - rightMargin,
-      startY
-    );
-    doc.text("LUGAR", pageWidth - rightMargin - firmaWidth, startY + 15);
+    startY += 80;
 
-    doc.setFontSize(10);
-    doc.text(
-      "Beneficio Café Henola - El Paraíso, Honduras",
-      pageWidth / 2,
-      offsetY + pageHeight / 2 - 15,
-      { align: "center" }
-    );
+    // Firmas
+    const firmaWidth = 150;
+    const firmaY = startY;
+    doc.line(leftMargin, firmaY, leftMargin + firmaWidth, firmaY);
+    doc.text("FIRMA", leftMargin, firmaY + 12);
+
+    doc.line(pageWidth - rightMargin - firmaWidth, firmaY, pageWidth - rightMargin, firmaY);
+    doc.text("LUGAR", pageWidth - rightMargin - firmaWidth, firmaY + 12);
+
+    doc.setFont("times", "bold");
+    doc.text("El Paraíso", pageWidth - rightMargin - firmaWidth + 20, firmaY - 5);
+    doc.setFont("times", "normal");
+
+    // Sello sobre la firma
+    doc.addImage(selloimg.src, "PNG", leftMargin + firmaWidth / 2 - selloimg.width / 2, firmaY - selloimg.height - 5, selloimg.width, selloimg.height);
+
+    // Footer
+    doc.setFontSize(8 * scale);
+    doc.text("Beneficio Café Henola - El Paraíso, Honduras", pageWidth / 2, offsetY + pageHeight * 0.45, { align: "center" });
   };
 
   drawComprobante(0);
@@ -151,9 +175,6 @@ export const exportVentaDirecta = async (formState) => {
   doc.line(40, pageHeight / 2, pageWidth - 40, pageHeight / 2);
   doc.setLineDash();
 
-  const nombreArchivo = `VentaDirecta_${comprador.replace(
-    /\s+/g,
-    "_"
-  )}_${comprobanteID}.pdf`;
+  const nombreArchivo = `VentaDirecta_${comprador.replace(/\s+/g, "_")}_${comprobanteID}.pdf`;
   doc.save(nombreArchivo);
 };

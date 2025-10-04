@@ -101,7 +101,7 @@ model compra {
 
   @@index([clienteID], map: "clienteID")
   @@index([compraTipoCafe], map: "compraTipoCafe")
-  @@index([compradorID], map: "compradorID")
+  @@index([compradorID], map: "fk_compra_comprador")
 }
 
 model contrato {
@@ -147,7 +147,7 @@ model deposito {
 
   @@index([clienteID], map: "clienteID")
   @@index([depositoTipoCafe], map: "depositoTipoCafe")
-  @@index([contratoID], map: "contratoID")
+  @@index([contratoID], map: "fk_deposito_contrato")
 }
 
 model detallecontrato {
@@ -213,16 +213,16 @@ model liqdeposito {
 }
 
 model movimientoinventario {
-  movimientoID        Int                                 @id @default(autoincrement())
+  movimientoID        Int               @id @default(autoincrement())
   inventarioClienteID Int
-  fecha               DateTime                            @default(now()) @db.DateTime(0)
-  tipoMovimiento      movimientoinventario_tipoMovimiento
-  referenciaTipo      String?                             @db.VarChar(50)
+  fecha               DateTime          @default(now()) @db.DateTime(0)
+  tipoMovimiento      String            @db.VarChar(50)
+  referenciaTipo      String?           @db.VarChar(50)
   referenciaID        Int?
-  cantidadQQ          Decimal                             @db.Decimal(15, 2)
-  cantidadSacos       Decimal                             @default(0.00) @db.Decimal(15, 2)
-  nota                String?                             @db.VarChar(200)
-  inventariocliente   inventariocliente                   @relation(fields: [inventarioClienteID], references: [inventarioClienteID], onDelete: NoAction, onUpdate: NoAction, map: "movimientoinventario_ibfk_1")
+  cantidadQQ          Decimal           @db.Decimal(15, 2)
+  cantidadSacos       Decimal           @default(0.00) @db.Decimal(15, 2)
+  nota                String?           @db.VarChar(200)
+  inventariocliente   inventariocliente @relation(fields: [inventarioClienteID], references: [inventarioClienteID], onDelete: NoAction, onUpdate: NoAction, map: "movimientoinventario_ibfk_1")
 
   @@index([inventarioClienteID], map: "inventarioClienteID")
 }
@@ -238,9 +238,4 @@ model producto {
   deposito          deposito[]
   inventariocliente inventariocliente[]
   liqdeposito       liqdeposito[]
-}
-
-enum movimientoinventario_tipoMovimiento {
-  Entrada
-  Salida
 }

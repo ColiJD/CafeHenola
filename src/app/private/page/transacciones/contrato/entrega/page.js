@@ -241,7 +241,7 @@ export default function LiquidacionContratoForm() {
       liqEn: "Bodega",
       liqDescripcion: formState.descripcion,
     };
-    console.log(data);
+   
 
     try {
       const res = await fetch("/api/contratos/entregar", {

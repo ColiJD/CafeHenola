@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Table, Row, Col, message, Button } from "antd";
-import { truncarDosDecimalesSinRedondear } from "@/lib/calculoCafe";
+import { useEffect, useState, useRef } from "react";
+import { Table, Row, Col, message, Button, Popconfirm } from "antd";
 import TarjetasDeTotales from "@/components/DetallesCard";
 import Filtros from "@/components/Filtros";
 import { FiltrosTarjetas } from "@/lib/FiltrosTarjetas";
@@ -14,10 +13,11 @@ import customParseFormat from "dayjs/plugin/customParseFormat";
 import Link from "next/link";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
 import ProtectedPage from "@/components/ProtectedPage";
-
+import { formatNumber } from "@/components/Formulario";
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 dayjs.extend(customParseFormat);
+import ProtectedButton from "@/components/ProtectedButton";
 
 export default function TablaCompras() {
   const { mounted, isDesktop } = useClientAndDesktop();
@@ -26,9 +26,10 @@ export default function TablaCompras() {
   const [data, setData] = useState([]);
   const [filteredData, setFilteredData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [messageApi, contextHolder] = message.useMessage();
+  const messageApiRef = useRef(messageApi);
 
   const [nombreFiltro, setNombreFiltro] = useState("");
-  const [tipoCafeFiltro, setTipoCafeFiltro] = useState("");
   const [rangoFecha, setRangoFecha] = useState([dayjs(), dayjs()]);
   const [movimientoFiltro, setMovimientoFiltro] = useState("Entrada"); // Entrada o Salida
 
@@ -48,7 +49,7 @@ export default function TablaCompras() {
       // 🔹 Agrupar por cliente y tipo de café
       const mapa = {};
       dataFiltrada.forEach((item) => {
-        const key = `${item.clienteID}-${item.tipoCafeID}`;
+        const key = `${item.clienteID}`;
 
         // Convertir a número
         const cantidad = parseFloat(item.compraCantidadQQ || 0);
@@ -89,7 +90,7 @@ export default function TablaCompras() {
       setFilteredData(groupedData);
     } catch (error) {
       console.error(error);
-      message.error("No se pudieron cargar las compras");
+      messageApiRef.current.error("No se pudieron cargar las compras");
     } finally {
       setLoading(false);
     }
@@ -103,7 +104,6 @@ export default function TablaCompras() {
   const aplicarFiltros = () => {
     const filtros = {
       clienteNombreCompleto: nombreFiltro,
-      tipoCafeNombre: tipoCafeFiltro,
     };
 
     const filtrados = FiltrosTarjetas(data, filtros, rangoFecha, "compraFecha");
@@ -112,7 +112,7 @@ export default function TablaCompras() {
 
   useEffect(() => {
     aplicarFiltros();
-  }, [nombreFiltro, tipoCafeFiltro, rangoFecha, data]);
+  }, [nombreFiltro, rangoFecha, data]);
 
   // 🔹 Totales
   const totalQQ = filteredData.reduce(
@@ -126,9 +126,17 @@ export default function TablaCompras() {
 
   // 🔹 Columnas de tabla principal
   const columns = [
-    { title: "ID Cliente", dataIndex: "clienteID", key: "clienteID" },
+    {
+      title: "ID Cliente",
+      dataIndex: "clienteID",
+      key: "clienteID",
+      width: 50,
+      fixed: "left",
+      align: "center",
+    },
     {
       title: "Cliente",
+      align: "center",
       dataIndex: "clienteNombreCompleto",
       key: "clienteNombreCompleto",
       render: (text, record) => (
@@ -139,208 +147,277 @@ export default function TablaCompras() {
         </Link>
       ),
     },
-    { title: "Tipo Café", dataIndex: "tipoCafeNombre", key: "tipoCafeNombre" },
+
     {
       title: "Total (QQ)",
+      align: "center",
       dataIndex: "cantidadTotal",
       key: "cantidadTotal",
-      render: (val) => truncarDosDecimalesSinRedondear(val),
+      render: (val) => formatNumber(val),
     },
     {
       title: "Total (Lps)",
+      align: "center",
       dataIndex: "totalLps",
       key: "totalLps",
-      render: (val) => truncarDosDecimalesSinRedondear(val),
+      render: (val) => formatNumber(val),
     },
   ];
 
   // 🔹 Columnas de detalles
   const detalleColumns = [
-    { title: "Compra ID", dataIndex: "compraId", key: "compraId" },
+    {
+      title: "Compra ID",
+      dataIndex: "compraId",
+      key: "compraId",
+      fixed: "left",
+      align: "center",
+    },
+    {
+      title: "Tipo Café",
+      dataIndex: "tipoCafeNombre",
+      key: "tipoCafeNombre",
+      align: "center",
+    },
     {
       title: "Fecha",
       dataIndex: "compraFecha",
+      align: "center",
       key: "compraFecha",
       render: (val) => dayjs(val, "YYYY-MM-DD").format("DD/MM/YYYY"),
     },
     {
       title: "Cantidad (QQ)",
       dataIndex: "compraCantidadQQ",
+      align: "center",
       key: "compraCantidadQQ",
-      render: (val) => truncarDosDecimalesSinRedondear(val),
+      render: (val) => formatNumber(val),
     },
     {
-      title: "Precio (Lps/QQ)",
+      title: "Precio (Lps)",
       dataIndex: "compraPrecioQQ",
+      align: "center",
       key: "compraPrecioQQ",
-      render: (val) => truncarDosDecimalesSinRedondear(val),
+      render: (val) => formatNumber(val),
     },
 
     {
       title: "Total (Lps)",
       dataIndex: "totalLps",
+      align: "center",
       key: "totalLps",
-      render: (val) => truncarDosDecimalesSinRedondear(val),
+      render: (val) => formatNumber(val),
     },
     {
-      title: "Movimiento",
-      dataIndex: "compraMovimiento",
-      key: "compraMovimiento",
+      title: "Sacos",
+      dataIndex: "compraTotalSacos",
+      align: "center",
+      key: "compraTotalSacos",
+      render: (val) => formatNumber(val),
     },
     {
       title: "Descripción",
       dataIndex: "compraDescripcion",
+      align: "center",
       key: "compraDescripcion",
     },
+    {
+      title: "Acciones",
+      key: "acciones",
+      fixed: "right",
+      align: "center",
+      width: 120,
+      render: (text, record) => (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 5,
+          }}
+        >
+          <Button
+            size="small"
+            type="default"
+            onClick={() => console.log("Editar compra:", record.compraId)}
+          >
+            Editar
+          </Button>
+          <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
+            <Popconfirm
+              title="¿Seguro que deseas eliminar esta compra"
+              onConfirm={() => eliminarCompra(record.compraId)}
+              okText="Sí"
+              cancelText="No"
+            >
+              <Button size="small" danger>
+                Eliminar
+              </Button>
+            </Popconfirm>
+          </ProtectedButton>
+        </div>
+      ),
+    },
   ];
+
+  // Eliminar compra
+  const eliminarCompra = async (compraId) => {
+    try {
+      const res = await fetch(`/api/compras/${compraId}`, { method: "DELETE" });
+      const data = await res.json();
+
+      if (res.ok) {
+        messageApiRef.current.success("Compra eliminada correctamente");
+        // Recargar datos después de eliminar
+        cargarDatos();
+      } else {
+        messageApiRef.current.error(
+          data.error || "Error al eliminar la compra"
+        );
+      }
+    } catch (error) {
+      console.error(error);
+      messageApiRef.current.error("Error al eliminar la compra");
+    }
+  };
 
   return (
     <ProtectedPage
       allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS", "AUDITORES"]}
     >
-      <div>
-        {/* Tarjetas */}
-        <TarjetasDeTotales
-          title="Registro de Compras"
-          cards={[
-            {
-              title: "Total (QQ)",
-              value: truncarDosDecimalesSinRedondear(totalQQ),
-            },
-            {
-              title: "Total (Lps)",
-              value: truncarDosDecimalesSinRedondear(totalLps),
-            },
-          ]}
-        />
-
-        {/* Filtros */}
-        <Filtros
-          fields={[
-            {
-              type: "input",
-              placeholder: "Buscar por cliente",
-              value: nombreFiltro,
-              setter: setNombreFiltro,
-            },
-            {
-              type: "select",
-              placeholder: "Tipo de café",
-              value: tipoCafeFiltro || undefined,
-              setter: setTipoCafeFiltro,
-              allowClear: true,
-              options: [...new Set(data.map((d) => d.tipoCafeNombre))],
-            },
-            {
-              type: "select",
-              value: movimientoFiltro,
-              setter: setMovimientoFiltro,
-              options: [
-                { value: "Entrada", label: "Entrada" },
-                { value: "Salida", label: "Salida" },
-              ],
-            },
-            { type: "date", value: rangoFecha, setter: setRangoFecha },
-          ]}
-        />
-
-        <Row style={{ marginBottom: 16 }}>
-          <Col xs={24} sm={6} md={4}>
-            <Button onClick={cargarDatos} block>
-              Refrescar
-            </Button>
-          </Col>
-        </Row>
-
-        {/* Tabla responsive */}
-        {isMobile ? (
-          <TarjetaMobile
-            loading={loading}
-            data={filteredData}
-            columns={[
+      <>
+        {contextHolder}
+        <div>
+          {/* Tarjetas */}
+          <TarjetasDeTotales
+            title="Registro de Compras"
+            cards={[
               {
-                label: "Cliente",
-                key: "clienteNombreCompleto",
-                render: (text, record) => (
-                  <Link
-                    href={`/private/page/transacciones/compra/vista/${record.clienteID}`}
-                  >
-                    {text}
-                  </Link>
+                title: "Total (QQ)",
+                value: formatNumber(totalQQ),
+              },
+              {
+                title: "Total (Lps)",
+                value: formatNumber(totalLps),
+              },
+            ]}
+          />
+
+          {/* Filtros */}
+          <Filtros
+            fields={[
+              {
+                type: "input",
+                placeholder: "Buscar por cliente",
+                value: nombreFiltro,
+                setter: setNombreFiltro,
+              },
+
+              { type: "date", value: rangoFecha, setter: setRangoFecha },
+            ]}
+          />
+
+          <Row style={{ marginBottom: 16 }}>
+            <Col xs={24} sm={6} md={4}>
+              <Button onClick={cargarDatos} block>
+                Refrescar
+              </Button>
+            </Col>
+          </Row>
+
+          {/* Tabla responsive */}
+          {isMobile ? (
+            <TarjetaMobile
+              loading={loading}
+              data={filteredData}
+              columns={[
+                {
+                  label: "Cliente",
+                  key: "clienteNombreCompleto",
+                  render: (text, record) => (
+                    <Link
+                      href={`/private/page/transacciones/compra/vista/${record.clienteID}`}
+                    >
+                      {text}
+                    </Link>
+                  ),
+                },
+
+                {
+                  label: "Total (QQ)",
+                  key: "cantidadTotal",
+                  render: (val) => formatNumber(val),
+                },
+                {
+                  label: "Total (Lps)",
+                  key: "totalLps",
+                  render: (val) => formatNumber(val),
+                },
+              ]}
+              detailsKey="detalles"
+              detailsColumns={[
+                { label: "Compra ID", key: "compraId" },
+                { label: "Tipo Café", key: "tipoCafeNombre" },
+                {
+                  label: "Fecha",
+                  key: "compraFecha",
+                  render: (val) =>
+                    dayjs(val, "YYYY-MM-DD").format("DD/MM/YYYY"),
+                },
+                {
+                  label: "Cantidad (QQ)",
+                  key: "compraCantidadQQ",
+                  render: (val) => formatNumber(val),
+                },
+                {
+                  label: "Precio (Lps/QQ)",
+                  key: "compraPrecioQQ",
+                  render: (val) => formatNumber(val),
+                },
+                {
+                  label: "Total (Lps)",
+                  key: "totalLps",
+                  render: (val) => formatNumber(val),
+                },
+                {
+                  label: "Sacos",
+                  key: "compraTotalSacos",
+                  render: (val) => formatNumber(val),
+                },
+                { label: "Movimiento", key: "compraMovimiento" },
+                { label: "Descripción", key: "compraDescripcion" },
+              ]}
+              rowKey={(item, index) =>
+                `${item.clienteID}-${item.tipoCafeID ?? index}`
+              }
+              detailsRowKey={(item) => item.compraId}
+            />
+          ) : (
+            <Table
+              columns={columns}
+              dataSource={filteredData}
+              rowKey={(row) => `${row.clienteID}-${row.detalles[0]?.compraId}`}
+              loading={loading}
+              bordered
+              size="middle"
+              scroll={{ x: true }}
+              expandable={{
+                expandedRowRender: (record) => (
+                  <Table
+                    columns={detalleColumns}
+                    dataSource={record.detalles}
+                    rowKey="compraId"
+                    pagination={false}
+                    size="small"
+                    bordered
+                    scroll={{ x: true }}
+                  />
                 ),
-              },
-              { label: "Tipo Café", key: "tipoCafeNombre" },
-              {
-                label: "Total (QQ)",
-                key: "cantidadTotal",
-                render: (val) => truncarDosDecimalesSinRedondear(val),
-              },
-              {
-                label: "Total (Lps)",
-                key: "totalLps",
-                render: (val) => truncarDosDecimalesSinRedondear(val),
-              },
-              { label: "Movimiento", key: "compraMovimiento" },
-            ]}
-            detailsKey="detalles"
-            detailsColumns={[
-              { label: "Compra ID", key: "compraId" },
-              {
-                label: "Fecha",
-                key: "compraFecha",
-                render: (val) => dayjs(val, "YYYY-MM-DD").format("DD/MM/YYYY"),
-              },
-              {
-                label: "Cantidad (QQ)",
-                key: "compraCantidadQQ",
-                render: (val) => truncarDosDecimalesSinRedondear(val),
-              },
-              {
-                label: "Precio (Lps/QQ)",
-                key: "compraPrecioQQ",
-                render: (val) => truncarDosDecimalesSinRedondear(val),
-              },
-              {
-                label: "Total (Lps)",
-                key: "totalLps",
-                render: (val) => truncarDosDecimalesSinRedondear(val),
-              },
-              { label: "Movimiento", key: "compraMovimiento" },
-              { label: "Descripción", key: "compraDescripcion" },
-            ]}
-            rowKey={(item, index) =>
-              `${item.clienteID}-${item.tipoCafeID ?? index}`
-            }
-            detailsRowKey={(item) => item.compraId}
-          />
-        ) : (
-          <Table
-            columns={columns}
-            dataSource={filteredData}
-            rowKey={(row) =>
-              `${row.clienteID}-${row.tipoCafeID ?? row.detalles[0]?.compraId}`
-            }
-            loading={loading}
-            bordered
-            size="middle"
-            pagination={{ pageSize: 6 }}
-            scroll={{ x: "max-content" }}
-            expandable={{
-              expandedRowRender: (record) => (
-                <Table
-                  columns={detalleColumns}
-                  dataSource={record.detalles}
-                  rowKey="compraId"
-                  pagination={false}
-                  size="small"
-                  bordered
-                  scroll={{ x: "max-content" }}
-                />
-              ),
-            }}
-          />
-        )}
-      </div>
+              }}
+            />
+          )}
+        </div>
+      </>
     </ProtectedPage>
   );
 }

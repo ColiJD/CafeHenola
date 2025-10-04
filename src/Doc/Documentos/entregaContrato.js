@@ -32,7 +32,7 @@ export const exportEntregaContrato = async (formState) => {
     month: "long",
     day: "numeric",
   });
-  console.log(formState);
+
   const cliente = formState?.cliente?.label || "Cliente";
   const contratoID = formState?.contratoID || "0000";
   const comprobanteID = formState?.comprobanteID || "0000";

@@ -1,13 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { message } from "antd";
+import { message, Spin } from "antd";
 import Formulario from "@/components/Formulario";
 import PreviewModal from "@/components/Modal";
 import { obtenerClientesSelect, obtenerProductosSelect } from "@/lib/consultas";
-import { calcularCafeDesdeProducto } from "@/lib/calculoCafe";
+import {
+  calcularCafeDesdeProducto,
+  calcularPesoBrutoDesdeOro,
+} from "@/lib/calculoCafe";
 import { exportCompraDirecta } from "@/Doc/Documentos/compra";
 import ProtectedPage from "@/components/ProtectedPage";
+import { useRouter } from "next/navigation";
+
 import {
   limpiarFormulario,
   validarEnteroNoNegativo,
@@ -15,9 +20,12 @@ import {
   validarFloatPositivo,
 } from "@/config/validacionesForm";
 
-export default function CompraForm() {
+export default function CompraForm({ compraId }) {
   const [clientes, setClientes] = useState([]);
   const [productos, setProductos] = useState([]);
+
+  const [loadingDatos, setLoadingDatos] = useState(true); // 🔹 loading general
+  const [loadingCompra, setLoadingCompra] = useState(false); // 🔹 loading para editar
 
   const [cliente, setCliente] = useState(null);
   const [producto, setProducto] = useState(null);
@@ -30,6 +38,7 @@ export default function CompraForm() {
   const [compraTotalSacos, setCompraTotalSacos] = useState("");
   const [compraDescripcion, setCompraDescripcion] = useState("");
   const [compraOro, setCompraOro] = useState("0.00");
+  const router = useRouter();
 
   const [errors, setErrors] = useState({});
   const [previewVisible, setPreviewVisible] = useState(false);
@@ -40,6 +49,7 @@ export default function CompraForm() {
   // Carga clientes y productos
   useEffect(() => {
     async function cargarDatos() {
+      setLoadingDatos(true);
       try {
         const clientesData = await obtenerClientesSelect(messageApi);
         const productosData = await obtenerProductosSelect(messageApi);
@@ -48,6 +58,8 @@ export default function CompraForm() {
       } catch (err) {
         console.error(err);
         messageApi.error("Error cargando clientes o productos");
+      } finally {
+        setLoadingDatos(false);
       }
     }
     cargarDatos();
@@ -69,7 +81,7 @@ export default function CompraForm() {
 
     setCompraTotal(resultado.total);
     setCompraRetencio(resultado.retencion);
-    setCompraOro(resultado.oro); // ✅ lo guardas aparte
+    setCompraOro(resultado.oro);
   }, [compraCantidadQQ, compraTotalSacos, compraPrecioQQ, producto]);
 
   // Validación
@@ -115,19 +127,25 @@ export default function CompraForm() {
     };
 
     try {
-      const res = await fetch("/api/compras", {
-        method: "POST",
+      // 🔹 Aquí decidimos la URL y método según si es creación o edición
+      const url = compraId ? `/api/compras/${compraId}` : "/api/compras";
+      const method = compraId ? "PUT" : "POST";
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
 
       const result = await res.json();
+      if (!res.ok)
+        throw new Error(result.error || "Error al procesar la compra");
 
-      if (!res.ok || !result.compraId) {
-        throw new Error(result.error || "No se pudo registrar la compra");
-      }
+      messageApi.success(
+        compraId
+          ? "Compra actualizada correctamente"
+          : "Compra registrada correctamente"
+      );
 
-      messageApi.success("Compra Directa registrada exitosamente");
       setPreviewVisible(false);
 
       // 🔹 Loading mientras se genera PDF
@@ -160,6 +178,12 @@ export default function CompraForm() {
         console.error("Error generando PDF:", err);
         messageApi.destroy("generandoComprobante");
         messageApi.error("Error generando comprobante PDF");
+      }
+
+      // 🔹 Redirigir a la lista de compras
+      if (compraId) {
+        router.push("/private/page/transacciones/compra/vista"); // Ajusta según tu ruta real de lista
+        return; // evita limpiar formulario si solo actualizas
       }
 
       // 🔹 Limpiar formulario
@@ -280,37 +304,114 @@ export default function CompraForm() {
       type: "textarea",
     },
   ];
+
+  useEffect(() => {
+    if (!compraId || loadingDatos) return;
+
+    const cargarCompra = async () => {
+      setLoadingCompra(true);
+      try {
+        const res = await fetch(`/api/compras/${compraId}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Error al cargar la compra");
+
+        // 🔹 Asignar cliente y producto asegurando que existan en options
+        const clienteMatch = clientes.find((c) => c.value === data.clienteID);
+        const productoMatch = productos.find(
+          (p) => p.value === data.compraTipoCafe
+        );
+
+        setCliente(
+          clienteMatch || {
+            value: data.clienteID,
+            label: data.cliente?.clienteNombre || "Sin nombre",
+          }
+        );
+        setProducto(
+          productoMatch || {
+            value: data.compraTipoCafe,
+            label: data.producto?.productName || "Sin nombre",
+          }
+        );
+
+        setCompraTipoDocumento(data.compraTipoDocumento || "");
+        setCompraEn(data.compraEn || "");
+        setCompraPrecioQQ(data.compraPrecioQQ);
+
+        setCompraTotalSacos(data.compraTotalSacos);
+        setCompraDescripcion(data.compraDescripcion);
+        setCompraTotal(data.compraTotal);
+        setCompraRetencio(data.compraRetencio);
+        setCompraOro(data.compraCantidadQQ);
+
+        // 🔹 Convertir quintales de oro a peso bruto
+        const pesoBruto = calcularPesoBrutoDesdeOro(
+          data.compraCantidadQQ,
+          data.compraTotalSacos,
+          productoMatch || { data: {} }
+        );
+        setCompraCantidadQQ(pesoBruto.pesoBruto);
+      } catch (err) {
+        console.error(err);
+        messageApi.error("Error cargando la compra para edición");
+      } finally {
+        setLoadingCompra(false);
+      }
+    };
+    cargarCompra();
+  }, [compraId, loadingDatos, clientes, productos, messageApi]);
+
+  useEffect(() => {}, [compraId]);
+
   return (
     <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
       <>
         {contextHolder}
-        <Formulario
-          title="Registrar Compra Directa"
-          fields={fields}
-          onSubmit={handleRegistrarClick}
-          submitting={submitting}
-          button={{
-            text: "Registrar Compra",
-            onClick: handleRegistrarClick,
-            type: "primary",
-          }}
-        />
-        <PreviewModal
-          open={previewVisible}
-          title="Previsualización de la compra "
-          onCancel={() => setPreviewVisible(false)}
-          onConfirm={handleConfirmar}
-          confirmLoading={submitting}
-          fields={fields.map((f) => ({
-            label: f.label,
-            value:
-              f.label === "Total Sacos" && producto?.label === "Cafe Lata"
-                ? 0
-                : f.type === "select"
-                ? f.options?.find((o) => o.value === f.value?.value)?.label
-                : f.value || (f.label === "Compra en" ? "Compra Directa" : "-"),
-          }))}
-        />
+        {loadingDatos || loadingCompra ? (
+          <div
+            style={{
+              minHeight: "16rem",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Spin size="large" />
+          </div>
+        ) : (
+          <>
+            <Formulario
+              title={
+                compraId ? "Editar Compra Directa" : "Registrar Compra Directa"
+              }
+              fields={fields}
+              onSubmit={handleRegistrarClick}
+              submitting={submitting}
+              button={{
+                text: compraId ? "Actualizar Compra" : "Registrar Compra",
+                onClick: handleRegistrarClick,
+                type: "primary",
+              }}
+            />
+            <PreviewModal
+              open={previewVisible}
+              title="Previsualización de la compra "
+              onCancel={() => setPreviewVisible(false)}
+              onConfirm={handleConfirmar}
+              confirmLoading={submitting}
+              fields={fields.map((f) => ({
+                label: f.label,
+                value:
+                  f.label === "Total Sacos" && producto?.label === "Cafe Lata"
+                    ? 0
+                    : f.type === "select"
+                    ? f.options?.find((o) => o.value === f.value?.value)?.label
+                    : f.value ||
+                      (f.label === "Compra en" ? "Compra Directa" : "-"),
+              }))}
+            />
+          </>
+        )}
       </>
     </ProtectedPage>
   );

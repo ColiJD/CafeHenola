@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Table, Row, Col, message, Button, Popconfirm } from "antd";
+import {
+  Table,
+  Row,
+  Col,
+  message,
+  Button,
+  Popconfirm,
+  Dropdown,
+  Menu,
+} from "antd";
 import TarjetasDeTotales from "@/components/DetallesCard";
 import Filtros from "@/components/Filtros";
 import { FiltrosTarjetas } from "@/lib/FiltrosTarjetas";
@@ -18,6 +27,7 @@ dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
 dayjs.extend(customParseFormat);
 import ProtectedButton from "@/components/ProtectedButton";
+import { useRouter } from "next/navigation";
 
 export default function TablaCompras() {
   const { mounted, isDesktop } = useClientAndDesktop();
@@ -28,6 +38,7 @@ export default function TablaCompras() {
   const [loading, setLoading] = useState(true);
   const [messageApi, contextHolder] = message.useMessage();
   const messageApiRef = useRef(messageApi);
+  const router = useRouter();
 
   const [nombreFiltro, setNombreFiltro] = useState("");
   const [rangoFecha, setRangoFecha] = useState([dayjs(), dayjs()]);
@@ -236,13 +247,22 @@ export default function TablaCompras() {
             gap: 5,
           }}
         >
-          <Button
-            size="small"
-            type="default"
-            onClick={() => console.log("Editar compra:", record.compraId)}
-          >
-            Editar
-          </Button>
+          <ProtectedButton allowedRoles={["ADMIN", "GERENCIA", "OPERARIO"]}>
+            <Popconfirm
+              title="¿Seguro que deseas EDITAR esta compra"
+              onConfirm={() =>
+                router.push(
+                  `/private/page/transacciones/compra/${record.compraId}`
+                )
+              }
+              okText="Sí"
+              cancelText="No"
+            >
+              <Button size="small" type="default">
+                Editar
+              </Button>
+            </Popconfirm>
+          </ProtectedButton>
           <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
             <Popconfirm
               title="¿Seguro que deseas eliminar esta compra"
@@ -386,6 +406,67 @@ export default function TablaCompras() {
                 },
                 { label: "Movimiento", key: "compraMovimiento" },
                 { label: "Descripción", key: "compraDescripcion" },
+                {
+                  label: "Acciones",
+                  key: "acciones",
+                  render: (_, record) => (
+                    <Dropdown
+                      menu={{
+                        items: [
+                          {
+                            key: "editar",
+                            label: (
+                              <ProtectedButton
+                                allowedRoles={["ADMIN", "GERENCIA", "OPERARIO"]}
+                              >
+                                <Popconfirm
+                                  title="¿Seguro que deseas EDITAR esta compra?"
+                                  onConfirm={() =>
+                                    router.push(
+                                      `/private/page/transacciones/compra/${record.compraId}`
+                                    )
+                                  }
+                                  okText="Sí"
+                                  cancelText="No"
+                                >
+                                  <Button type="text" block>
+                                    Editar
+                                  </Button>
+                                </Popconfirm>
+                              </ProtectedButton>
+                            ),
+                          },
+                          {
+                            key: "eliminar",
+                            label: (
+                              <ProtectedButton
+                                allowedRoles={["ADMIN", "GERENCIA"]}
+                              >
+                                <Popconfirm
+                                  title="¿Seguro que deseas eliminar esta compra?"
+                                  onConfirm={() =>
+                                    eliminarCompra(record.compraId)
+                                  }
+                                  okText="Sí"
+                                  cancelText="No"
+                                >
+                                  <Button type="text" danger block>
+                                    Eliminar
+                                  </Button>
+                                </Popconfirm>
+                              </ProtectedButton>
+                            ),
+                          },
+                        ],
+                      }}
+                      trigger={["click"]}
+                    >
+                      <Button size="small" type="default" block>
+                        Acciones
+                      </Button>
+                    </Dropdown>
+                  ),
+                },
               ]}
               rowKey={(item, index) =>
                 `${item.clienteID}-${item.tipoCafeID ?? index}`

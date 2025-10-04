@@ -69,7 +69,11 @@ export async function DELETE(req, { params }) {
   }
 }
 export async function PUT(request, { params }) {
-  const sessionOrResponse = await checkRole(request, ["ADMIN", "GERENCIA"]);
+  const sessionOrResponse = await checkRole(request, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIO",
+  ]);
   if (sessionOrResponse instanceof Response) return sessionOrResponse;
 
   try {
@@ -192,6 +196,53 @@ export async function PUT(request, { params }) {
     console.error(error);
     return new Response(
       JSON.stringify({ error: "Error al actualizar compra" }),
+      { status: 500 }
+    );
+  }
+}
+import { NextResponse } from "next/server";
+
+export async function GET(req, context) {
+  try {
+    const { id } = context.params;
+
+    const compra = await prisma.compra.findUnique({
+      where: { compraId: parseInt(id) },
+      include: {
+        cliente: {
+          select: {
+            clienteID: true,
+            clienteNombre: true,
+            clienteApellido: true,
+          },
+        },
+        producto: {
+          select: {
+            productID: true,
+            productName: true, // ✅ nombre correcto
+            tara: true,
+            descuento: true,
+            factorOro: true,
+          },
+        },
+        compradores: {
+          select: {
+            compradorId: true,
+            compradorNombre: true,
+          },
+        },
+      },
+    });
+
+    if (!compra) {
+      return NextResponse.json({ error: "Compra no encontrada" }, { status: 404 });
+    }
+
+    return NextResponse.json(compra);
+  } catch (error) {
+    console.error("Error en GET /api/compras/[id]:", error);
+    return NextResponse.json(
+      { error: "Error interno del servidor" },
       { status: 500 }
     );
   }

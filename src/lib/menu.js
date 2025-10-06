@@ -114,6 +114,12 @@ export const menuItems = [
         href: RutaTransaccion + "/compra/vista",
         image: Reportes,
       },
+       {
+        id: 404,
+        name: "depositos",
+        href: Ruta + "/informe/registrodeposito",
+        image: deposito,
+      },
     ],
   },
 
@@ -167,6 +173,11 @@ export const menuItem = [
         key: "DetalleCompra",
         label: "Detalle de Compras",
         route: RutaTransaccion + "/compra/vista",
+      },
+      {
+        key: "registrodeposito",
+        label: "registro de deposotos",
+        route: RutaTransaccion + "/informes/registrodeposito",
       }
 
     ],

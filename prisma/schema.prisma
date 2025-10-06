@@ -101,7 +101,7 @@ model compra {
 
   @@index([clienteID], map: "clienteID")
   @@index([compraTipoCafe], map: "compraTipoCafe")
-  @@index([compradorID], map: "compradorID")
+  @@index([compradorID], map: "fk_compra_comprador")
 }
 
 model contrato {
@@ -147,7 +147,7 @@ model deposito {
 
   @@index([clienteID], map: "clienteID")
   @@index([depositoTipoCafe], map: "depositoTipoCafe")
-  @@index([contratoID], map: "contratoID")
+  @@index([contratoID], map: "fk_deposito_contrato")
 }
 
 model detallecontrato {

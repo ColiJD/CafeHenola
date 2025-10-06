@@ -116,8 +116,14 @@ export const menuItems = [
       },
        {
         id: 404,
-        name: "depositos",
-        href: Ruta + "/informe/registrodeposito",
+        name: "Registro Depositos",
+        href: Ruta + "/informe/Registrodeposito",
+        image: deposito,
+      },
+      {
+        id: 405,
+        name: "Registro Contrato ",
+        href: Ruta + "/informe/registro Contrato",
         image: deposito,
       },
     ],
@@ -178,6 +184,11 @@ export const menuItem = [
       key: "registrodeposito",
       label: "Registro de Depositos",
       route: Ruta + "/informe/registrodeposito",
+      },
+      {
+      key: "Registrocontrato",
+      label: "Registro de Contrato",
+      route: Ruta + "/informe/Registrocontrato",
     },
     ],
   },

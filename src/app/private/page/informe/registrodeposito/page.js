@@ -8,7 +8,7 @@ import TarjetaMobile from "@/components/TarjetaMobile";
 import Filtros from "@/components/Filtros";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
 import { UserOutlined, CalendarOutlined } from "@ant-design/icons";
-import { generarReporteDepositosPDF } from "@/Doc/Reportes/FormatoDepositoDoc"; // ✅ nuevo import
+import { generarReporteDepositosPDF } from "@/Doc/Reportes/FormatoDepositoDoc";
 import { formatNumber } from "@/components/Formulario";
 import SectionHeader from "@/components/ReportesElement/AccionesResporte";
 import { useFetchReport } from "@/hook/useFetchReport";
@@ -52,8 +52,16 @@ export default function ReporteRegistroDeposito() {
     );
   }, [datosFiltrados]);
 
-  // Columnas para Desktop
+  //Columnas Desktop
   const columnasDesktop = [
+    {
+      title: "Cliente ID",
+      dataIndex: "clienteID",
+      width: 100,
+      fixed: "left",
+      align: "center",
+      fixed: "left",
+    },
     {
       title: "Fecha",
       dataIndex: "fecha",
@@ -85,67 +93,84 @@ export default function ReporteRegistroDeposito() {
       render: (val) => <Text>{formatNumber(val)}</Text>,
     },
     {
+      title: "Estado",
+      dataIndex: "estadoDeposito",
+      width: 140,
+      render: (text) => (
+        <Text
+          style={{
+            color:
+              text === "Completado"
+                ? "#52c41a"
+                : text === "Pendiente"
+                ? "#faad14"
+                : "#ff4d4f",
+          }}
+        >
+          {text || "—"}
+        </Text>
+      ),
+    },
+    {
       title: "Descripción",
       dataIndex: "descripcion",
       width: 250,
       render: (text) => text || "—",
     },
-    // columna Opciones (solo si hay registros)
-    ...(datosFiltrados.length > 0
-      ? [
-          {
-            title: "Acciones",
-            dataIndex: "opciones",
-            align: "center",
-            width: 120,
-            render: () => (
-              <div
-                style={{
-                  display: "flex",
-                  gap: "8px",
-                  justifyContent: "center",
-                }}
-              >
-                <button
-                  style={{
-                    background: "#c3d8f5ff",
-                    color: "#101010ff",
-                    border: "none",
-                    borderRadius: "4px",
-                    padding: "4px 8px",
-                    cursor: "pointer",
-                  }}
-                >
-                  Editar
-                </button>
-                <button
-                  style={{
-                    background: "#f1989aff",
-                    color: "#111111ff",
-                    border: "none",
-                    borderRadius: "4px",
-                    padding: "4px 8px",
-                    cursor: "pointer",
-                  }}
-                >
-                  Eliminar
-                </button>
-              </div>
-            ),
-          },
-        ]
-      : []),
+    {
+      title: "Acciones",
+    dataIndex: "opciones",
+    align: "center",
+    width: 150,
+    fixed: "right", 
+    render: () => (
+      <div
+        style={{
+          display: "flex",
+          gap: "8px",
+          justifyContent: "center",
+        }}
+        >
+          <button
+            style={{
+              background: "#c3d8f5ff",
+              color: "#101010ff",
+              border: "none",
+              borderRadius: "4px",
+              padding: "4px 8px",
+              cursor: "pointer",
+            }}
+          >
+            Editar
+          </button>
+          <button
+            style={{
+              background: "#f1989aff",
+              color: "#111111ff",
+              border: "none",
+              borderRadius: "4px",
+              padding: "4px 8px",
+              cursor: "pointer",
+            }}
+          >
+            Eliminar
+          </button>
+        </div>
+      ),
+    },
   ];
 
-  // Columnas para móvil
-  const columnasMobile = [
-    { label: "Fecha", key: "fecha" },
-    { label: "Cliente", key: "nombreCliente" },
-    { label: "Tipo de Café", key: "tipoCafe" },
-    { label: "QQ", key: "cantidadQQ" },
-    { label: "Retención", key: "retencionQQ" },
-    { label: "Descripción", key: "descripcion" },
-  ];
+// Columnas Mobile 
+const columnasMobile = [
+  { label: "Cliente ID", key: "clienteID" },
+  { label: "Fecha", key: "fecha" },
+  { label: "Cliente", key: "nombreCliente" },
+  { label: "Tipo de Café", key: "tipoCafe" },
+  { label: "Depósito QQ", key: "cantidadQQ" },
+  { label: "Retención QQ", key: "retencionQQ" },
+  { label: "Estado", key: "estadoDeposito" },
+  { label: "Descripción", key: "descripcion" },
+];
 
   if (!mounted) return null;
 
@@ -180,7 +205,7 @@ export default function ReporteRegistroDeposito() {
               }
             }}
             onExportPDF={() =>
-              generarReporteDepositosPDF( 
+              generarReporteDepositosPDF(
                 datosFiltrados,
                 {
                   fechaInicio: rangoFechas?.[0]?.toISOString(),
@@ -194,6 +219,7 @@ export default function ReporteRegistroDeposito() {
           />
 
           <Divider />
+
           <Filtros
             fields={[
               {
@@ -212,7 +238,7 @@ export default function ReporteRegistroDeposito() {
             ]}
           />
 
-          {/* Estadísticas: Registros y Total QQ */}
+
           {estadisticas && (
             <>
               <Divider />
@@ -236,7 +262,6 @@ export default function ReporteRegistroDeposito() {
           )}
         </Card>
 
-        {/* Tabla principal */}
         <Card style={{ borderRadius: 6 }}>
           <div style={{ marginBottom: isDesktop ? 16 : 12 }}>
             <Title
@@ -262,7 +287,7 @@ export default function ReporteRegistroDeposito() {
               loading={loading}
               pagination={false}
               bordered
-              scroll={{ x: "max-content" }}
+              scroll={{ x: 1200 }}
               size="small"
             />
           ) : (

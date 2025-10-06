@@ -175,11 +175,10 @@ export const menuItem = [
         route: RutaTransaccion + "/compra/vista",
       },
       {
-        key: "registrodeposito",
-        label: "registro de deposotos",
-        route: RutaTransaccion + "/informes/registrodeposito",
-      }
-
+      key: "registrodeposito",
+      label: "Registro de Depositos",
+      route: Ruta + "/informe/registrodeposito",
+    },
     ],
   },
   {

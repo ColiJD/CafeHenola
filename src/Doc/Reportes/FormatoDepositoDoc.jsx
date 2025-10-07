@@ -14,9 +14,9 @@ export const generarReporteDepositosPDF = (data, filtros = {}, options = {}) => 
     format: "a4",
   });
 
-  const colorPrimario = [41, 128, 185];
-  const colorSecundario = [236, 240, 241];
-  const colorTexto = [44, 62, 80];
+  const colorPrimario = [16, 86, 132];
+  const colorSecundario = [240, 242, 245];
+  const colorTexto = [33, 37, 41];
 
   const formatNumber = (num) =>
     !num || num === 0
@@ -71,6 +71,36 @@ export const generarReporteDepositosPDF = (data, filtros = {}, options = {}) => 
 
   yPosition += 8;
 
+  //  Tabla Totales (igual al diseño de contratos)
+  if (data && data.length > 0) {
+    const totalQQ = data.reduce(
+      (acc, item) => acc + Number(item.cantidadQQ || 0),
+      0
+    );
+    const totalLps = data.reduce(
+      (acc, item) => acc + Number(item.totalLps || 0),
+      0
+    );
+
+    autoTable(doc, {
+      startY: yPosition,
+      head: [["TOTAL REGISTROS", "TOTAL QQ", "TOTAL LPS"]],
+      body: [
+        [
+          data.length,
+          formatNumber(totalQQ),
+          `L. ${formatNumber(totalLps)}`,
+        ],
+      ],
+      headStyles: { fillColor: colorPrimario, textColor: [255, 255, 255] },
+      bodyStyles: { textColor: colorTexto },
+      theme: "grid",
+      margin: { left: 20, right: 20 },
+    });
+
+    yPosition = doc.lastAutoTable.finalY + 10;
+  }
+
   //  Tabla Detalles
   if (data && data.length > 0) {
     const tableData = data.map((item) => [
@@ -79,6 +109,7 @@ export const generarReporteDepositosPDF = (data, filtros = {}, options = {}) => 
       item.tipoCafe || "—",
       formatNumber(item.cantidadQQ),
       formatNumber(item.retencionQQ),
+      `L. ${formatNumber(item.totalLps)}`,
       item.descripcion || "—",
     ]);
 
@@ -91,6 +122,7 @@ export const generarReporteDepositosPDF = (data, filtros = {}, options = {}) => 
           "Tipo de Café",
           "Depósito QQ",
           "Retención QQ",
+          "Total Lps",
           "Descripción",
         ],
       ],

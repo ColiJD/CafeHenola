@@ -74,7 +74,7 @@ export const menuItems = [
       {
         id: 201,
         name: "Venta Directa",
-        href: RutaTransaccion + "/Venta/venta",
+        href: RutaTransaccion + "/venta",
         image: Compras,
       },
     ],
@@ -212,7 +212,7 @@ export const menuItem = [
       {
         key: "venta-directa",
         label: "Venta Directa",
-        route: RutaTransaccion + "/Venta/venta",
+        route: RutaTransaccion + "/venta",
       },
     ],
   },

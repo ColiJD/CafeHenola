@@ -48,11 +48,15 @@ export default function TablaCompras() {
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/compras");
+      // 🔹 Elegir la API según el tipo de movimiento
+      const apiURL =
+        movimientoFiltro === "Salida" ? "/api/compras/salidas" : "/api/compras";
+
+      const res = await fetch(apiURL);
       if (!res.ok) throw new Error("Error al cargar los datos");
       const data = await res.json();
 
-      // 🔹 Filtrar por compraMovimiento
+      // 🔹 Filtrar solo los movimientos si la API devuelve ambos tipos
       const dataFiltrada = data.filter(
         (item) => item.compraMovimiento === movimientoFiltro
       );
@@ -60,17 +64,26 @@ export default function TablaCompras() {
       // 🔹 Agrupar por cliente y tipo de café
       const mapa = {};
       dataFiltrada.forEach((item) => {
-        const key = `${item.clienteID}`;
-
-        // Convertir a número
         const cantidad = parseFloat(item.compraCantidadQQ || 0);
         const precio = parseFloat(item.compraPrecioQQ || 0);
         const totalLps = cantidad * precio;
 
+        // 🔹 Cambios para mostrar comprador en Salidas
+        const key =
+          movimientoFiltro === "Salida"
+            ? `${item.compradorID}` // Agrupar por comprador
+            : `${item.clienteID}`;
+
+        const nombreCompleto =
+          movimientoFiltro === "Salida"
+            ? item.compradorNombre // Nombre del comprador
+            : item.clienteNombreCompleto;
+
         if (!mapa[key]) {
           mapa[key] = {
-            clienteID: item.clienteID,
-            clienteNombreCompleto: item.clienteNombreCompleto,
+            clienteID:
+              movimientoFiltro === "Salida" ? item.compradorID : item.clienteID, // ID dinámico
+            clienteNombreCompleto: nombreCompleto,
             tipoCafeNombre: item.tipoCafeNombre,
             cantidadTotal: 0,
             totalLps: 0,
@@ -83,11 +96,9 @@ export default function TablaCompras() {
           }
         }
 
-        // Sumar totales
         mapa[key].cantidadTotal += cantidad;
         mapa[key].totalLps += totalLps;
 
-        // Guardar detalles ya como números
         mapa[key].detalles.push({
           ...item,
           compraCantidadQQ: parseFloat(item.compraCantidadQQ || 0),
@@ -138,7 +149,7 @@ export default function TablaCompras() {
   // 🔹 Columnas de tabla principal
   const columns = [
     {
-      title: "ID Cliente",
+      title: movimientoFiltro === "Salida" ? "ID Comprador" : "ID Cliente",
       dataIndex: "clienteID",
       key: "clienteID",
       width: 50,
@@ -146,19 +157,21 @@ export default function TablaCompras() {
       align: "center",
     },
     {
-      title: "Cliente",
+      title: movimientoFiltro === "Salida" ? "Comprador" : "Cliente",
       align: "center",
       dataIndex: "clienteNombreCompleto",
       key: "clienteNombreCompleto",
-      render: (text, record) => (
-        <Link
-          href={`/private/page/transacciones/compra/vista/${record.clienteID}`}
-        >
-          {text}
-        </Link>
-      ),
+      render: (text, record) =>
+        movimientoFiltro === "Salida" ? (
+          <span>{text}</span> // Para salidas, solo mostrar texto
+        ) : (
+          <Link
+            href={`/private/page/transacciones/compra/vista/${record.clienteID}`}
+          >
+            {text}
+          </Link>
+        ),
     },
-
     {
       title: "Total (QQ)",
       align: "center",
@@ -247,12 +260,14 @@ export default function TablaCompras() {
             gap: 5,
           }}
         >
-          <ProtectedButton allowedRoles={["ADMIN", "GERENCIA", "OPERARIO"]}>
+          <ProtectedButton allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
             <Popconfirm
               title="¿Seguro que deseas EDITAR esta compra"
               onConfirm={() =>
                 router.push(
-                  `/private/page/transacciones/compra/${record.compraId}`
+                  movimientoFiltro === "Salida"
+                    ? `/private/page/transacciones/venta/${record.compraId}`
+                    : `/private/page/transacciones/compra/${record.compraId}`
                 )
               }
               okText="Sí"
@@ -328,12 +343,24 @@ export default function TablaCompras() {
             fields={[
               {
                 type: "input",
-                placeholder: "Buscar por cliente",
+                placeholder:
+                  movimientoFiltro === "Salida"
+                    ? "Buscar por comprador"
+                    : "Buscar por cliente",
                 value: nombreFiltro,
                 setter: setNombreFiltro,
               },
-
               { type: "date", value: rangoFecha, setter: setRangoFecha },
+              {
+                type: "select",
+                label: "Movimiento",
+                options: [
+                  { label: "Entrada (POR CLIENTE)", value: "Entrada" },
+                  { label: "Salida (POR COMPRADOR)", value: "Salida" },
+                ],
+                value: movimientoFiltro,
+                setter: setMovimientoFiltro,
+              },
             ]}
           />
 
@@ -352,17 +379,25 @@ export default function TablaCompras() {
               data={filteredData}
               columns={[
                 {
-                  label: "Cliente",
+                  label: "Cliente / Comprador",
                   key: "clienteNombreCompleto",
-                  render: (text, record) => (
-                    <Link
-                      href={`/private/page/transacciones/compra/vista/${record.clienteID}`}
-                    >
-                      {text}
-                    </Link>
-                  ),
-                },
+                  render: (text, record) => {
+                    // ✅ Si tiene compradorID → es una venta
+                    const isVenta = !!record.compradorID;
+                    const targetId = isVenta
+                      ? record.compradorID
+                      : record.clienteID;
+                    const tipoRuta = isVenta ? "venta" : "compra";
 
+                    return (
+                      <Link
+                        href={`/private/page/transacciones/${tipoRuta}/vista/${targetId}`}
+                      >
+                        {text}
+                      </Link>
+                    );
+                  },
+                },
                 {
                   label: "Total (QQ)",
                   key: "cantidadTotal",
@@ -376,7 +411,7 @@ export default function TablaCompras() {
               ]}
               detailsKey="detalles"
               detailsColumns={[
-                { label: "Compra ID", key: "compraId" },
+                { label: "Registro ID", key: "compraId" },
                 { label: "Tipo Café", key: "tipoCafeNombre" },
                 {
                   label: "Fecha",
@@ -409,67 +444,79 @@ export default function TablaCompras() {
                 {
                   label: "Acciones",
                   key: "acciones",
-                  render: (_, record) => (
-                    <Dropdown
-                      menu={{
-                        items: [
-                          {
-                            key: "editar",
-                            label: (
-                              <ProtectedButton
-                                allowedRoles={["ADMIN", "GERENCIA", "OPERARIO"]}
-                              >
-                                <Popconfirm
-                                  title="¿Seguro que deseas EDITAR esta compra?"
-                                  onConfirm={() =>
-                                    router.push(
-                                      `/private/page/transacciones/compra/${record.compraId}`
-                                    )
-                                  }
-                                  okText="Sí"
-                                  cancelText="No"
+                  render: (_, record) => {
+                    const isVenta = !!record.compradorID;
+                    const tipoRuta = isVenta ? "venta" : "compra";
+                    const titulo = isVenta ? "venta" : "compra";
+
+                    return (
+                      <Dropdown
+                        menu={{
+                          items: [
+                            {
+                              key: "editar",
+                              label: (
+                                <ProtectedButton
+                                  allowedRoles={[
+                                    "ADMIN",
+                                    "GERENCIA",
+                                    "OPERARIOS",
+                                  ]}
                                 >
-                                  <Button type="text" block>
-                                    Editar
-                                  </Button>
-                                </Popconfirm>
-                              </ProtectedButton>
-                            ),
-                          },
-                          {
-                            key: "eliminar",
-                            label: (
-                              <ProtectedButton
-                                allowedRoles={["ADMIN", "GERENCIA"]}
-                              >
-                                <Popconfirm
-                                  title="¿Seguro que deseas eliminar esta compra?"
-                                  onConfirm={() =>
-                                    eliminarCompra(record.compraId)
-                                  }
-                                  okText="Sí"
-                                  cancelText="No"
+                                  <Popconfirm
+                                    title={`¿Seguro que deseas EDITAR esta ${titulo}?`}
+                                    onConfirm={() =>
+                                      router.push(
+                                        `/private/page/transacciones/${tipoRuta}/${record.compraId}`
+                                      )
+                                    }
+                                    okText="Sí"
+                                    cancelText="No"
+                                  >
+                                    <Button type="text" block>
+                                      Editar
+                                    </Button>
+                                  </Popconfirm>
+                                </ProtectedButton>
+                              ),
+                            },
+                            {
+                              key: "eliminar",
+                              label: (
+                                <ProtectedButton
+                                  allowedRoles={["ADMIN", "GERENCIA"]}
                                 >
-                                  <Button type="text" danger block>
-                                    Eliminar
-                                  </Button>
-                                </Popconfirm>
-                              </ProtectedButton>
-                            ),
-                          },
-                        ],
-                      }}
-                      trigger={["click"]}
-                    >
-                      <Button size="small" type="default" block>
-                        Acciones
-                      </Button>
-                    </Dropdown>
-                  ),
+                                  <Popconfirm
+                                    title={`¿Seguro que deseas eliminar esta ${titulo}?`}
+                                    onConfirm={() =>
+                                      eliminarCompra(record.compraId)
+                                    }
+                                    okText="Sí"
+                                    cancelText="No"
+                                  >
+                                    <Button type="text" danger block>
+                                      Eliminar
+                                    </Button>
+                                  </Popconfirm>
+                                </ProtectedButton>
+                              ),
+                            },
+                          ],
+                        }}
+                        trigger={["click"]}
+                      >
+                        <Button size="small" type="default" block>
+                          Acciones
+                        </Button>
+                      </Dropdown>
+                    );
+                  },
                 },
               ]}
               rowKey={(item, index) =>
-                `${item.clienteID}-${item.tipoCafeID ?? index}`
+                `${item.clienteID || item.compradorID}-${
+                  item.tipoCafeID ?? index
+                }`
               }
               detailsRowKey={(item) => item.compraId}
             />

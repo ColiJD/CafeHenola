@@ -2,7 +2,7 @@ import prisma from "@/lib/prisma";
 import { checkRole } from "@/lib/checkRole";
 
 export async function GET(req) {
-  // ✅ Verificar roles permitidos
+  //  Verificar roles permitidos
   const sessionOrResponse = await checkRole(req, [
     "ADMIN",
     "GERENCIA",
@@ -12,7 +12,7 @@ export async function GET(req) {
   if (sessionOrResponse instanceof Response) return sessionOrResponse;
 
   try {
-    // ✅ Obtener parámetros de filtro (fechas)
+   
     const { searchParams } = new URL(req.url);
     const fechaInicio =
       searchParams.get("desde") || searchParams.get("fechaInicio");
@@ -22,7 +22,7 @@ export async function GET(req) {
     const inicio = fechaInicio ? new Date(fechaInicio) : new Date();
     const fin = fechaFin ? new Date(fechaFin) : new Date();
 
-    // ✅ Consultar contratos dentro del rango de fechas
+    
     const contratos = await prisma.contrato.findMany({
       where: {
         contratoFecha: { gte: inicio, lte: fin },
@@ -33,7 +33,7 @@ export async function GET(req) {
         contratoCantidadQQ: true,
         contratoRetencionQQ: true,
         contratoTotalLps: true,
-        contratoPrecio: true, // ✅ Se agregó el campo de PRECIO
+        contratoPrecio: true, 
         contratoDescripcion: true,
         estado: true,
         cliente: {
@@ -50,7 +50,7 @@ export async function GET(req) {
       orderBy: { contratoFecha: "desc" },
     });
 
-    // ✅ Calcular totales generales
+  
     const totalQQ = contratos.reduce(
       (acc, c) => acc + Number(c.contratoCantidadQQ || 0),
       0
@@ -60,7 +60,7 @@ export async function GET(req) {
       0
     );
 
-    // ✅ Estructurar respuesta JSON
+  
     return new Response(
       JSON.stringify({
         resumen: {
@@ -69,7 +69,7 @@ export async function GET(req) {
           totalLps,
         },
         detalles: contratos.map((c) => ({
-          contratoID: c.contratoID, // ✅ Agregado explícitamente
+          contratoID: c.contratoID, 
           fecha: c.contratoFecha,
           clienteID: c.cliente?.clienteID || 0,
           nombreCliente: `${c.cliente?.clienteNombre || ""} ${
@@ -78,7 +78,7 @@ export async function GET(req) {
           tipoCafe: c.producto?.productName || "Sin especificar",
           cantidadQQ: Number(c.contratoCantidadQQ || 0),
           retencionQQ: Number(c.contratoRetencionQQ || 0),
-          precio: Number(c.contratoPrecio || 0), // ✅ Nuevo campo
+          precio: Number(c.contratoPrecio || 0), 
           totalLps: Number(c.contratoTotalLps || 0),
           descripcion: c.contratoDescripcion || "—",
           estado: c.estado || "Pendiente",
@@ -91,7 +91,7 @@ export async function GET(req) {
       }
     );
   } catch (error) {
-    console.error("❌ Error en reporte de contratos:", error);
+    console.error(" Error en reporte de contratos:", error);
     return new Response(
       JSON.stringify({ error: "Error al generar reporte de contratos" }),
       { status: 500 }

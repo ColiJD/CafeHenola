@@ -114,6 +114,18 @@ export const menuItems = [
         href: RutaTransaccion + "/compra/vista",
         image: Reportes,
       },
+      {
+      id: 404,
+      name: "Registro Depósitos",
+      href: Ruta + "/informe/registrodeposito",
+      image: deposito,
+      },
+      {
+      id: 405,
+      name: "Registro Contratos",
+      href: RutaTransaccion + "/contrato/registrocontrato",
+      image: deposito,
+    },
     ],
   },
 
@@ -167,8 +179,17 @@ export const menuItem = [
         key: "DetalleCompra",
         label: "Detalle de Compras",
         route: RutaTransaccion + "/compra/vista",
-      }
-
+      },
+      {
+       key: "registrodeposito",
+       label: "Registro de Depósitos",
+       route: Ruta + "/informe/registrodeposito",
+      },
+      {
+      key: "registrocontrato",
+      label: "Registro de Contratos",
+     route: RutaTransaccion + "/contrato/registrocontrato",
+    },
     ],
   },
   {

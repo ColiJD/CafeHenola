@@ -130,14 +130,6 @@ export default function InventarioActualPage() {
             titulo="Inventario Actual"
             subtitulo="Resumen de existencias por producto"
             onRefresh={cargarDatos}
-            onExportPDF={() =>
-              generarReportePDF({
-                title: "Inventario Actual",
-                columns,
-                data: datosFiltrados,
-              })
-            }
-            disableExport={!datosFiltrados.length}
           />
 
           <Divider />

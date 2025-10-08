@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Table, Card, Typography, Divider } from "antd";
+import { Table, Card, Typography, Divider, Popconfirm, Button } from "antd";
 import dayjs from "dayjs";
 import { CalendarOutlined, UserOutlined } from "@ant-design/icons";
-import { generarReporteContratos } from "@/Doc/Reportes/FormatoContratoDoc"; 
+import { generarReporteContratos } from "@/Doc/Reportes/FormatoContratoDoc";
 import Filtros from "@/components/Filtros";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
 import EstadisticasCards from "@/components/ReportesElement/DatosEstadisticos";
@@ -12,6 +12,7 @@ import SectionHeader from "@/components/ReportesElement/AccionesResporte";
 import { useFetchReport } from "@/hook/useFetchReport";
 import TarjetaMobile from "@/components/TarjetaMobile";
 import ProtectedPage from "@/components/ProtectedPage";
+import ProtectedButton from "@/components/ProtectedButton";
 
 const { Title, Text } = Typography;
 
@@ -34,9 +35,7 @@ export default function ReporteRegistroContrato() {
     return lista.filter((item) =>
       !nombreFiltro
         ? true
-        : item.nombreCliente
-            ?.toLowerCase()
-            .includes(nombreFiltro.toLowerCase())
+        : item.nombreCliente?.toLowerCase().includes(nombreFiltro.toLowerCase())
     );
   }, [data, nombreFiltro]);
 
@@ -52,130 +51,146 @@ export default function ReporteRegistroContrato() {
     );
   }, [datosFiltrados]);
 
-// Columnas Desktop
-const columnasDesktop = [
-  {
-    title: "Contrato ID",
-    dataIndex: "contratoID",
-    width: 100,
-    align: "center",
-    fixed: "left",
-  },
-  {
-    title: "Cliente ID",
-    dataIndex: "clienteID",
-    width: 90,
-    fixed: "left",
-    align: "center",
-  },
-  {
-    title: "Fecha",
-    dataIndex: "fecha",
-    width: 120,
-    render: (f) => dayjs(f).format("DD/MM/YYYY"),
-  },
-  {
-    title: "Cliente",
-    dataIndex: "nombreCliente",
-    width: 200,
-    render: (text) => <Text style={{ color: "#1890ff" }}>{text}</Text>,
-  },
-  {
-    title: "Tipo de Café",
-    dataIndex: "tipoCafe",
-    width: 150,
-    render: (text) => text || "—",
-  },
-  {
-    title: "Cantidad QQ",
-    dataIndex: "cantidadQQ",
-    align: "right",
-    render: (val) => <Text>{val.toFixed(2)}</Text>,
-  },
-  {
-    title: "Precio (Lps)",
-    dataIndex: "precio",
-    align: "right",
-    render: (val) =>
-      val ? <Text>L. {val.toFixed(2)}</Text> : <Text>—</Text>,
-  },
-  {
-    title: "Total (Lps)",
-    dataIndex: "totalLps",
-    align: "right",
-    render: (val) => <Text>L. {val.toFixed(2)}</Text>,
-  },
-  {
-    title: "Retención QQ",
-    dataIndex: "retencionQQ",
-    align: "right",
-    render: (val) => <Text>{val.toFixed(2)}</Text>,
-  },
-  {
-    title: "Estado",
-    dataIndex: "estado",
-    align: "center",
-    render: (estado) => (
-      <Text style={{ color: estado === "Pendiente" ? "#faad14" : "#52c41a" }}>
-        {estado}
-      </Text>
-    ),
-  },
-  {
-    title: "Descripción",
-    dataIndex: "descripcion",
-    width: 250,
-    render: (text) => text || "—",
-  },
-  {
-    title: "Acciones",
-    dataIndex: "opciones",
-    align: "center",
-    fixed: "right",
-    width: 120,
-    render: () => (
-      <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
-        <button
-          style={{
-            background: "#c3d8f5ff",
-            color: "#101010ff",
-            border: "none",
-            borderRadius: "4px",
-            padding: "4px 8px",
-            cursor: "pointer",
-          }}
-        >
-          Editar
-        </button>
-        <button
-          style={{
-            background: "#f1989aff",
-            color: "#111111ff",
-            border: "none",
-            borderRadius: "4px",
-            padding: "4px 8px",
-            cursor: "pointer",
-          }}
-        >
-          Eliminar
-        </button>
-      </div>
-    ),
-  },
-];
+  // Columnas Desktop
+  const columnasDesktop = [
+    {
+      title: "Contrato ID",
+      dataIndex: "contratoID",
+      width: 100,
+      align: "center",
+      fixed: "left",
+    },
 
-// móviles
-const columnasMobile = [
-  { label: "Contrato ID", key: "contratoID" },
-  { label: "Fecha", key: "fecha" },
-  { label: "Cliente", key: "nombreCliente" },
-  { label: "Tipo de Café", key: "tipoCafe" },
-  { label: "Cantidad QQ", key: "cantidadQQ" },
-  { label: "Precio (Lps)", key: "precio" },
-  { label: "Total Lps", key: "totalLps" },
-  { label: "Retención QQ", key: "retencionQQ" },
-  { label: "Estado", key: "estado" },
-];
+    {
+      title: "Fecha",
+      dataIndex: "fecha",
+      width: 120,
+      render: (f) => dayjs(f).format("DD/MM/YYYY"),
+    },
+    {
+      title: "Cliente ID",
+      dataIndex: "clienteID",
+      width: 90,
+      fixed: "left",
+      align: "center",
+    },
+    {
+      title: "Cliente",
+      dataIndex: "nombreCliente",
+      width: 200,
+      render: (text) => <Text style={{ color: "#1890ff" }}>{text}</Text>,
+    },
+    {
+      title: "Tipo de Café",
+      dataIndex: "tipoCafe",
+      width: 150,
+      render: (text) => text || "—",
+    },
+    {
+      title: "Cantidad QQ",
+      dataIndex: "cantidadQQ",
+      align: "right",
+      render: (val) => <Text>{val.toFixed(2)}</Text>,
+    },
+    {
+      title: "Precio (Lps)",
+      dataIndex: "precio",
+      align: "right",
+      render: (val) =>
+        val ? <Text>L. {val.toFixed(2)}</Text> : <Text>—</Text>,
+    },
+    {
+      title: "Total (Lps)",
+      dataIndex: "totalLps",
+      align: "right",
+      render: (val) => <Text>L. {val.toFixed(2)}</Text>,
+    },
+    {
+      title: "Retención QQ",
+      dataIndex: "retencionQQ",
+      align: "right",
+      render: (val) => <Text>{val.toFixed(2)}</Text>,
+    },
+    {
+      title: "Estado",
+      dataIndex: "estado",
+      align: "center",
+      render: (estado) => (
+        <Text style={{ color: estado === "Pendiente" ? "#faad14" : "#52c41a" }}>
+          {estado}
+        </Text>
+      ),
+    },
+    {
+      title: "Descripción",
+      dataIndex: "descripcion",
+      width: 250,
+      render: (text) => text || "—",
+    },
+    {
+      title: "Acciones",
+      key: "acciones",
+      fixed: "right",
+      align: "center",
+      width: 160,
+      render: (text, record) => (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 5,
+          }}
+        >
+          <ProtectedButton allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+            <Popconfirm
+              title="¿Seguro que deseas EDITAR esta compra"
+              onConfirm={() =>
+                router.push(
+                  movimientoFiltro === "Salida"
+                    ? `/private/page/transacciones/venta/${record.compraId}`
+                    : `/private/page/transacciones/compra/${record.compraId}`
+                )
+              }
+              okText="Sí"
+              cancelText="No"
+            >
+              <Button size="small" type="default">
+                Editar
+              </Button>
+            </Popconfirm>
+          </ProtectedButton>
+          <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
+            <Popconfirm
+              title="¿Seguro que deseas eliminar esta compra"
+              onConfirm={() => eliminarCompra(record.compraId)}
+              okText="Sí"
+              cancelText="No"
+            >
+              <Button size="small" danger>
+                Eliminar
+              </Button>
+            </Popconfirm>
+          </ProtectedButton>
+        </div>
+      ),
+    },
+  ];
+
+  // móviles
+  const columnasMobile = [
+    { label: "Contrato ID", key: "contratoID" },
+    { label: "Fecha", key: "fecha" },
+    { label: "Cliente", key: "nombreCliente" },
+    { label: "Tipo de Café", key: "tipoCafe" },
+    { label: "Cantidad QQ", key: "cantidadQQ" },
+    { label: "Precio (Lps)", key: "precio" },
+    { label: "Total Lps", key: "totalLps" },
+    { label: "Retención QQ", key: "retencionQQ" },
+    { label: "Estado", key: "estado" },
+    { label: "Descripción", key: "descripcion" },
+    { label: "Acciones", key: "acciones" },
+  ];
 
   if (!mounted) return null;
 
@@ -305,7 +320,43 @@ const columnasMobile = [
             />
           ) : (
             <TarjetaMobile
-              data={datosFiltrados}
+              data={datosFiltrados.map((item) => ({
+                ...item,
+                acciones: (
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <ProtectedButton
+                      allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}
+                    >
+                      <Button
+                        size="small"
+                        type="default"
+                        onClick={() =>
+                          router.push(
+                            movimientoFiltro === "Salida"
+                              ? `/private/page/transacciones/venta/${item.compraId}`
+                              : `/private/page/transacciones/compra/${item.compraId}`
+                          )
+                        }
+                      >
+                        Editar
+                      </Button>
+                    </ProtectedButton>
+
+                    <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
+                      <Popconfirm
+                        title="¿Seguro que deseas eliminar esta compra?"
+                        onConfirm={() => eliminarCompra(item.compraId)}
+                        okText="Sí"
+                        cancelText="No"
+                      >
+                        <Button size="small" danger>
+                          Eliminar
+                        </Button>
+                      </Popconfirm>
+                    </ProtectedButton>
+                  </div>
+                ),
+              }))}
               columns={columnasMobile}
               loading={loading}
             />

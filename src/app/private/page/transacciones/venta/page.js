@@ -5,6 +5,7 @@ import { message, Spin } from "antd";
 import Formulario from "@/components/Formulario";
 import PreviewModal from "@/components/Modal";
 import { obtenerProductosSelect, obtenerSelectData } from "@/lib/consultas";
+import { FloatingButton } from "@/components/Button";
 import {
   calcularCafeDesdeProducto,
   calcularPesoBrutoDesdeOro,
@@ -17,6 +18,7 @@ import {
 } from "@/config/validacionesForm";
 import { useRouter } from "next/navigation";
 import { exportVentaDirecta } from "@/Doc/Documentos/venta";
+import {UnorderedListOutlined} from "@ant-design/icons"
 
 export default function VentaForm({ compraId }) {
   const [compradores, setCompradores] = useState([]);
@@ -211,9 +213,7 @@ export default function VentaForm({ compraId }) {
 
     try {
       // 🔹 Enviar datos al servidor
-      const url = compraId
-        ? `/api/Venta/${compraId}`
-        : "/api/Venta/";
+      const url = compraId ? `/api/Venta/${compraId}` : "/api/Venta/";
       const method = compraId ? "PUT" : "POST";
       const res = await fetch(url, {
         method,
@@ -341,6 +341,13 @@ export default function VentaForm({ compraId }) {
 
   return (
     <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+      <FloatingButton
+        title="Ir al registro"
+        icon={<UnorderedListOutlined />}
+        top={20}
+        right={30}
+        route="/private/page/transacciones/compra/vista"
+      />
       <>
         {contextHolder}
         {loadingDatos || loadingCompra ? (
@@ -357,7 +364,7 @@ export default function VentaForm({ compraId }) {
         ) : (
           <>
             <Formulario
-             title={
+              title={
                 compraId ? "Editar Venta Directa" : "Registrar Venta Directa"
               }
               fields={fields}

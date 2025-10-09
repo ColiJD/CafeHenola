@@ -135,9 +135,7 @@ export const exportEntregaContrato = async (formState) => {
           "Cliente",
           "Contrato",
           "Tipo Café",
-          "Peso/Cantidad",
-          "Total Sacos",
-          "Quintales Disponibles",
+          
         ],
       ],
       body: [
@@ -145,11 +143,8 @@ export const exportEntregaContrato = async (formState) => {
           cliente,
           contratoID,
           tipoCafe,
-          tipoCafe.includes("Cafe Lata")
-            ? formatNumber(pesoBruto) + " Latas"
-            : formatNumber(pesoBruto) + " Lbs",
-          formatNumber(totalSacos),
-          formatNumber(quintalesDisponibles),
+        
+       
         ],
       ],
       styles: {
@@ -177,8 +172,7 @@ export const exportEntregaContrato = async (formState) => {
           "Quintales Ingresados",
           "Precio",
           "Total Pagar",
-          "Saldo QQ",
-          "Saldo Lps",
+        
         ],
       ],
       body: [
@@ -186,8 +180,7 @@ export const exportEntregaContrato = async (formState) => {
           formatNumber(quintalesIngresados),
           `L. ${formatNumber(precio)}`,
           `L. ${formatNumber(totalPagar)}`,
-          formatNumber(saldoRestanteQQ),
-          `L. ${formatNumber(saldoRestanteLps)}`,
+        
         ],
       ],
       styles: {

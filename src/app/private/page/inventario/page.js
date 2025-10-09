@@ -4,8 +4,8 @@ import { Table, Row, Col, message, Button, Divider, Card } from "antd";
 import SectionHeader from "@/components/ReportesElement/AccionesResporte";
 import EstadisticasCards from "@/components/ReportesElement/DatosEstadisticos";
 import { CalendarOutlined } from "@ant-design/icons";
-import { generarReportePDF } from "@/Doc/Reportes/FormatoDoc";
-
+import { FloatingButton } from "@/components/Button";
+import { PlusOutlined } from "@ant-design/icons";
 import Filtros from "@/components/Filtros";
 import { useRouter } from "next/navigation";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
@@ -114,6 +114,13 @@ export default function InventarioActualPage() {
     <ProtectedPage
       allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS", "AUDITORES"]}
     >
+      <FloatingButton
+        title="Transferir Inventario"
+        icon={<PlusOutlined />}
+        top={20}
+        right={30}
+        route="/private/page/inventario/transferir"
+      />
       {contextHolder}
       <div
         style={{

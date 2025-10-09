@@ -5,6 +5,8 @@ import { message, Spin } from "antd";
 import Formulario from "@/components/Formulario";
 import PreviewModal from "@/components/Modal";
 import { obtenerClientesSelect, obtenerProductosSelect } from "@/lib/consultas";
+import { FloatingButton } from "@/components/Button";
+import { UnorderedListOutlined } from "@ant-design/icons";
 import {
   calcularCafeDesdeProducto,
   calcularPesoBrutoDesdeOro,
@@ -365,6 +367,13 @@ export default function CompraForm({ compraId }) {
 
   return (
     <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+      <FloatingButton
+        title="Ir al registro"
+        icon={<UnorderedListOutlined />}
+        top={20}
+        right={30}
+        route="/private/page/transacciones/compra/vista"
+      />
       <>
         {contextHolder}
         {loadingDatos || loadingCompra ? (

@@ -1,12 +1,14 @@
-import eventos from "@/img/eventos.png";
-import producto from "@/img/cliente.png";
-import cliente from "@/img/product.png";
-import deposito from "@/img/deposito.png";
-import { LogoutOutlined } from "@ant-design/icons";
+import {
+  HomeOutlined,
+  ShoppingCartOutlined,
+  MinusCircleOutlined,
+  AppstoreOutlined,
+  SettingOutlined,
+  FileTextOutlined,
+  UserOutlined,
+  LogoutOutlined,
+} from "@ant-design/icons";
 import { signOut } from "next-auth/react";
-
-// import contrato from "@/img/co.png";
-import contrato from "@/img/contrato.png";
 
 import Compras from "@/img/Compras.png";
 import Depo from "@/img/depo.png";
@@ -14,21 +16,43 @@ import LiqDepo from "@/img/liqD.png";
 import prestamo from "@/img/co.png";
 import Contrato from "@/img/Contratos.png";
 import Reportes from "@/img/Reportes.png";
-import {
-  UserOutlined,
-  HomeOutlined,
-  SettingOutlined,
-  ShoppingCartOutlined,
-  MinusCircleOutlined,
-  AppstoreOutlined,
-  FileTextOutlined,
-} from "@ant-design/icons";
+import producto from "@/img/cliente.png";
+import cliente from "@/img/product.png";
+import deposito from "@/img/deposito.png";
+import contrato from "@/img/contrato.png";
+import eventos from "@/img/eventos.png";
 
 const RutaTransaccion = "/private/page/transacciones";
 const Ruta = "/private/page";
-// 📂 lib/menu.js
 
+// ✅ Estructura base con imágenes y rutas
 export const menuItems = [
+  {
+    id: 4,
+    name: "Informe",
+    image: eventos,
+    subItems: [
+      {
+        id: 400,
+        name: "General",
+        href: Ruta + "/informe/general",
+        image: deposito,
+      },
+
+      {
+        id: 401,
+        name: "Saldo Por Deposito",
+        href: RutaTransaccion + "/deposito/vista",
+        image: contrato,
+      },
+      {
+        id: 402,
+        name: "Registro de Entradas",
+        href: Ruta + "/informe/reporteCliente",
+        image: deposito,
+      },
+    ],
+  },
   {
     id: 1,
     name: "Entradas",
@@ -74,7 +98,7 @@ export const menuItems = [
       {
         id: 201,
         name: "Venta Directa",
-        href: RutaTransaccion + "/Venta/venta",
+        href: RutaTransaccion + "/venta",
         image: Compras,
       },
     ],
@@ -85,37 +109,6 @@ export const menuItems = [
     image: producto,
     href: Ruta + "/inventario",
   },
-  {
-    id: 4,
-    name: "Informe",
-    image: eventos,
-    subItems: [
-      {
-        id: 400,
-        name: "General",
-        href: Ruta + "/informe/general",
-        image: deposito,
-      },
-      {
-        id: 401,
-        name: "Saldo Por Deposito",
-        href: RutaTransaccion + "/deposito/vista",
-        image: contrato,
-      },
-      {
-        id: 402,
-        name: "Saldo Por Contrato",
-        href: RutaTransaccion + "/contrato/vista",
-        image: prestamo,
-      },
-      {
-        id: 403,
-        name: "Detalle de Compras",
-        href: RutaTransaccion + "/compra/vista",
-        image: Reportes,
-      },
-    ],
-  },
 
   {
     id: 5,
@@ -124,149 +117,55 @@ export const menuItems = [
     subItems: [
       { id: 501, name: "Productos", href: Ruta + "/producto", image: cliente },
       { id: 502, name: "Clientes", href: Ruta + "/cliente", image: producto },
+      { id: 503, name: "Compradores", href: Ruta + "/compradores", image: cliente },
+      { id: 504, name: "Usuarios", href: Ruta + "/user", image: cliente },
       {
-        id: 503,
+        id: 505,
         name: "Registros de clientes",
         href: Ruta + "/cliente/Registros",
         image: Reportes,
       },
+      
     ],
   },
-  // resto de items...
 ];
 
-// Diccionario de menú con rutas y submenus
+// 🧠 Mapa de iconos por categoría principal (puedes ajustar a gusto)
+const iconMap = {
+  Entradas: <ShoppingCartOutlined />,
+  Salidas: <MinusCircleOutlined />,
+  Inventario: <AppstoreOutlined />,
+  Informe: <FileTextOutlined />,
+  Registros: <SettingOutlined />,
+  Listado: <UserOutlined />,
+};
+
+// 🔁 Función para transformar menuItems → menuItem
 export const menuItem = [
-  { key: "inicio", icon: <HomeOutlined />, label: "Inicio", route: "/" },
   {
-    key: "informe",
-    icon: <FileTextOutlined />,
-    label: "Informe",
-    children: [
-      {
-        key: "InformeGeneral",
-        label: "General",
-        route: Ruta + "/informe/general",
-      },
-      {
-        key: "PorCLiente",
-        label: "Reporte de Entrada ",
-        route: Ruta + "/informe/reporteCliente",
-      },
-      {
-        key: "Deposito",
-        label: "Saldo Por Deposito",
-        route: RutaTransaccion + "/deposito/vista",
-      },
-      {
-        key: "Contrato",
-        label: "Saldo Por Contrato",
-        route: RutaTransaccion + "/contrato/vista",
-      },
-      {
-        key: "DetalleCompra",
-        label: "Detalle de Compras",
-        route: RutaTransaccion + "/compra/vista",
-      }
-
-    ],
+    key: "inicio",
+    icon: <HomeOutlined />,
+    label: "Inicio",
+    route: "/",
   },
-  {
-    key: "Entradas",
-    icon: <ShoppingCartOutlined />,
-    label: "Entradas",
-
-    children: [
-      {
-        key: "compraDirecta",
-        label: "Compra Directa",
-        route: RutaTransaccion + "/compra",
-      },
-      {
-        key: "compraDeposito",
-        label: "Deposito",
-        route: RutaTransaccion + "/deposito",
-      },
-      {
-        key: "compraLiqDeposito",
-        label: "Liquidacion de Deposito",
-        route: RutaTransaccion + "/deposito/liqDeposito",
-      },
-      {
-        key: "compraContrato",
-        label: "Contrato",
-        route: RutaTransaccion + "/contrato",
-      },
-      {
-        key: "compraEntregaContrato",
-        label: "Entrega Contrato",
-        route: RutaTransaccion + "/contrato/entrega",
-      },
-    ],
-  },
-  {
-    key: "Salidas",
-    icon: <MinusCircleOutlined />,
-    label: "Salidas",
-    children: [
-      {
-        key: "venta-directa",
-        label: "Venta Directa",
-        route: RutaTransaccion + "/Venta/venta",
-      },
-    ],
-  },
-  {
-    key: "Registros",
-    icon: <SettingOutlined />,
-    label: "Registros",
-    children: [
-      {
-        key: "cliente",
-        label: "Registro de Cliente",
-        route: Ruta + "/cliente",
-      },
-      {
-        key: "Comprador",
-        label: "Registro de Comprador",
-        route: Ruta + "/compradores",
-      },
-
-      {
-        key: "producto",
-        label: "Registro de Producto",
-        route: Ruta + "/producto",
-      },
-
-      {
-        key: "Registrar Usuario",
-        label: "Registro de Usuario",
-        route: Ruta + "/user",
-      },
-    ],
-  },
-  {
-    key: "Listado",
-    icon: <UserOutlined />,
-    label: "Listado",
-    children: [
-      {
-        key: "registroCliente",
-        label: "Historial de Cliente",
-        route: Ruta + "/cliente/Registros",
-      },
-    ],
-  },
-  {
-    key: "inventario",
-    icon: <AppstoreOutlined />,
-    label: "Inventario",
-    route: Ruta + "/inventario",
-  },
+  ...menuItems.map((item) => ({
+    key: item.name.toLowerCase(),
+    icon: iconMap[item.name] || <AppstoreOutlined />,
+    label: item.name,
+    ...(item.subItems
+      ? {
+          children: item.subItems.map((sub) => ({
+            key: sub.id.toString(),
+            label: sub.name,
+            route: sub.href,
+          })),
+        }
+      : { route: item.href }),
+  })),
   {
     key: "logout",
     icon: <LogoutOutlined />,
-    label: "Cerrar Sesion",
+    label: "Cerrar Sesión",
     onClick: () => signOut({ callbackUrl: "/login" }),
   },
 ];

@@ -4,24 +4,26 @@ import { checkRole } from "@/lib/checkRole";
 export async function DELETE(req, { params }) {
   const sessionOrResponse = await checkRole(req, ["ADMIN", "GERENCIA"]);
   if (sessionOrResponse instanceof Response) return sessionOrResponse;
+
   try {
     const compraId = Number(params.id);
     if (!compraId) {
-      return new Response(JSON.stringify({ error: "ID de compra inválido" }), {
+      return new Response(JSON.stringify({ error: "ID inválido" }), {
         status: 400,
       });
     }
 
-    // 🔹 Buscar la compra y su movimiento de inventario en paralelo
-    const compra = await prisma.compra.findUnique({ where: { compraId } });
-    if (!compra) {
-      return new Response(JSON.stringify({ error: "Compra no encontrada" }), {
+    // 🔹 Buscar el registro (puede ser compra o venta)
+    const registro = await prisma.compra.findUnique({ where: { compraId } });
+    if (!registro) {
+      return new Response(JSON.stringify({ error: "Registro no encontrado" }), {
         status: 404,
       });
     }
 
+    // 🔹 Buscar el movimiento asociado
     const movimiento = await prisma.movimientoinventario.findFirst({
-      where: { referenciaID: compraId, tipoMovimiento: "Entrada" },
+      where: { referenciaID: compraId },
     });
 
     if (!movimiento) {
@@ -31,25 +33,48 @@ export async function DELETE(req, { params }) {
       );
     }
 
-    // 🔹 Ejecutar todo en una transacción
+    // 🔹 Determinar tipo de movimiento (Entrada o Salida)
+    const esEntrada = movimiento.tipoMovimiento === "Entrada";
+    const esSalida = movimiento.tipoMovimiento === "Salida";
+
+    if (!esEntrada && !esSalida) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "El movimiento no es ni Entrada ni Salida (posiblemente ya fue anulado)",
+        }),
+        { status: 400 }
+      );
+    }
+
+    // 🔹 Ejecutar la lógica correspondiente en una transacción
     await prisma.$transaction([
-      // Actualizar movimiento para marcarlo como anulado
+      // 1️⃣ Actualizar movimiento
       prisma.movimientoinventario.update({
         where: { movimientoID: movimiento.movimientoID },
         data: {
           tipoMovimiento: "Anulado",
-          nota: `Compra anulada #${compraId}`,
+          nota: `${esEntrada ? "Compra" : "Venta"} anulada #${compraId}`,
         },
       }),
-      // Actualizar inventario restando la cantidad
+
+      // 2️⃣ Ajustar inventario (según tipo)
       prisma.inventariocliente.update({
         where: { inventarioClienteID: movimiento.inventarioClienteID },
-        data: {
-          cantidadQQ: { decrement: movimiento.cantidadQQ },
-          cantidadSacos: { decrement: movimiento.cantidadSacos },
-        },
+        data: esEntrada
+          ? {
+              // Si era Entrada, ahora restamos
+              cantidadQQ: { decrement: movimiento.cantidadQQ },
+              cantidadSacos: { decrement: movimiento.cantidadSacos },
+            }
+          : {
+              // Si era Salida, ahora sumamos
+              cantidadQQ: { increment: movimiento.cantidadQQ },
+              cantidadSacos: { increment: movimiento.cantidadSacos },
+            },
       }),
-      // Marcar la compra como anulada
+
+      // 3️⃣ Actualizar estado del registro (compra/venta)
       prisma.compra.update({
         where: { compraId },
         data: { compraMovimiento: "Anulado" },
@@ -57,22 +82,25 @@ export async function DELETE(req, { params }) {
     ]);
 
     return new Response(
-      JSON.stringify({ message: "Compra anulada correctamente" }),
+      JSON.stringify({
+        message: `${esEntrada ? "Compra" : "Venta"} anulada correctamente`,
+      }),
       { status: 200 }
     );
   } catch (error) {
-    console.error(error);
+    console.error("❌ Error al anular registro:", error);
     return new Response(
-      JSON.stringify({ error: "Error al anular la compra" }),
+      JSON.stringify({ error: "Error interno al anular el registro" }),
       { status: 500 }
     );
   }
 }
+
 export async function PUT(request, { params }) {
   const sessionOrResponse = await checkRole(request, [
     "ADMIN",
     "GERENCIA",
-    "OPERARIO",
+    "OPERARIOS",
   ]);
   if (sessionOrResponse instanceof Response) return sessionOrResponse;
 
@@ -203,6 +231,12 @@ export async function PUT(request, { params }) {
 import { NextResponse } from "next/server";
 
 export async function GET(req, context) {
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+  ]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
   try {
     const { id } = context.params;
 
@@ -235,7 +269,10 @@ export async function GET(req, context) {
     });
 
     if (!compra) {
-      return NextResponse.json({ error: "Compra no encontrada" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Compra no encontrada" },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json(compra);

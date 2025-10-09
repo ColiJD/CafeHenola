@@ -7,6 +7,8 @@ import { limpiarFormulario } from "@/config/validacionesForm";
 import { validarDatos } from "@/lib/validacionesForm";
 import { exportEntregaContrato } from "@/Doc/Documentos/entregaContrato";
 import ProtectedPage from "@/components/ProtectedPage";
+import { FloatingButton } from "@/components/Button";
+import { UnorderedListOutlined } from "@ant-design/icons";
 import {
   obtenerClientesPendientesContratos,
   obtenerProductosSelect,
@@ -241,7 +243,6 @@ export default function LiquidacionContratoForm() {
       liqEn: "Bodega",
       liqDescripcion: formState.descripcion,
     };
-   
 
     try {
       const res = await fetch("/api/contratos/entregar", {
@@ -481,6 +482,13 @@ export default function LiquidacionContratoForm() {
 
   return (
     <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+      <FloatingButton
+        title="Ir al registro"
+        icon={<UnorderedListOutlined />}
+        top={20}
+        right={30}
+        route="/private/page/transacciones/contrato/detallecontrato"
+      />
       <>
         {contextHolder}
         <Formulario

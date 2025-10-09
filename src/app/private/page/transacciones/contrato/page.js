@@ -10,7 +10,8 @@ import {
   validarFloatPositivo,
 } from "@/config/validacionesForm"; // Utilidades de validación
 import { validarDatos } from "@/lib/validacionesForm"; // Validación general del formulario
-
+import { FloatingButton } from "@/components/Button";
+import { UnorderedListOutlined } from "@ant-design/icons";
 import { exportContratoCafe } from "@/Doc/Documentos/contrato";
 import ProtectedPage from "@/components/ProtectedPage";
 
@@ -222,6 +223,13 @@ export default function ContratoForm() {
 
   return (
     <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+      <FloatingButton
+        title="Ir al registro"
+        icon={<UnorderedListOutlined />}
+        top={20}
+        right={30}
+        route="/private/page/transacciones/contrato/registrocontrato"
+      />
       <>
         {contextHolder} {/* Contenedor de mensajes Ant Design */}
         {/* Componente de formulario principal */}

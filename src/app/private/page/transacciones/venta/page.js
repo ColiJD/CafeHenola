@@ -1,22 +1,31 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { message } from "antd";
+import { message, Spin } from "antd";
 import Formulario from "@/components/Formulario";
 import PreviewModal from "@/components/Modal";
 import { obtenerProductosSelect, obtenerSelectData } from "@/lib/consultas";
-import { calcularCafeDesdeProducto } from "@/lib/calculoCafe";
+import { FloatingButton } from "@/components/Button";
+import {
+  calcularCafeDesdeProducto,
+  calcularPesoBrutoDesdeOro,
+} from "@/lib/calculoCafe";
 import ProtectedPage from "@/components/ProtectedPage";
 import {
   limpiarFormulario,
   validarEnteroNoNegativo,
   validarFloatPositivo,
 } from "@/config/validacionesForm";
+import { useRouter } from "next/navigation";
 import { exportVentaDirecta } from "@/Doc/Documentos/venta";
+import {UnorderedListOutlined} from "@ant-design/icons"
 
-export default function VentaForm() {
+export default function VentaForm({ compraId }) {
   const [compradores, setCompradores] = useState([]);
   const [productos, setProductos] = useState([]);
+
+  const [loadingDatos, setLoadingDatos] = useState(true); // 🔹 loading general
+  const [loadingCompra, setLoadingCompra] = useState(false); // 🔹 loading para editar
 
   const [comprador, setComprador] = useState(null);
   const [producto, setProducto] = useState(null);
@@ -26,7 +35,7 @@ export default function VentaForm() {
   const [ventaTotal, setVentaTotal] = useState(0);
   const [ventaOro, setVentaOro] = useState("0.00");
   const [ventaDescripcion, setVentaDescripcion] = useState("");
-
+  const router = useRouter();
   const [errors, setErrors] = useState({});
   const [previewVisible, setPreviewVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -124,6 +133,7 @@ export default function VentaForm() {
   // 🔹 Cargar compradores y productos
   useEffect(() => {
     async function cargarDatos() {
+      setLoadingDatos(true);
       try {
         const compradoresData = await obtenerSelectData({
           url: "/api/compradores",
@@ -138,6 +148,8 @@ export default function VentaForm() {
       } catch (err) {
         console.error(err);
         messageApi.error("Error cargando compradores o productos");
+      } finally {
+        setLoadingDatos(false);
       }
     }
     cargarDatos();
@@ -201,20 +213,27 @@ export default function VentaForm() {
 
     try {
       // 🔹 Enviar datos al servidor
-      const res = await fetch("/api/Venta/venta", {
-        method: "POST",
+      const url = compraId ? `/api/Venta/${compraId}` : "/api/Venta/";
+      const method = compraId ? "PUT" : "POST";
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
+      //
 
       const result = await res.json();
 
       // 🔹 Validar respuesta
-      if (!res.ok || !result.compraId) {
-        throw new Error(result.error || "No se pudo registrar la venta");
-      }
 
-      messageApi.success("Venta registrada exitosamente");
+      if (!res.ok)
+        throw new Error(result.error || "Error al procesar la venta");
+
+      messageApi.success(
+        compraId
+          ? "Venta actualizada correctamente"
+          : "Venta registrada correctamente"
+      );
       setPreviewVisible(false);
 
       // 🔹 Generación del comprobante (opcional)
@@ -248,6 +267,12 @@ export default function VentaForm() {
         messageApi.error("Error generando comprobante PDF");
       }
 
+      // 🔹 Redirigir a la lista de compras
+      if (compraId) {
+        router.push("/private/page/transacciones/compra/vista"); // Ajusta según tu ruta real de lista
+        return; // evita limpiar formulario si solo actualizas
+      }
+
       // 🔹 Limpiar formulario
       limpiarFormulario({
         setComprador,
@@ -269,37 +294,106 @@ export default function VentaForm() {
     }
   };
 
+  useEffect(() => {
+    if (!compraId || loadingDatos) return;
+    const cargarVenta = async () => {
+      setLoadingCompra(true);
+      try {
+        const res = await fetch(`/api/compras/${compraId}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Error cargando la venta");
+
+        const compradorMatch = compradores.find(
+          (c) => c.value === data.compradorID
+        );
+        const productoMatch = productos.find(
+          (p) => p.value === data.compraTipoCafe
+        );
+        setComprador(
+          compradorMatch || { value: data.compradorID, label: "Cargando..." }
+        );
+        setProducto(
+          productoMatch || { value: data.compraTipoCafe, label: "Cargando..." }
+        );
+        setVentaCantidadQQ(data.compraCantidadQQ.toString());
+        setVentaTotalSacos(data.compraTotalSacos.toString());
+        setVentaPrecioQQ(data.compraPrecioQQ.toString());
+        setVentaTotal(data.compraTotal);
+        setVentaOro(data.compraCantidadQQ.toString());
+        setVentaDescripcion(data.compraDescripcion || "");
+
+        const pesoBruto = calcularPesoBrutoDesdeOro(
+          data.compraCantidadQQ,
+          data.compraTotalSacos,
+          productoMatch
+        );
+        setVentaCantidadQQ(pesoBruto.pesoBruto);
+      } catch (err) {
+        console.error(err);
+        messageApi.error("Error cargando la venta");
+      } finally {
+        setLoadingCompra(false);
+      }
+    };
+    cargarVenta();
+  }, [compraId, loadingDatos, compradores, productos, messageApi]);
+  useEffect(() => {}, [compraId]);
+
   return (
     <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+      <FloatingButton
+        title="Ir al registro"
+        icon={<UnorderedListOutlined />}
+        top={20}
+        right={30}
+        route="/private/page/transacciones/compra/vista"
+      />
       <>
         {contextHolder}
-        <Formulario
-          title="Registrar Venta Directa"
-          fields={fields}
-          onSubmit={handleRegistrarClick}
-          submitting={submitting}
-          button={{
-            text: "Registrar Venta",
-            onClick: handleRegistrarClick,
-            type: "primary",
-          }}
-        />
-        <PreviewModal
-          open={previewVisible}
-          title="Previsualización de la venta"
-          onCancel={() => setPreviewVisible(false)}
-          onConfirm={handleConfirmar}
-          confirmLoading={submitting}
-          fields={fields.map((f) => ({
-            label: f.label,
-            value:
-              f.label === "Total Sacos" && producto?.label === "Cafe Lata"
-                ? 0
-                : f.type === "select"
-                ? f.options?.find((o) => o.value === f.value?.value)?.label
-                : f.value || "-",
-          }))}
-        />
+        {loadingDatos || loadingCompra ? (
+          <div
+            style={{
+              minHeight: "16rem",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Spin size="large" />
+          </div>
+        ) : (
+          <>
+            <Formulario
+              title={
+                compraId ? "Editar Venta Directa" : "Registrar Venta Directa"
+              }
+              fields={fields}
+              onSubmit={handleRegistrarClick}
+              submitting={submitting}
+              button={{
+                text: compraId ? "Actualizar Venta" : "Registrar Venta",
+                onClick: handleRegistrarClick,
+                type: "primary",
+              }}
+            />
+            <PreviewModal
+              open={previewVisible}
+              title="Previsualización de la venta"
+              onCancel={() => setPreviewVisible(false)}
+              onConfirm={handleConfirmar}
+              confirmLoading={submitting}
+              fields={fields.map((f) => ({
+                label: f.label,
+                value:
+                  f.label === "Total Sacos" && producto?.label === "Cafe Lata"
+                    ? 0
+                    : f.type === "select"
+                    ? f.options?.find((o) => o.value === f.value?.value)?.label
+                    : f.value || "-",
+              }))}
+            />
+          </>
+        )}
       </>
     </ProtectedPage>
   );

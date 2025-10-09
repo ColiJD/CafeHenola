@@ -13,6 +13,8 @@ import {
 } from "@/config/validacionesForm";
 import { calcularCafeDesdeProducto } from "@/lib/calculoCafe";
 import { exportDeposito } from "@/Doc/Documentos/desposito";
+import { FloatingButton } from "@/components/Button";
+import { UnorderedListOutlined } from "@ant-design/icons";
 
 export default function FormDeposito() {
   const [clientes, setClientes] = useState([]);
@@ -250,6 +252,13 @@ export default function FormDeposito() {
 
   return (
     <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+      <FloatingButton
+        title="Ir al registro"
+        icon={<UnorderedListOutlined />}
+        top={20}
+        right={30}
+        route="/private/page/informe/registrodeposito"
+      />
       <>
         {contextHolder}
         <Formulario

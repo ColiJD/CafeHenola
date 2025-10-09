@@ -1,34 +1,38 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Table, Row, Col, message, Button } from "antd";
-import { truncarDosDecimalesSinRedondear } from "@/lib/calculoCafe";
-import TarjetasDeTotales from "@/components/DetallesCard";
+import { useEffect, useState, useMemo } from "react";
+import { Table, Row, Col, message, Button, Divider, Card } from "antd";
+import SectionHeader from "@/components/ReportesElement/AccionesResporte";
+import EstadisticasCards from "@/components/ReportesElement/DatosEstadisticos";
+import { CalendarOutlined } from "@ant-design/icons";
+import { generarReportePDF } from "@/Doc/Reportes/FormatoDoc";
+
 import Filtros from "@/components/Filtros";
 import { useRouter } from "next/navigation";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
 import ProtectedPage from "@/components/ProtectedPage";
+import { formatNumber } from "@/components/Formulario";
+import TarjetaMobile from "@/components/TarjetaMobile";
 
 export default function InventarioActualPage() {
   const { mounted, isDesktop } = useClientAndDesktop();
-  const isMobile = mounted && !isDesktop;
-
+  const [messageApi, contextHolder] = message.useMessage();
   const router = useRouter();
 
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [tipoCafeFiltro, setTipoCafeFiltro] = useState("");
+  const [filtroProducto, setFiltroProducto] = useState("");
 
-  // Cargar inventario actual
+  // 🔹 Cargar inventario actual (productoID, productName, cantidadQQ)
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/inventario/Actual"); // endpoint que devuelve vw_inventario_actual
+      const res = await fetch("/api/inventario/Actual");
       if (!res.ok) throw new Error("Error al cargar inventario");
       const data = await res.json();
       setData(data);
     } catch (error) {
       console.error(error);
-      message.error("No se pudo cargar el inventario actual");
+      messageApi.error("No se pudo cargar el inventario actual");
     } finally {
       setLoading(false);
     }
@@ -38,105 +42,150 @@ export default function InventarioActualPage() {
     cargarDatos();
   }, []);
 
-  // Totales generales
-  const totalEntradas = data.reduce(
-    (acc, item) => acc + (item.totalEntradasQQ || 0),
-    0
-  );
-  const totalSalidas = data.reduce(
-    (acc, item) => acc + (item.totalSalidasQQ || 0),
-    0
-  );
-  const totalSaldo = data.reduce((acc, item) => acc + (item.saldoQQ || 0), 0);
-
-  // Columnas de tabla
+  // 🔹 Columnas de la tabla
   const columns = [
     {
-      title: "Tipo de Café",
-      dataIndex: "tipoCafe",
-      key: "tipoCafe",
+      title: "ID Producto",
+      dataIndex: "productoID",
+      key: "productoID",
+      width: 120,
+    },
+    {
+      title: "Producto",
+      dataIndex: "productName",
+      key: "productName",
       render: (text, record) => (
-        <a onClick={() => router.push(`/private/page/inventario/${record.productoID}`)}>
+        <a
+          onClick={() =>
+            router.push(`/private/page/inventario/${record.productoID}`)
+          }
+        >
           {text}
         </a>
       ),
     },
     {
-      title: "Total Entradas (QQ)",
-      dataIndex: "totalEntradasQQ",
-      key: "totalEntradasQQ",
-      render: truncarDosDecimalesSinRedondear,
-    },
-    {
-      title: "Total Salidas (QQ)",
-      dataIndex: "totalSalidasQQ",
-      key: "totalSalidasQQ",
-      render: truncarDosDecimalesSinRedondear,
-    },
-    {
-      title: "Saldo (QQ)",
-      dataIndex: "saldoQQ",
-      key: "saldoQQ",
-      render: truncarDosDecimalesSinRedondear,
+      title: "Cantidad (QQ)",
+      dataIndex: "cantidadQQ",
+      key: "cantidadQQ",
+      render: formatNumber,
     },
   ];
 
-  return (
-    <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS", "AUDITORES"]}>
-      <div>
-        <TarjetasDeTotales
-          title="Inventario Actual"
-          cards={[
-            {
-              title: "Total Entradas",
-              value: truncarDosDecimalesSinRedondear(totalEntradas),
-            },
-            {
-              title: "Total Salidas",
-              value: truncarDosDecimalesSinRedondear(totalSalidas),
-            },
-            {
-              title: "Saldo Total",
-              value: truncarDosDecimalesSinRedondear(totalSaldo),
-            },
-          ]}
-        />
-
-        {/* Filtros */}
-        <Filtros
-          fields={[
-            {
-              type: "select",
-              placeholder: "Tipo de café",
-              value: tipoCafeFiltro || undefined,
-              setter: setTipoCafeFiltro,
-              allowClear: true,
-              options: [...new Set(data.map((d) => d.tipoCafe))],
-            },
-          ]}
-        />
-
-        <Row style={{ marginBottom: 16 }}>
-          <Col xs={24} sm={6} md={4}>
-            <Button onClick={cargarDatos} block>
-              Refrescar
-            </Button>
-          </Col>
-        </Row>
-
-        {/* Tabla */}
-        <Table
-          columns={columns}
-          dataSource={
-            tipoCafeFiltro
-              ? data.filter((d) => d.tipoCafe === tipoCafeFiltro)
-              : data
+  const columnsMobile = [
+    {
+      label: "ID Producto",
+      key: "productoID",
+      render: (text, record) => <b>{text}</b>,
+    },
+    {
+      label: "Producto",
+      key: "productName",
+      render: (text, record) => (
+        <a
+          onClick={() =>
+            router.push(`/private/page/inventario/${record.productoID}`)
           }
-          rowKey="productoID"
-          loading={loading}
-          bordered
-          size="middle"
-        />
+        >
+          {text}
+        </a>
+      ),
+    },
+    { label: "Cantidad (QQ)", key: "cantidadQQ", render: formatNumber },
+  ];
+
+  // 🔹 Aplicar filtro
+  const datosFiltrados = useMemo(() => {
+    if (!filtroProducto) return data;
+    return data.filter((d) => d.productName === filtroProducto);
+  }, [data, filtroProducto]);
+
+  // 🔹 Estadísticas básicas
+  const estadisticas = useMemo(() => {
+    if (!datosFiltrados.length) return null;
+    const cantidades = datosFiltrados.map((d) => d.cantidadQQ);
+    const total = cantidades.reduce((acc, val) => acc + val, 0);
+    const numeroRegistro = cantidades.length;
+
+    return { numeroRegistro, total };
+  }, [datosFiltrados]);
+  if (!mounted) return null;
+  return (
+    <ProtectedPage
+      allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS", "AUDITORES"]}
+    >
+      {contextHolder}
+      <div
+        style={{
+          padding: isDesktop ? "24px" : "12px",
+          background: "#f5f5f5",
+          minHeight: "100vh",
+        }}
+      >
+        <Card>
+          <SectionHeader
+            isDesktop={isDesktop}
+            loading={loading}
+            icon={<CalendarOutlined />}
+            titulo="Inventario Actual"
+            subtitulo="Resumen de existencias por producto"
+            onRefresh={cargarDatos}
+          />
+
+          <Divider />
+
+          {estadisticas && (
+            <EstadisticasCards
+              isDesktop={isDesktop}
+              data={[
+                {
+                  titulo: "Número de Productos",
+                  valor: estadisticas.numeroRegistro,
+                  color: "#096dd9",
+                },
+                {
+                  titulo: "Cantidad Total (QQ)",
+                  valor: formatNumber(estadisticas.total),
+                  color: "#3f8600",
+                },
+              ]}
+            />
+          )}
+          <Divider />
+
+          {/* 🔹 Filtros */}
+          <Filtros
+            fields={[
+              {
+                type: "select",
+                placeholder: "Filtrar por producto",
+                value: filtroProducto || undefined,
+                setter: setFiltroProducto,
+                allowClear: true,
+                options: [...new Set(data.map((d) => d.productName))],
+              },
+            ]}
+          />
+          <Divider />
+
+          {isDesktop ? (
+            <Table
+              columns={columns}
+              dataSource={datosFiltrados}
+              rowKey="productoID"
+              loading={loading}
+              bordered
+              size="middle"
+            />
+          ) : (
+            <TarjetaMobile
+              data={datosFiltrados}
+              columns={columnsMobile}
+              loading={loading}
+              rowKey="productoID"
+            />
+          )}
+        </Card>
       </div>
     </ProtectedPage>
   );

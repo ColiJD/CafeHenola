@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import {
   Table,
   Row,
@@ -9,7 +9,8 @@ import {
   Button,
   Popconfirm,
   Dropdown,
-  Menu,
+  Divider,
+  Card,
 } from "antd";
 import TarjetasDeTotales from "@/components/DetallesCard";
 import Filtros from "@/components/Filtros";
@@ -21,6 +22,7 @@ import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import Link from "next/link";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
+
 import ProtectedPage from "@/components/ProtectedPage";
 import { formatNumber } from "@/components/Formulario";
 dayjs.extend(isSameOrAfter);
@@ -28,6 +30,11 @@ dayjs.extend(isSameOrBefore);
 dayjs.extend(customParseFormat);
 import ProtectedButton from "@/components/ProtectedButton";
 import { useRouter } from "next/navigation";
+
+import SectionHeader from "@/components/ReportesElement/AccionesResporte";
+import { generarReportePDF } from "@/Doc/Reportes/compraVenta";
+
+import CalendarOutlined from "@ant-design/icons/CalendarOutlined";
 
 export default function TablaCompras() {
   const { mounted, isDesktop } = useClientAndDesktop();
@@ -48,11 +55,15 @@ export default function TablaCompras() {
   const cargarDatos = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/compras");
+      // 🔹 Elegir la API según el tipo de movimiento
+      const apiURL =
+        movimientoFiltro === "Salida" ? "/api/compras/salidas" : "/api/compras";
+
+      const res = await fetch(apiURL);
       if (!res.ok) throw new Error("Error al cargar los datos");
       const data = await res.json();
 
-      // 🔹 Filtrar por compraMovimiento
+      // 🔹 Filtrar solo los movimientos si la API devuelve ambos tipos
       const dataFiltrada = data.filter(
         (item) => item.compraMovimiento === movimientoFiltro
       );
@@ -60,17 +71,26 @@ export default function TablaCompras() {
       // 🔹 Agrupar por cliente y tipo de café
       const mapa = {};
       dataFiltrada.forEach((item) => {
-        const key = `${item.clienteID}`;
-
-        // Convertir a número
         const cantidad = parseFloat(item.compraCantidadQQ || 0);
         const precio = parseFloat(item.compraPrecioQQ || 0);
         const totalLps = cantidad * precio;
 
+        // 🔹 Cambios para mostrar comprador en Salidas
+        const key =
+          movimientoFiltro === "Salida"
+            ? `${item.compradorID}` // Agrupar por comprador
+            : `${item.clienteID}`;
+
+        const nombreCompleto =
+          movimientoFiltro === "Salida"
+            ? item.compradorNombre // Nombre del comprador
+            : item.clienteNombreCompleto;
+
         if (!mapa[key]) {
           mapa[key] = {
-            clienteID: item.clienteID,
-            clienteNombreCompleto: item.clienteNombreCompleto,
+            clienteID:
+              movimientoFiltro === "Salida" ? item.compradorID : item.clienteID, // ID dinámico
+            clienteNombreCompleto: nombreCompleto,
             tipoCafeNombre: item.tipoCafeNombre,
             cantidadTotal: 0,
             totalLps: 0,
@@ -83,11 +103,9 @@ export default function TablaCompras() {
           }
         }
 
-        // Sumar totales
         mapa[key].cantidadTotal += cantidad;
         mapa[key].totalLps += totalLps;
 
-        // Guardar detalles ya como números
         mapa[key].detalles.push({
           ...item,
           compraCantidadQQ: parseFloat(item.compraCantidadQQ || 0),
@@ -138,7 +156,7 @@ export default function TablaCompras() {
   // 🔹 Columnas de tabla principal
   const columns = [
     {
-      title: "ID Cliente",
+      title: movimientoFiltro === "Salida" ? "ID Comprador" : "ID Cliente",
       dataIndex: "clienteID",
       key: "clienteID",
       width: 50,
@@ -146,19 +164,21 @@ export default function TablaCompras() {
       align: "center",
     },
     {
-      title: "Cliente",
+      title: movimientoFiltro === "Salida" ? "Comprador" : "Cliente",
       align: "center",
       dataIndex: "clienteNombreCompleto",
       key: "clienteNombreCompleto",
-      render: (text, record) => (
-        <Link
-          href={`/private/page/transacciones/compra/vista/${record.clienteID}`}
-        >
-          {text}
-        </Link>
-      ),
+      render: (text, record) =>
+        movimientoFiltro === "Salida" ? (
+          <span>{text}</span> // Para salidas, solo mostrar texto
+        ) : (
+          <Link
+            href={`/private/page/transacciones/compra/vista/${record.clienteID}`}
+          >
+            {text}
+          </Link>
+        ),
     },
-
     {
       title: "Total (QQ)",
       align: "center",
@@ -247,12 +267,14 @@ export default function TablaCompras() {
             gap: 5,
           }}
         >
-          <ProtectedButton allowedRoles={["ADMIN", "GERENCIA", "OPERARIO"]}>
+          <ProtectedButton allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
             <Popconfirm
               title="¿Seguro que deseas EDITAR esta compra"
               onConfirm={() =>
                 router.push(
-                  `/private/page/transacciones/compra/${record.compraId}`
+                  movimientoFiltro === "Salida"
+                    ? `/private/page/transacciones/venta/${record.compraId}`
+                    : `/private/page/transacciones/compra/${record.compraId}`
                 )
               }
               okText="Sí"
@@ -301,202 +323,272 @@ export default function TablaCompras() {
     }
   };
 
+  // 🔹 Preparar datos normalizados según tipo de movimiento
+
+  // Evitar renderizado hasta detectar dispositivo
+  if (!mounted) return null;
+
   return (
     <ProtectedPage
       allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS", "AUDITORES"]}
     >
       <>
         {contextHolder}
-        <div>
-          {/* Tarjetas */}
-          <TarjetasDeTotales
-            title="Registro de Compras"
-            cards={[
-              {
-                title: "Total (QQ)",
-                value: formatNumber(totalQQ),
-              },
-              {
-                title: "Total (Lps)",
-                value: formatNumber(totalLps),
-              },
-            ]}
-          />
-
-          {/* Filtros */}
-          <Filtros
-            fields={[
-              {
-                type: "input",
-                placeholder: "Buscar por cliente",
-                value: nombreFiltro,
-                setter: setNombreFiltro,
-              },
-
-              { type: "date", value: rangoFecha, setter: setRangoFecha },
-            ]}
-          />
-
-          <Row style={{ marginBottom: 16 }}>
-            <Col xs={24} sm={6} md={4}>
-              <Button onClick={cargarDatos} block>
-                Refrescar
-              </Button>
-            </Col>
-          </Row>
-
-          {/* Tabla responsive */}
-          {isMobile ? (
-            <TarjetaMobile
+        <div
+          style={{
+            padding: isDesktop ? "24px" : "12px",
+            background: "#f5f5f5",
+            minHeight: "100vh",
+          }}
+        >
+          <Card>
+            <SectionHeader
+              isDesktop={isDesktop}
               loading={loading}
-              data={filteredData}
-              columns={[
-                {
-                  label: "Cliente",
-                  key: "clienteNombreCompleto",
-                  render: (text, record) => (
-                    <Link
-                      href={`/private/page/transacciones/compra/vista/${record.clienteID}`}
-                    >
-                      {text}
-                    </Link>
-                  ),
-                },
+              icon={<CalendarOutlined />}
+              titulo="Registro de compra y venta directa"
+              subtitulo="Resumen de compras y ventas por cliente o comprador"
+              onRefresh={cargarDatos}
+              onExportPDF={() => {
+                const inicio = rangoFecha?.[0]?.isValid()
+                  ? rangoFecha[0].toISOString()
+                  : null;
+                const fin = rangoFecha?.[1]?.isValid()
+                  ? rangoFecha[1].toISOString()
+                  : null;
 
-                {
-                  label: "Total (QQ)",
-                  key: "cantidadTotal",
-                  render: (val) => formatNumber(val),
-                },
-                {
-                  label: "Total (Lps)",
-                  key: "totalLps",
-                  render: (val) => formatNumber(val),
-                },
-              ]}
-              detailsKey="detalles"
-              detailsColumns={[
-                { label: "Compra ID", key: "compraId" },
-                { label: "Tipo Café", key: "tipoCafeNombre" },
-                {
-                  label: "Fecha",
-                  key: "compraFecha",
-                  render: (val) =>
-                    dayjs(val, "YYYY-MM-DD").format("DD/MM/YYYY"),
-                },
-                {
-                  label: "Cantidad (QQ)",
-                  key: "compraCantidadQQ",
-                  render: (val) => formatNumber(val),
-                },
-                {
-                  label: "Precio (Lps/QQ)",
-                  key: "compraPrecioQQ",
-                  render: (val) => formatNumber(val),
-                },
-                {
-                  label: "Total (Lps)",
-                  key: "totalLps",
-                  render: (val) => formatNumber(val),
-                },
-                {
-                  label: "Sacos",
-                  key: "compraTotalSacos",
-                  render: (val) => formatNumber(val),
-                },
-                { label: "Movimiento", key: "compraMovimiento" },
-                { label: "Descripción", key: "compraDescripcion" },
-                {
-                  label: "Acciones",
-                  key: "acciones",
-                  render: (_, record) => (
-                    <Dropdown
-                      menu={{
-                        items: [
-                          {
-                            key: "editar",
-                            label: (
-                              <ProtectedButton
-                                allowedRoles={["ADMIN", "GERENCIA", "OPERARIO"]}
-                              >
-                                <Popconfirm
-                                  title="¿Seguro que deseas EDITAR esta compra?"
-                                  onConfirm={() =>
-                                    router.push(
-                                      `/private/page/transacciones/compra/${record.compraId}`
-                                    )
-                                  }
-                                  okText="Sí"
-                                  cancelText="No"
-                                >
-                                  <Button type="text" block>
-                                    Editar
-                                  </Button>
-                                </Popconfirm>
-                              </ProtectedButton>
-                            ),
-                          },
-                          {
-                            key: "eliminar",
-                            label: (
-                              <ProtectedButton
-                                allowedRoles={["ADMIN", "GERENCIA"]}
-                              >
-                                <Popconfirm
-                                  title="¿Seguro que deseas eliminar esta compra?"
-                                  onConfirm={() =>
-                                    eliminarCompra(record.compraId)
-                                  }
-                                  okText="Sí"
-                                  cancelText="No"
-                                >
-                                  <Button type="text" danger block>
-                                    Eliminar
-                                  </Button>
-                                </Popconfirm>
-                              </ProtectedButton>
-                            ),
-                          },
-                        ],
-                      }}
-                      trigger={["click"]}
-                    >
-                      <Button size="small" type="default" block>
-                        Acciones
-                      </Button>
-                    </Dropdown>
-                  ),
-                },
-              ]}
-              rowKey={(item, index) =>
-                `${item.clienteID}-${item.tipoCafeID ?? index}`
-              }
-              detailsRowKey={(item) => item.compraId}
-            />
-          ) : (
-            <Table
-              columns={columns}
-              dataSource={filteredData}
-              rowKey={(row) => `${row.clienteID}-${row.detalles[0]?.compraId}`}
-              loading={loading}
-              bordered
-              size="middle"
-              scroll={{ x: true }}
-              expandable={{
-                expandedRowRender: (record) => (
-                  <Table
-                    columns={detalleColumns}
-                    dataSource={record.detalles}
-                    rowKey="compraId"
-                    pagination={false}
-                    size="small"
-                    bordered
-                    scroll={{ x: true }}
-                  />
-                ),
+                generarReportePDF(
+                  filteredData,
+                  {
+                    nombreFiltro,
+                    fechaInicio: inicio,
+                    fechaFin: fin,
+                    movimiento: movimientoFiltro,
+                  },
+                  {
+                    title: `Registro de ${
+                      movimientoFiltro === "Salida" ? "ventas" : "compras"
+                    }`,
+                  }
+                );
               }}
             />
-          )}
+
+            <TarjetasDeTotales
+              cards={[
+                {
+                  title: "Total (QQ)",
+                  value: formatNumber(totalQQ),
+                },
+                {
+                  title: "Total (Lps)",
+                  value: formatNumber(totalLps),
+                },
+              ]}
+            />
+
+            <Divider />
+            <Filtros
+              fields={[
+                {
+                  type: "input",
+                  placeholder:
+                    movimientoFiltro === "Salida"
+                      ? "Buscar por comprador"
+                      : "Buscar por cliente",
+                  value: nombreFiltro,
+                  setter: setNombreFiltro,
+                },
+                { type: "date", value: rangoFecha, setter: setRangoFecha },
+                {
+                  type: "select",
+                  label: "Movimiento",
+                  options: [
+                    { label: "Entrada (POR CLIENTE)", value: "Entrada" },
+                    { label: "Salida (POR COMPRADOR)", value: "Salida" },
+                  ],
+                  value: movimientoFiltro,
+                  setter: setMovimientoFiltro,
+                },
+              ]}
+            />
+            <Divider />
+
+            {/* Tabla responsive */}
+            {isMobile ? (
+              <TarjetaMobile
+                loading={loading}
+                data={filteredData}
+                columns={[
+                  {
+                    label: "Cliente / Comprador",
+                    key: "clienteNombreCompleto",
+                    render: (text, record) => {
+                      // ✅ Si tiene compradorID → es una venta
+                      const isVenta = !!record.compradorID;
+                      const targetId = isVenta
+                        ? record.compradorID
+                        : record.clienteID;
+                      const tipoRuta = isVenta ? "venta" : "compra";
+
+                      return (
+                        <Link
+                          href={`/private/page/transacciones/${tipoRuta}/vista/${targetId}`}
+                        >
+                          {text}
+                        </Link>
+                      );
+                    },
+                  },
+                  {
+                    label: "Total (QQ)",
+                    key: "cantidadTotal",
+                    render: (val) => formatNumber(val),
+                  },
+                  {
+                    label: "Total (Lps)",
+                    key: "totalLps",
+                    render: (val) => formatNumber(val),
+                  },
+                ]}
+                detailsKey="detalles"
+                detailsColumns={[
+                  { label: "Registro ID", key: "compraId" },
+                  { label: "Tipo Café", key: "tipoCafeNombre" },
+                  {
+                    label: "Fecha",
+                    key: "compraFecha",
+                    render: (val) =>
+                      dayjs(val, "YYYY-MM-DD").format("DD/MM/YYYY"),
+                  },
+                  {
+                    label: "Cantidad (QQ)",
+                    key: "compraCantidadQQ",
+                    render: (val) => formatNumber(val),
+                  },
+                  {
+                    label: "Precio (Lps/QQ)",
+                    key: "compraPrecioQQ",
+                    render: (val) => formatNumber(val),
+                  },
+                  {
+                    label: "Total (Lps)",
+                    key: "totalLps",
+                    render: (val) => formatNumber(val),
+                  },
+                  {
+                    label: "Sacos",
+                    key: "compraTotalSacos",
+                    render: (val) => formatNumber(val),
+                  },
+                  { label: "Movimiento", key: "compraMovimiento" },
+                  { label: "Descripción", key: "compraDescripcion" },
+                  {
+                    label: "Acciones",
+                    key: "acciones",
+                    render: (_, record) => {
+                      const isVenta = !!record.compradorID;
+                      const tipoRuta = isVenta ? "venta" : "compra";
+                      const titulo = isVenta ? "venta" : "compra";
+
+                      return (
+                        <Dropdown
+                          menu={{
+                            items: [
+                              {
+                                key: "editar",
+                                label: (
+                                  <ProtectedButton
+                                    allowedRoles={[
+                                      "ADMIN",
+                                      "GERENCIA",
+                                      "OPERARIOS",
+                                    ]}
+                                  >
+                                    <Popconfirm
+                                      title={`¿Seguro que deseas EDITAR esta ${titulo}?`}
+                                      onConfirm={() =>
+                                        router.push(
+                                          `/private/page/transacciones/${tipoRuta}/${record.compraId}`
+                                        )
+                                      }
+                                      okText="Sí"
+                                      cancelText="No"
+                                    >
+                                      <Button type="text" block>
+                                        Editar
+                                      </Button>
+                                    </Popconfirm>
+                                  </ProtectedButton>
+                                ),
+                              },
+                              {
+                                key: "eliminar",
+                                label: (
+                                  <ProtectedButton
+                                    allowedRoles={["ADMIN", "GERENCIA"]}
+                                  >
+                                    <Popconfirm
+                                      title={`¿Seguro que deseas eliminar esta ${titulo}?`}
+                                      onConfirm={() =>
+                                        eliminarCompra(record.compraId)
+                                      }
+                                      okText="Sí"
+                                      cancelText="No"
+                                    >
+                                      <Button type="text" danger block>
+                                        Eliminar
+                                      </Button>
+                                    </Popconfirm>
+                                  </ProtectedButton>
+                                ),
+                              },
+                            ],
+                          }}
+                          trigger={["click"]}
+                        >
+                          <Button size="small" type="default" block>
+                            Acciones
+                          </Button>
+                        </Dropdown>
+                      );
+                    },
+                  },
+                ]}
+                rowKey={(item, index) =>
+                  `${item.clienteID || item.compradorID}-${
+                    item.tipoCafeID ?? index
+                  }`
+                }
+                detailsRowKey={(item) => item.compraId}
+              />
+            ) : (
+              <Table
+                columns={columns}
+                dataSource={filteredData}
+                rowKey={(row) =>
+                  `${row.clienteID}-${row.detalles[0]?.compraId}`
+                }
+                loading={loading}
+                bordered
+                size="middle"
+                scroll={{ x: true }}
+                expandable={{
+                  expandedRowRender: (record) => (
+                    <Table
+                      columns={detalleColumns}
+                      dataSource={record.detalles}
+                      rowKey="compraId"
+                      pagination={false}
+                      size="small"
+                      bordered
+                      scroll={{ x: true }}
+                    />
+                  ),
+                }}
+              />
+            )}
+          </Card>
         </div>
       </>
     </ProtectedPage>

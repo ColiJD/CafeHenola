@@ -9,25 +9,40 @@ export async function GET(req) {
     "AUDITORES",
   ]);
   if (sessionOrResponse instanceof Response) return sessionOrResponse;
-  try {
-    // 🔹 Obtenemos el inventario actual desde la vista vw_inventario_actual
-    const inventario = await prisma.$queryRaw`
-      SELECT productoID, tipoCafe, totalEntradasQQ, totalSalidasQQ, saldoQQ
-      FROM vw_inventario_actual
-      ORDER BY tipoCafe
-    `;
 
-    // 🔹 Convertimos valores numéricos y fechas (si hubiera)
-    const data = inventario.map((item) => ({
-      ...item,
-      totalEntradasQQ: parseFloat(item.totalEntradasQQ),
-      totalSalidasQQ: parseFloat(item.totalSalidasQQ),
-      saldoQQ: parseFloat(item.saldoQQ),
-    }));
+  try {
+    // 🔹 Agrupamos por productoID y sumamos la cantidad total (QQ)
+    const inventario = await prisma.inventariocliente.groupBy({
+      by: ["productoID"],
+      _sum: {
+        cantidadQQ: true,
+      },
+      orderBy: {
+        productoID: "asc",
+      },
+    });
+
+    // 🔹 Obtenemos los nombres de los productos
+    const productos = await prisma.producto.findMany({
+      select: {
+        productID: true,
+        productName: true,
+      },
+    });
+
+    // 🔹 Combinamos los datos de inventario y producto
+    const data = inventario.map((item) => {
+      const producto = productos.find((p) => p.productID === item.productoID);
+      return {
+        productoID: item.productoID,
+        productName: producto?.productName || "Desconocido",
+        cantidadQQ: parseFloat(item._sum.cantidadQQ || 0),
+      };
+    });
 
     return new Response(JSON.stringify(data), { status: 200 });
   } catch (error) {
-    console.error(error);
+    console.error("❌ Error al obtener inventario:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
     });

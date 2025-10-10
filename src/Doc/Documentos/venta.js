@@ -22,11 +22,11 @@ export const exportVentaDirecta = async (formState) => {
 
   const fondoGray = await processImageToGray(fondoImg.src, 0.15);
 
-  const fecha = new Date().toLocaleDateString("es-HN", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const fechaObj = new Date();
+  const dia = String(fechaObj.getDate()).padStart(2, "0");
+  const mes = String(fechaObj.getMonth() + 1).padStart(2, "0");
+  const anio = fechaObj.getFullYear();
+  const fecha = `${dia}/${mes}/${anio}`;
 
   const scale = 1.1;
   const logo = await getLogoScaled(tasa.src, 80 * scale, 80 * scale);
@@ -37,58 +37,123 @@ export const exportVentaDirecta = async (formState) => {
   const productos = formState?.productos || [];
   const observaciones = formState?.observaciones || "N/A";
   const comprobanteID = formState?.comprobanteID || "0000";
-  const cantidadLetras = numeroALetras(formState?.total || 0);
   const formaPago = formState?.formaPago || "";
 
+  // evita repetir "lempiras" y muestra centavos correctamente
+const numeroALetrasExtendido = (num) => {
+  const entero = Math.floor(num);
+  const centavos = Math.round((num - entero) * 100);
+
+  // convierte número a letras y elimina "lempiras" si la función base ya la añade
+  let letrasEntero = numeroALetras(entero)
+    .replace(/lempiras?/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const letrasCentavos =
+    centavos > 0
+      ? numeroALetras(centavos)
+          .replace(/lempiras?/gi, "")
+          .replace(/\s+/g, " ")
+          .trim()
+      : "";
+
+  if (centavos > 0) {
+    return `${letrasEntero} lempiras con ${letrasCentavos} centavos`;
+  } else {
+    return `${letrasEntero} lempiras exactos`;
+  }
+};
+
   const drawComprobante = (offsetY = 0) => {
-    // Fondo
     const imgWidth = pageWidth * 0.9 * scale;
     const imgHeight = pageHeight * 0.45 * scale;
     const imgX = (pageWidth - imgWidth) / 2;
     const imgY = offsetY + pageHeight * 0.05;
     doc.addImage(fondoGray, "PNG", imgX, imgY, imgWidth, imgHeight);
 
-    // Logo izquierda
-    doc.addImage(logo.src, "PNG", leftMargin, 20 + offsetY, logo.width, logo.height);
+    doc.addImage(
+      logo.src,
+      "PNG",
+      leftMargin,
+      20 + offsetY,
+      logo.width,
+      logo.height
+    );
 
-    // Frijol derecha
     const frijolY = 20 + offsetY;
-    doc.addImage(frijolimg.src, "PNG", pageWidth - rightMargin - frijolimg.width, frijolY, frijolimg.width, frijolimg.height);
+    doc.addImage(
+      frijolimg.src,
+      "PNG",
+      pageWidth - rightMargin - frijolimg.width,
+      frijolY,
+      frijolimg.width,
+      frijolimg.height
+    );
 
-    // Cosecha al lado del frijol
-    doc.setFont("times", "bold");
-    doc.setFontSize(10 * scale);
-    doc.text("Cosecha", pageWidth - rightMargin - frijolimg.width, frijolY + frijolimg.height + 25);
     doc.setFont("times", "normal");
-    doc.text("2025  2026", pageWidth - rightMargin - frijolimg.width, frijolY + frijolimg.height + 40);
+    doc.setFontSize(11 * scale);
+    doc.setTextColor(0, 0, 0);
+    doc.text(
+      "Cosecha 2025 - 2026",
+      leftMargin + logo.width / 30,
+      20 + logo.height + offsetY + 22
+    );
 
-    // Encabezado
     doc.setFont("times", "bold");
     doc.setFontSize(16 * scale);
-    doc.text("BENEFICIO CAFÉ HENOLA", pageWidth / 2, 50 + offsetY, { align: "center" });
+    doc.text("BENEFICIO CAFÉ HENOLA", pageWidth / 2, 50 + offsetY, {
+      align: "center",
+    });
 
     doc.setFont("times", "normal");
     doc.setFontSize(12 * scale);
-    doc.text("COMPROBANTE DE VENTA DIRECTA", pageWidth / 2, 70 + offsetY, { align: "center" });
-    doc.text("Propietario Enri Lagos", pageWidth / 2, 85 + offsetY, { align: "center" });
-    doc.text("Teléfono: (504) 3271-3188, (504) 9877-8789", pageWidth / 2, 100 + offsetY, { align: "center" });
+    doc.text("COMPROBANTE DE VENTA DIRECTA", pageWidth / 2, 70 + offsetY, {
+      align: "center",
+    });
+    doc.text("Propietario Enri Lagos", pageWidth / 2, 85 + offsetY, {
+      align: "center",
+    });
+    doc.text("Teléfono: (504) 3271-3188, (504) 9877-8789", pageWidth / 2, 100 + offsetY, {
+      align: "center",
+    });
 
-    let startY = topMargin + 50 + offsetY;
-    doc.setFontSize(10 * scale);
-    doc.text(`Comprobante No: ${comprobanteID}`, leftMargin, startY);
-    doc.text(`Fecha: ${fecha}`, pageWidth - rightMargin, startY, { align: "right" });
+    let startY = topMargin + 80 + offsetY;
+    doc.setFont("times", "bold");
+    doc.setFontSize(12 * scale);
+    doc.setTextColor(0, 0, 0);
+
+    const textoComprador = "Comprador:";
+    doc.text(textoComprador, leftMargin, startY);
+    const anchoComprador = doc.getTextWidth(textoComprador);
+
+    doc.setTextColor(255, 0, 0);
+    doc.text(` ${comprador}`, leftMargin + anchoComprador, startY);
+
+    doc.setFont("times", "bold");
+    doc.setFontSize(14 * scale);
+    const textoBase = "Comprobante No:";
+    const anchoTextoBase = doc.getTextWidth(textoBase);
+
+    doc.setTextColor(0, 0, 0);
+    doc.text(textoBase, pageWidth - rightMargin - 120, startY);
+
+    doc.setTextColor(255, 0, 0);
+    doc.text(
+      `${comprobanteID}`,
+      pageWidth - rightMargin - 120 + anchoTextoBase + 5,
+      startY
+    );
+
+    doc.setTextColor(0, 0, 0);
 
     startY += 25;
-    doc.setFont("times", "bold");
-    doc.text(`Comprador: ${comprador}`, leftMargin, startY);
-    startY += 20;
 
-    // Tabla productos sin color, solo borde negro
     const bodyProductos = productos.map((p) => [
-      cleanText(p.nombre),
-      formatNumber(p.cantidad),
-      `L. ${formatNumber(p.precio)}`,
-      `L. ${formatNumber(p.total)}`,
+      { content: cleanText(p.nombre), styles: { textColor: [255, 0, 0] } },
+      { content: formatNumber(p.cantidad), styles: { textColor: [255, 0, 0] } },
+      { content: `L. ${formatNumber(p.precio)}`, styles: { textColor: [255, 0, 0] } },
+      { content: `L. ${formatNumber(p.total)}`, styles: { textColor: [255, 0, 0] } },
     ]);
 
     autoTable(doc, {
@@ -108,38 +173,44 @@ export const exportVentaDirecta = async (formState) => {
         lineColor: [0, 0, 0],
         lineWidth: 0.5,
       },
-      didDrawCell: (data) => {
-        doc.setDrawColor(0, 0, 0);
-        doc.setLineWidth(0.5);
-        doc.rect(data.cell.x, data.cell.y, data.cell.width, data.cell.height);
-      },
     });
 
     startY = doc.lastAutoTable.finalY + 15;
 
-    // Cantidad en letras
+    // cantidad en letras con salto automático y sin repetir “lempiras”
     doc.setFont("times", "normal");
-    doc.text(`Cantidad en Letras: ${cantidadLetras}`, leftMargin, startY);
+    const texto = "Cantidad en Letras:";
+    const valor = numeroALetrasExtendido(formState?.total || 0);
+    const maxWidth = pageWidth - leftMargin - rightMargin;
 
-    startY += 20;
+    doc.setTextColor(0, 0, 0);
+    doc.text(texto, leftMargin, startY);
 
-    // Forma de Pago
+    doc.setTextColor(255, 0, 0);
+    const lineHeight = 14;
+    const lines = doc.splitTextToSize(valor, maxWidth - 80);
+    doc.text(lines, leftMargin + doc.getTextWidth(texto) + 5, startY);
+    doc.setTextColor(0, 0, 0);
+
+    startY += lines.length * lineHeight + 5;
+
+    // forma de pago alineada
     doc.text("Forma de Pago:", leftMargin, startY);
     const formas = ["Efectivo", "Transferencia", "Cheque"];
     let x = leftMargin + 100;
     formas.forEach((f) => {
-      doc.rect(x, startY - 7, 10, 10);
-      if (formaPago === f) doc.text("X", x + 2, startY + 1);
-      doc.text(f, x + 15, startY + 1);
-      x += 100;
+      const boxY = startY - 8;
+      doc.rect(x, boxY, 10, 10);
+      if (formaPago === f) doc.text("X", x + 2.5, startY);
+      doc.text(f, x + 17, startY);
+      x += 120;
     });
 
     startY += 25;
 
-    // Observaciones
-    doc.setFont("times", "bold");
+    doc.setFont("times", "normal");
     doc.text("Observaciones:", leftMargin, startY);
-    startY += 12;
+    startY += 14;
     doc.setFont("times", "normal");
     doc.text(String(observaciones || ""), leftMargin, startY, {
       maxWidth: pageWidth - leftMargin - rightMargin,
@@ -147,25 +218,40 @@ export const exportVentaDirecta = async (formState) => {
 
     startY += 80;
 
-    // Firmas
     const firmaWidth = 150;
     const firmaY = startY;
     doc.line(leftMargin, firmaY, leftMargin + firmaWidth, firmaY);
-    doc.text("FIRMA", leftMargin, firmaY + 12);
+    doc.text("FIRMA", leftMargin + firmaWidth / 2 - 20, firmaY + 12);
 
-    doc.line(pageWidth - rightMargin - firmaWidth, firmaY, pageWidth - rightMargin, firmaY);
-    doc.text("LUGAR", pageWidth - rightMargin - firmaWidth, firmaY + 12);
+    doc.line(
+      pageWidth - rightMargin - firmaWidth + 25 - 20,
+      firmaY,
+      pageWidth - rightMargin + 25 - 20,
+      firmaY
+    );
+    doc.text("LUGAR Y FECHA", pageWidth - rightMargin - firmaWidth / 2 - 50, firmaY + 12);
 
-    doc.setFont("times", "bold");
-    doc.text("El Paraíso", pageWidth - rightMargin - firmaWidth + 20, firmaY - 5);
     doc.setFont("times", "normal");
+    doc.setTextColor(255, 0, 0);
+    doc.text(`El Paraíso  ${fecha}`, pageWidth - rightMargin - firmaWidth / 2 - 60, firmaY - 4);
+    doc.setTextColor(0, 0, 0);
 
-    // Sello sobre la firma
-    doc.addImage(selloimg.src, "PNG", leftMargin + firmaWidth / 2 - selloimg.width / 2, firmaY - selloimg.height - 5, selloimg.width, selloimg.height);
+    doc.addImage(
+      selloimg.src,
+      "PNG",
+      leftMargin + firmaWidth / 2 - selloimg.width / 2,
+      firmaY - selloimg.height + 2,
+      selloimg.width,
+      selloimg.height
+    );
 
-    // Footer
     doc.setFontSize(8 * scale);
-    doc.text("Beneficio Café Henola - El Paraíso, Honduras", pageWidth / 2, offsetY + pageHeight * 0.45, { align: "center" });
+    doc.text(
+      "Beneficio Café Henola - El Paraíso, Honduras",
+      pageWidth / 2,
+      offsetY + pageHeight * 0.45,
+      { align: "center" }
+    );
   };
 
   drawComprobante(0);

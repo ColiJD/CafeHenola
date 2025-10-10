@@ -4,6 +4,7 @@ import fondoImg from "@/img/frijoles.png";
 import frijol from "@/img/imagenfrijoles.png";
 import sello from "@/img/logo_transparente.png";
 import tasa from "@/img/tasa.png";
+import autoTable from "jspdf-autotable";
 import {
   numeroALetras,
   cleanText,
@@ -19,29 +20,52 @@ export const exportDeposito = async (formState) => {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
-  // Fondo en escala de grises
+  // Fondo gris
   const fondoGray = await processImageToGray(fondoImg.src, 0.15);
 
-  // Fecha
-  const fecha = new Date().toLocaleDateString("es-HN", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  // Fecha (solo para pie de página)
+  const fechaObj = new Date();
+  const dia = String(fechaObj.getDate()).padStart(2, "0");
+  const mes = String(fechaObj.getMonth() + 1).padStart(2, "0");
+  const anio = fechaObj.getFullYear();
+  const fecha = `${dia}/${mes}/${anio}`;
 
-  // Escalamos imágenes
+  // Escalar imágenes
   const logo = await getLogoScaled(tasa.src, 80, 80);
   const frijolimg = await getLogoScaled(frijol.src, 80, 80);
   const selloimg = await getLogoScaled(sello.src, 60, 60);
 
-  // Datos del comprobante
+  // Datos
   const cliente = formState?.cliente?.label || "Cliente";
+  const productos = formState?.productos || [];
   const cantidad = formState?.total || 0;
   const observaciones = formState?.observaciones || "N/A";
   const comprobanteID = formState?.comprobanteID || "0000";
-  const cantidadLetras = numeroALetras(cantidad, "QQ de oro");
 
-  // Función que dibuja un comprobante
+  // 🔧 Nueva función sin la palabra
+  const numeroALetrasQQ = (num) => {
+    const entero = Math.floor(num);
+    const decimales = Math.round((num - entero) * 100);
+
+    // Elimina “lempiras” o “lempira” de los textos
+    let textoEntero = numeroALetras(entero)
+      .replace(/lempiras?/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (decimales > 0) {
+      let textoDecimales = numeroALetras(decimales)
+        .replace(/lempiras?/gi, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      return `${textoEntero} punto ${textoDecimales} QQ de oro`;
+    } else {
+      return `${textoEntero} QQ de oro`;
+    }
+  };
+
+  const cantidadLetras = numeroALetrasQQ(cantidad);
+
   const drawComprobante = (offsetY = 0) => {
     // Fondo
     const imgWidth = pageWidth * 0.6;
@@ -60,7 +84,7 @@ export const exportDeposito = async (formState) => {
       logo.height
     );
 
-    // Imagen frijol a la derecha
+    // cafe derecha
     const frijolY = 20 + offsetY;
     doc.addImage(
       frijolimg.src,
@@ -69,21 +93,6 @@ export const exportDeposito = async (formState) => {
       frijolY,
       frijolimg.width,
       frijolimg.height
-    );
-
-    // Cosecha junto a frijol
-    doc.setFont("times", "bold");
-    doc.setFontSize(12);
-    doc.text(
-      "Cosecha",
-      pageWidth - rightMargin - frijolimg.width,
-      frijolY + frijolimg.height + 20
-    );
-    doc.setFont("times", "normal");
-    doc.text(
-      "2025  2026",
-      pageWidth - rightMargin - frijolimg.width,
-      frijolY + frijolimg.height + 30
     );
 
     // Encabezado
@@ -102,34 +111,78 @@ export const exportDeposito = async (formState) => {
       align: "center",
     });
     doc.setFontSize(12);
-    doc.text("Teléfono: (504) 3271-3188, (504) 9877-8789", pageWidth / 2, 115 + offsetY, {
-      align: "center",
-    });
+    doc.text(
+      "Teléfono: (504) 3271-3188, (504) 9877-8789",
+      pageWidth / 2,
+      115 + offsetY,
+      {
+        align: "center",
+      }
+    );
 
-    // Datos
-    let startY = topMargin + 60 + offsetY;
+    // Cosecha
     doc.setFont("times", "normal");
-    doc.text(`Comprobante No: ${comprobanteID}`, leftMargin, startY);
-    doc.text(`Fecha: ${fecha}`, pageWidth - rightMargin, startY, {
-      align: "right",
-    });
+    doc.text("Cosecha 2025 - 2026", leftMargin, 110 + offsetY);
 
-    startY += 30;
-    doc.setFont("times", "bold");
+    // Productor y comprobante alineados
+    let startY = topMargin + 70 + offsetY;
+    doc.setFont("times", "normal");
     doc.text(`Productor: ${cliente}`, leftMargin, startY);
 
-    startY += 20;
     doc.setFont("times", "normal");
+    const textoBase = "Comprobante No:";
+    const anchoTextoBase = doc.getTextWidth(textoBase);
+    doc.text(textoBase, pageWidth - rightMargin - 80, startY);
+
+    // Número del comprobante en rojo
+    doc.setTextColor(255, 0, 0);
     doc.text(
-      `Cantidad Depositada: ${formatNumber(cantidad)} QQ de oro`,
-      leftMargin,
+      `${comprobanteID}`,
+      pageWidth - rightMargin - 80 + anchoTextoBase + 5,
       startY
     );
-    startY += 20;
-    doc.text(`En Letras: ${cantidadLetras}`, leftMargin, startY);
+    doc.setTextColor(0, 0, 0);
+
+    // Tabla
+    startY += 15;
+    const bodyProductos = productos.map((p) => [
+      { content: cleanText(p.nombre), styles: { textColor: [255, 0, 0] } },
+      { content: formatNumber(p.cantidad), styles: { textColor: [255, 0, 0] } },
+    ]);
+
+    autoTable(doc, {
+      startY,
+      margin: { left: leftMargin, right: rightMargin },
+      head: [["Producto", "Cantidad (QQ)"]],
+      body: bodyProductos,
+      styles: {
+        font: "times",
+        fontSize: 11,
+        lineColor: [0, 0, 0],
+        lineWidth: 0.5,
+      },
+      headStyles: {
+        fillColor: [255, 255, 255],
+        textColor: [0, 0, 0],
+        lineColor: [0, 0, 0],
+        lineWidth: 0.5,
+      },
+    });
+
+    startY = doc.lastAutoTable.finalY + 20;
+
+    // Cantidad en letras
+    doc.setFont("times", "normal");
+    doc.setTextColor(0, 0, 0);
+    const texto = "Cantidad en Letras:";
+    const anchoTexto = doc.getTextWidth(texto);
+    doc.text(texto, leftMargin, startY);
+    doc.setTextColor(255, 0, 0);
+    doc.text(cantidadLetras, leftMargin + anchoTexto + 5, startY);
+    doc.setTextColor(0, 0, 0);
 
     // Observaciones
-    startY += 40;
+    startY += 30;
     doc.setFont("times", "bold");
     doc.text("Observaciones:", leftMargin, startY);
     startY += 15;
@@ -141,38 +194,30 @@ export const exportDeposito = async (formState) => {
     // Firmas
     startY += 80;
     const firmaWidth = 180;
-
-    // Línea y texto firma cliente
     doc.line(leftMargin, startY, leftMargin + firmaWidth, startY);
-    doc.text("FIRMA", leftMargin, startY + 15);
+    doc.text("FIRMA", leftMargin + 70, startY + 15);
 
-    // Sello sobre la firma cliente
+    // Sello
     doc.addImage(
       selloimg.src,
       "PNG",
       leftMargin + firmaWidth / 2 - selloimg.width / 2,
-      startY - selloimg.height - 5,
+      startY - selloimg.height + 3,
       selloimg.width,
       selloimg.height
     );
 
-    // Línea y texto lugar
+    // Lugar y Fecha
     doc.line(
-      pageWidth - rightMargin - firmaWidth,
+      pageWidth - rightMargin - (firmaWidth - 25),
       startY,
       pageWidth - rightMargin,
       startY
     );
-    doc.text("LUGAR", pageWidth - rightMargin - firmaWidth, startY + 15);
-
-    // Texto "El Paraíso" sobre la línea de LUGAR
-    doc.setFont("times", "bold");
-    doc.text(
-      "El Paraíso",
-      pageWidth - rightMargin - firmaWidth + 40,
-      startY - 5
-    );
-    doc.setFont("times", "normal");
+    doc.setTextColor(255, 0, 0);
+    doc.text(`El Paraíso  ${fecha}`, pageWidth - rightMargin - 140, startY - 4);
+    doc.setTextColor(0, 0, 0);
+    doc.text("LUGAR Y FECHA", pageWidth - rightMargin - 130, startY + 15);
 
     // Footer
     doc.setFontSize(10);
@@ -184,11 +229,10 @@ export const exportDeposito = async (formState) => {
     );
   };
 
-  // Dibuja dos comprobantes en la misma hoja
   drawComprobante(0);
   drawComprobante(pageHeight / 2);
 
-  // Línea punteada de corte
+  // Línea de corte
   doc.setLineDash([5, 3]);
   doc.line(40, pageHeight / 2, pageWidth - 40, pageHeight / 2);
   doc.setLineDash();

@@ -2,7 +2,7 @@ import JsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { formatNumber } from "@/components/Formulario";
 import fondoImg from "@/img/frijoles.png";
-import frijol from "@/img/imagenfrijoles.png";
+import cafe from "@/img/imagenfrijoles.png";
 import sello from "@/img/logo_transparente.png";
 import tasa from "@/img/tasa.png";
 import {
@@ -31,7 +31,7 @@ export const exportCompraDirecta = async (formState) => {
 
   const scale = 1.1;
   const logo = await getLogoScaled(tasa.src, 80 * scale, 80 * scale);
-  const frijolimg = await getLogoScaled(frijol.src, 80 * scale, 80 * scale);
+  const cafeimg = await getLogoScaled(cafe.src, 80 * scale, 80 * scale);
   const selloimg = await getLogoScaled(sello.src, 50 * scale, 50 * scale);
 
   const cliente = formState?.cliente?.label || "Cliente";
@@ -61,26 +61,22 @@ export const exportCompraDirecta = async (formState) => {
     );
 
     // logo derecha
-    const frijolY = 20 + offsetY;
+    const cafeY = 20 + offsetY;
     doc.addImage(
-      frijolimg.src,
+      cafeimg.src,
       "PNG",
-      pageWidth - rightMargin - frijolimg.width,
-      frijolY,
-      frijolimg.width,
-      frijolimg.height
+      pageWidth - rightMargin - cafeimg.width,
+      cafeY,
+      cafeimg.width,
+      cafeimg.height
     );
 
- //  Cosecha 
-doc.setFont("times", "normal");
-doc.setFontSize(11 * scale);
-doc.setTextColor(0, 0, 0);
+    //  Cosecha
+    doc.setFont("times", "normal");
+    doc.setFontSize(11 * scale);
+    doc.setTextColor(0, 0, 0);
 
-doc.text(
-  "Cosecha 2025 - 2026",
-  leftMargin,              
-  topMargin + 80 + offsetY - 18 
-);
+    doc.text("Cosecha 2025 - 2026", leftMargin, topMargin + 80 + offsetY - 18);
 
     //Encabezado central
     doc.setFont("times", "bold");
@@ -104,7 +100,7 @@ doc.text(
       { align: "center" }
     );
 
-    // Productor y Comprobante en la misma línea 
+    // Productor y Comprobante en la misma línea
     let startY = topMargin + 80 + offsetY;
     doc.setFont("times", "normal");
 
@@ -123,12 +119,18 @@ doc.text(
 
     startY += 20;
 
-    //Tabla de productos 
+    //Tabla de productos
     const bodyProductos = productos.map((p) => [
       { content: cleanText(p.nombre), styles: { textColor: [255, 0, 0] } },
       { content: formatNumber(p.cantidad), styles: { textColor: [255, 0, 0] } },
-      { content: `L. ${formatNumber(p.precio)}`, styles: { textColor: [255, 0, 0] } },
-      { content: `L. ${formatNumber(p.total)}`, styles: { textColor: [255, 0, 0] } },
+      {
+        content: `L. ${formatNumber(p.precio)}`,
+        styles: { textColor: [255, 0, 0] },
+      },
+      {
+        content: `L. ${formatNumber(p.total)}`,
+        styles: { textColor: [255, 0, 0] },
+      },
     ]);
 
     autoTable(doc, {
@@ -186,29 +188,25 @@ doc.text(
 
     startY += 80;
 
-// Firmas y lugar/fecha 
-const firmaWidth = 150;
-const firmaY = startY;
+    // Firmas y lugar/fecha
+    const firmaWidth = 150;
+    const firmaY = startY;
 
-// Línea de firma (izquierda)
-doc.line(leftMargin, firmaY, leftMargin + firmaWidth, firmaY);
-doc.text("FIRMA", leftMargin + firmaWidth / 2 - 20, firmaY + 12);
+    // Línea de firma (izquierda)
+    doc.line(leftMargin, firmaY, leftMargin + firmaWidth, firmaY);
+    doc.text("FIRMA", leftMargin + firmaWidth / 2 - 20, firmaY + 12);
 
-// Línea de lugar y fecha 
-const lugarX = pageWidth - rightMargin - firmaWidth - 20; 
-doc.line(lugarX + 25, firmaY, lugarX + firmaWidth + 25, firmaY);
+    // Línea de lugar y fecha
+    const lugarX = pageWidth - rightMargin - firmaWidth - 20;
+    doc.line(lugarX + 25, firmaY, lugarX + firmaWidth + 25, firmaY);
 
-// Texto “LUGAR Y FECHA”
-doc.text("LUGAR Y FECHA", lugarX + firmaWidth / 2 - 40, firmaY + 12);
+    // Texto “LUGAR Y FECHA”
+    doc.text("LUGAR Y FECHA", lugarX + firmaWidth / 2 - 40, firmaY + 12);
 
-doc.setFont("times", "normal");
-doc.setTextColor(255, 0, 0);
-doc.text(
-  `El Paraíso  ${fecha}`,
-  lugarX + firmaWidth / 2 - 45, // mantiene el centrado pero ya desplazado junto con la línea
-  firmaY - 2
-);
-doc.setTextColor(0, 0, 0);
+    doc.setFont("times", "normal");
+    doc.setTextColor(255, 0, 0);
+    doc.text(`El Paraíso  ${fecha}`, lugarX + firmaWidth / 2 - 45, firmaY - 4);
+    doc.setTextColor(0, 0, 0);
 
     doc.addImage(
       selloimg.src,
@@ -236,6 +234,9 @@ doc.setTextColor(0, 0, 0);
   doc.line(40, pageHeight / 2, pageWidth - 40, pageHeight / 2);
   doc.setLineDash();
 
-  const nombreArchivo = `CompraDirecta_${cliente.replace(/\s+/g, "_")}_${comprobanteID}.pdf`;
+  const nombreArchivo = `CompraDirecta_${cliente.replace(
+    /\s+/g,
+    "_"
+  )}_${comprobanteID}.pdf`;
   doc.save(nombreArchivo);
 };

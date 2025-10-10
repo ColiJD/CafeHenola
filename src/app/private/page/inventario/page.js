@@ -118,17 +118,11 @@ export default function InventarioActualPage() {
         title="Transferir Inventario"
         icon={<PlusOutlined />}
         top={20}
-        right={30}
+        right={50}
         route="/private/page/inventario/transferir"
       />
       {contextHolder}
-      <div
-        style={{
-          padding: isDesktop ? "24px" : "12px",
-          background: "#f5f5f5",
-          minHeight: "100vh",
-        }}
-      >
+      <div>
         <Card>
           <SectionHeader
             isDesktop={isDesktop}

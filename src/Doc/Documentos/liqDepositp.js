@@ -12,7 +12,6 @@ import {
   getLogoScaled,
 } from "@/Doc/Documentos/funcionesdeDocumentos";
 
-/** Genera el PDF de liquidación de depósito */
 export const exportLiquidacionDeposito = async (formState) => {
   const doc = new JsPDF({ unit: "pt", format: "letter" });
   const leftMargin = 50;
@@ -23,28 +22,26 @@ export const exportLiquidacionDeposito = async (formState) => {
 
   const fondoGray = await processImageToGray(fondoImg.src, 0.15);
 
-  const fecha = new Date().toLocaleDateString("es-HN", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-
   const scale = 0.9;
   const logo = await getLogoScaled(tasa.src, 80 * scale, 80 * scale);
   const frijolimg = await getLogoScaled(frijol.src, 80 * scale, 80 * scale);
   const selloimg = await getLogoScaled(sello.src, 50 * scale, 50 * scale);
 
-  const cliente = formState?.cliente?.label || "Cliente";
   const tipoCafe = formState?.tipoCafe || "Tipo de Café";
-  const saldoDisponible = formState?.saldoDisponible || 0;
   const cantidadLiquidar = formState?.cantidadLiquidar || 0;
   const totalPagar = formState?.totalPagar || 0;
-  const saldoPendiente =
-    formState?.saldoPendiente ?? saldoDisponible - cantidadLiquidar;
   const descripcion = formState?.descripcion || "N/A";
   const comprobanteID = formState?.comprobanteID || "0000";
   const cantidadLetras = numeroALetras(cantidadLiquidar, "QQ de oro");
   const formaPago = formState?.formaPago || "";
+
+  // ✅ Aquí se corrige: el nombre del productor se toma desde `cliente`
+  const productor =
+    (typeof formState?.cliente === "object"
+      ? formState?.cliente?.label
+      : formState?.cliente) || "Nombre del Productor";
+
+  const fechaActual = new Date().toLocaleDateString("es-HN");
 
   const drawComprobante = (offsetY = 0) => {
     // Fondo centrado
@@ -75,22 +72,7 @@ export const exportLiquidacionDeposito = async (formState) => {
       frijolimg.height
     );
 
-    // Cosecha al lado del frijol
-    doc.setFont("times", "bold");
-    doc.setFontSize(10 * scale);
-    doc.text(
-      "Cosecha",
-      pageWidth - rightMargin - frijolimg.width,
-      frijolY + frijolimg.height + 10
-    );
-    doc.setFont("times", "normal");
-    doc.text(
-      "2025  2026",
-      pageWidth - rightMargin - frijolimg.width,
-      frijolY + frijolimg.height + 25
-    );
-
-    // Encabezado
+    // Encabezado central
     doc.setFont("times", "bold");
     doc.setFontSize(16 * scale);
     doc.text("BENEFICIO CAFÉ HENOLA", pageWidth / 2, 50 + offsetY, {
@@ -105,41 +87,57 @@ export const exportLiquidacionDeposito = async (formState) => {
     doc.text("Propietario Enri Lagos", pageWidth / 2, 85 + offsetY, {
       align: "center",
     });
-    doc.text("Teléfono: (504) 3271-3188,(504) 9877-8789", pageWidth / 2, 100 + offsetY, {
-      align: "center",
-    });
+    doc.text(
+      "Teléfono: (504) 3271-3188,(504) 9877-8789",
+      pageWidth / 2,
+      100 + offsetY,
+      { align: "center" }
+    );
 
-    // Datos principales
-    let startY = topMargin + 60 + offsetY;
-    doc.setFontSize(10 * scale);
-    doc.text(`Comprobante No: ${comprobanteID}`, leftMargin, startY);
-    doc.text(`Fecha: ${fecha}`, pageWidth - rightMargin, startY, {
-      align: "right",
-    });
-    startY += 25;
+    // === Comprobante No. arriba a la derecha (en rojo y grande) ===
+    doc.setFont("times", "bold");
+    doc.setFontSize(14 * scale);
+    doc.setTextColor(0, 0, 0);
+    doc.text(
+      "Comprobante No:",
+      pageWidth - rightMargin - 130,
+      frijolY + frijolimg.height + 15
+    );
+    doc.setFontSize(16 * scale);
+    doc.setTextColor(255, 0, 0);
+    doc.text(
+      `${comprobanteID}`,
+      pageWidth - rightMargin - 15,
+      frijolY + frijolimg.height + 15,
+      { align: "right" }
+    );
 
-    // Tabla sin colores, solo bordes
+    // === Cosecha y Productor debajo ===
+    doc.setFontSize(11 * scale);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Cosecha 2025 - 2026`, leftMargin, topMargin + 60 + offsetY);
+    doc.text(`Productor: ${productor}`, leftMargin, topMargin + 80 + offsetY);
+
+    let startY = topMargin + 110 + offsetY;
+
+    // === Tabla con texto en rojo ===
     autoTable(doc, {
       startY,
       margin: { left: leftMargin, right: rightMargin },
       head: [
-        [
-          "Cliente",
-          "Tipo de Café",
-          "Saldo Disponible (QQ)",
-          "Cantidad a Liquidar (QQ)",
-          "Total a Pagar (Lps)",
-          "Saldo Restante (QQ)",
-        ],
+        ["Tipo de Café", "Cantidad a Liquidar (QQ)", "Total a Pagar (Lps)"],
       ],
       body: [
         [
-          cliente,
-          tipoCafe,
-          formatNumber(saldoDisponible),
-          formatNumber(cantidadLiquidar),
-          `L. ${formatNumber(totalPagar)}`,
-          formatNumber(saldoPendiente),
+          { content: tipoCafe, styles: { textColor: [255, 0, 0] } },
+          {
+            content: formatNumber(cantidadLiquidar),
+            styles: { textColor: [255, 0, 0] },
+          },
+          {
+            content: `L. ${formatNumber(totalPagar)}`,
+            styles: { textColor: [255, 0, 0] },
+          },
         ],
       ],
       styles: {
@@ -159,62 +157,75 @@ export const exportLiquidacionDeposito = async (formState) => {
     startY = doc.lastAutoTable.finalY + 15;
 
     // Cantidad en letras
-    doc.text(`Cantidad en Letras: ${cantidadLetras}`, leftMargin, startY);
+    doc.setTextColor(0, 0, 0);
+    doc.text(`Cantidad en Letras:`, leftMargin, startY);
+    doc.setTextColor(255, 0, 0);
+    doc.text(`${cantidadLetras}`, leftMargin + 90, startY);
+    doc.setTextColor(0, 0, 0);
+
     startY += 20;
 
     // Forma de Pago
     doc.text("Forma de Pago:", leftMargin, startY);
     const formas = ["Efectivo", "Transferencia", "Cheque"];
     let x = leftMargin + 100;
+    doc.setTextColor(255, 0, 0);
     formas.forEach((f) => {
       doc.rect(x, startY - 7, 10, 10);
       if (formaPago === f) doc.text("X", x + 2, startY + 1);
       doc.text(f, x + 15, startY + 1);
       x += 100;
     });
+    doc.setTextColor(0, 0, 0);
 
     startY += 25;
 
     // Descripción
     doc.setFont("times", "bold");
     doc.text("Descripción:", leftMargin, startY);
-    startY += 12;
+    startY += 18;
     doc.setFont("times", "normal");
     doc.text(String(descripcion || ""), leftMargin, startY, {
       maxWidth: pageWidth - leftMargin - rightMargin,
     });
+
     startY += 80;
 
     // Firmas
     const firmaWidth = 150;
     const firmaY = startY;
     doc.line(leftMargin, firmaY, leftMargin + firmaWidth, firmaY);
-    doc.text("FIRMA", leftMargin, firmaY + 12);
+    doc.text("FIRMA", leftMargin + firmaWidth / 2 - 20, firmaY + 12);
 
-    // Línea para lugar
+    // Línea y texto lugar
     doc.line(
       pageWidth - rightMargin - firmaWidth,
       firmaY,
       pageWidth - rightMargin,
       firmaY
     );
-    doc.text("LUGAR", pageWidth - rightMargin - firmaWidth, firmaY + 12);
-
-    // Texto "El Paraíso"
-    doc.setFont("times", "bold");
     doc.text(
-      "El Paraíso",
-      pageWidth - rightMargin - firmaWidth + 20,
-      firmaY - 5
+      "LUGAR Y FECHA",
+      pageWidth - rightMargin - firmaWidth / 2 - 45,
+      firmaY + 12
     );
-    doc.setFont("times", "normal");
 
-    // Sello sobre la firma
+    // El Paraíso + fecha
+    doc.setFont("times", "normal");
+    doc.setTextColor(255, 0, 0);
+    doc.text(
+      `El Paraíso  ${fechaActual}`,
+      pageWidth - rightMargin - firmaWidth / 2 - 50,
+      firmaY - 4
+    );
+    doc.setTextColor(0, 0, 0);
+
+    // Sello subido (más pegado a la línea)
     doc.addImage(
       selloimg.src,
       "PNG",
       leftMargin + firmaWidth / 2 - selloimg.width / 2,
-      firmaY - selloimg.height - 5,
+      firmaY - selloimg.height + 1,
       selloimg.width,
       selloimg.height
     );
@@ -229,7 +240,7 @@ export const exportLiquidacionDeposito = async (formState) => {
     );
   };
 
-  // Dos comprobantes por página
+  // Doble comprobante
   drawComprobante(0);
   drawComprobante(pageHeight / 2);
 
@@ -238,9 +249,7 @@ export const exportLiquidacionDeposito = async (formState) => {
   doc.line(40, pageHeight / 2, pageWidth - 40, pageHeight / 2);
   doc.setLineDash();
 
-  const nombreArchivo = `Liquidacion_${cliente.replace(
-    /\s+/g,
-    "_"
-  )}_${comprobanteID}.pdf`;
+  const nombreArchivo = `Liquidacion_${comprobanteID}.pdf`;
   doc.save(nombreArchivo);
 };
+

@@ -135,12 +135,12 @@ export async function GET(req) {
   try {
     // Usamos query raw para traer todo de la vista
     const depositos = await prisma.$queryRawUnsafe(`
-      SELECT * FROM vw_saldodepositos
+      SELECT * FROM vw_SaldoDepositos
     `);
 
     return new Response(JSON.stringify(depositos), { status: 200 });
   } catch (error) {
-    console.error("Error al obtener vista vw_saldodepositos:", error);
+    console.error("Error al obtener vista vw_SaldoDepositos:", error);
     return new Response(JSON.stringify({ error: "Error interno" }), {
       status: 500,
     });

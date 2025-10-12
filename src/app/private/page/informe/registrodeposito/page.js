@@ -1,7 +1,15 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Table, Card, Typography, Divider, Popconfirm, Button } from "antd";
+import { useState, useMemo, useRef } from "react";
+import {
+  Table,
+  Card,
+  Typography,
+  Divider,
+  Popconfirm,
+  Button,
+  message,
+} from "antd";
 import EstadisticasCards from "@/components/ReportesElement/DatosEstadisticos";
 import dayjs from "dayjs";
 import TarjetaMobile from "@/components/TarjetaMobile";
@@ -20,14 +28,16 @@ const { Title, Text } = Typography;
 export default function ReporteRegistroDeposito() {
   const hoy = [dayjs().startOf("day"), dayjs().endOf("day")];
   const { mounted, isDesktop } = useClientAndDesktop();
+  const [messageApi, contextHolder] = message.useMessage();
   const [nombreFiltro, setNombreFiltro] = useState("");
+  const messageApiRef = useRef(messageApi);
 
   const {
     data,
     loading,
     rangoFechas,
     onFechasChange,
-    contextHolder,
+
     fetchData,
   } = useFetchReport("/api/deposito/registrodeposito", hoy);
 
@@ -136,7 +146,7 @@ export default function ReporteRegistroDeposito() {
             gap: 5,
           }}
         >
-          <ProtectedButton allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+          {/* <ProtectedButton allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
             <Popconfirm
               title="¿Seguro que deseas EDITAR esta compra"
               onConfirm={() =>
@@ -153,11 +163,11 @@ export default function ReporteRegistroDeposito() {
                 Editar
               </Button>
             </Popconfirm>
-          </ProtectedButton>
+          </ProtectedButton> */}
           <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
             <Popconfirm
-              title="¿Seguro que deseas eliminar esta compra"
-              onConfirm={() => eliminarCompra(record.compraId)}
+              title="¿Seguro que deseas eliminar este depósito?"
+              onConfirm={() => eliminarDeposito(record.id)}
               okText="Sí"
               cancelText="No"
             >
@@ -170,6 +180,28 @@ export default function ReporteRegistroDeposito() {
       ),
     },
   ];
+
+  const eliminarDeposito = async (id) => {
+    try {
+      const res = await fetch(`/api/deposito/${id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        messageApiRef.current.success("Depósito eliminado correctamente");
+        // Recargar datos después de eliminar
+        fetchData();
+      } else {
+        messageApiRef.current.error(
+          data.error || "Error al eliminar el depósito"
+        );
+      }
+    } catch (error) {
+      console.error(error);
+      messageApiRef.current.error("Error al eliminar el depósito");
+    }
+  };
 
   // Columnas Mobile
   const columnasMobile = [
@@ -328,8 +360,8 @@ export default function ReporteRegistroDeposito() {
 
                     <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
                       <Popconfirm
-                        title="¿Seguro que deseas eliminar esta compra?"
-                        onConfirm={() => eliminarCompra(item.compraId)}
+                        title="¿Seguro que deseas eliminar este depósito?"
+                        onConfirm={() => eliminarDeposito(item.depositoID)}
                         okText="Sí"
                         cancelText="No"
                       >

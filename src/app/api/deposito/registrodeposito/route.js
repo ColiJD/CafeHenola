@@ -15,8 +15,7 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const fechaInicio =
       searchParams.get("desde") || searchParams.get("fechaInicio");
-    const fechaFin =
-      searchParams.get("hasta") || searchParams.get("fechaFin");
+    const fechaFin = searchParams.get("hasta") || searchParams.get("fechaFin");
 
     const inicio = fechaInicio ? new Date(fechaInicio) : new Date();
     const fin = fechaFin ? new Date(fechaFin) : new Date();
@@ -25,15 +24,17 @@ export async function GET(req) {
     const depositos = await prisma.deposito.findMany({
       where: {
         depositoFecha: { gte: inicio, lte: fin },
+        NOT: { depositoMovimiento: "Anulado" },
       },
       select: {
         depositoID: true,
         depositoFecha: true,
         depositoCantidadQQ: true,
         depositoRetencionQQ: true,
+        depositoMovimiento: true,
         depositoDescripcion: true,
         depositoTipoCafe: true,
-        estado: true, 
+        estado: true,
         cliente: {
           select: {
             clienteID: true,
@@ -68,6 +69,7 @@ export async function GET(req) {
               d.cliente?.clienteApellido || ""
             }`.trim() || "Sin nombre",
           tipoCafe: d.producto?.productName || "Sin especificar",
+          movimiento: d.depositoMovimiento || "—",
           cantidadQQ: Number(d.depositoCantidadQQ || 0),
           retencionQQ: Number(d.depositoRetencionQQ || 0),
           estadoDeposito: d.estado || "Pendiente", // ✅ Mostrar siempre el estado

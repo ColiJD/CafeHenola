@@ -84,15 +84,15 @@ export const exportContratoCafe = async (formState) => {
     align: "center",
   });
 
-  // === 1) Cosecha pasa a la posición del Contrato No. (arriba-izquierda) ===
+  //  Cosecha pasa a la posición del Contrato No.
   let startY = topMargin + 80;
   doc.setFont("times", "bold");
   doc.setFontSize(10 * scale);
   doc.text("Cosecha 2025 - 2026", leftMargin, startY);
 
-  // === 2) Contrato No. pasa donde estaba Cosecha (debajo del frijol a la derecha) ===
+  //Contrato No. pasa donde estaba Cosecha 
   const cosechaX = pageWidth - rightMargin - frijolimg.width;
-  const cosechaY = frijolY + frijolimg.height + 20; // zona donde antes estaba "Cosecha"
+  const cosechaY = frijolY + frijolimg.height + 20; 
   doc.setFont("times", "bold");
   doc.setFontSize(10 * scale);
   const labelContrato = "Contrato No:";
@@ -101,10 +101,6 @@ export const exportContratoCafe = async (formState) => {
   doc.setTextColor(255, 0, 0);
   doc.text(` ${contratoID}`, cosechaX + wLabelContrato, cosechaY);
   doc.setTextColor(0, 0, 0);
-
-  // (Eliminado: fecha arriba) —> la fecha irá abajo en LUGAR Y FECHA
-
-  // Texto introductorio
   startY += 25;
   doc.setFont("times", "normal");
   doc.text(
@@ -114,7 +110,7 @@ export const exportContratoCafe = async (formState) => {
     { maxWidth: pageWidth - leftMargin - rightMargin }
   );
 
-  // === 3) Productor (etiqueta negra + nombre en rojo) ===
+  // Productor 
   startY += 25;
   doc.setFont("times", "bold");
   const labelProd = "Productor:";
@@ -133,7 +129,7 @@ export const exportContratoCafe = async (formState) => {
     { maxWidth: pageWidth - leftMargin - rightMargin }
   );
 
-  // === 4) Tabla con contenido en rojo (encabezados negros) ===
+  //Tabla con contenido
   autoTable(doc, {
     startY: startY + 40,
     margin: { left: leftMargin, right: rightMargin },
@@ -152,7 +148,7 @@ export const exportContratoCafe = async (formState) => {
       lineWidth: 0.5,
     },
     bodyStyles: {
-      textColor: [255, 0, 0], // contenido en rojo
+      textColor: [255, 0, 0], 
     },
   });
 
@@ -194,14 +190,14 @@ export const exportContratoCafe = async (formState) => {
   });
 
   // === BLOQUE DE FIRMAS (centrado y más abajo) ===
-  const firmaOffsetY = 90;     // ⬇️ Bajar todo el bloque (aumenta para más abajo)
-  const firmaWidth   = 160;    // ↔️ Largo de cada línea de firma
-  const gapBetween   = 80;     // ↔️ Separación entre las dos firmas
+  const firmaOffsetY = 90;     
+  const firmaWidth   = 160;   
+  const gapBetween   = 80;     
 
   const centerX = pageWidth / 2;
-  const leftX   = centerX - gapBetween - firmaWidth; // inicio línea izquierda (FIRMA)
-  const rightX  = centerX + gapBetween;              // inicio línea derecha (LUGAR Y FECHA)
-  const firmaY  = startY + firmaOffsetY;             // altura final del bloque
+  const leftX   = centerX - gapBetween - firmaWidth; 
+  const rightX  = centerX + gapBetween;              
+  const firmaY  = startY + firmaOffsetY;             
 
  // Línea y texto: FIRMA (centrado)
  doc.line(leftX, firmaY, leftX + firmaWidth, firmaY);

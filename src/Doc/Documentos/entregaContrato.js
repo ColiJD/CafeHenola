@@ -35,7 +35,7 @@ export const exportEntregaContrato = async (formState) => {
   const formaPago = formState?.formaPago || "";
   const observaciones = formState?.observaciones || "N/A";
 
-  // ✅ Número a letras extendido (con centavos en letras)
+  // Nº a letras extendido (maneja centavos en letras)
   const numeroALetrasExtendido = (num) => {
     const entero = Math.floor(num);
     const centavos = Math.round((num - entero) * 100);
@@ -96,7 +96,7 @@ export const exportEntregaContrato = async (formState) => {
     doc.text("Cosecha 2025 - 2026", leftMargin, topMargin + 60 + offsetY);
     doc.setFont("times", "normal");
 
-    // ✅ Productor negro + nombre rojo
+    // Productor negro + nombre rojo
     doc.text("Productor:", leftMargin, topMargin + 80 + offsetY);
     const anchoTexto = doc.getTextWidth("Productor:");
     doc.setTextColor(255, 0, 0);
@@ -135,7 +135,7 @@ export const exportEntregaContrato = async (formState) => {
 
     startY = doc.lastAutoTable.finalY + 30;
 
-    // ✅ Total en letras ajustable automáticamente
+    // Total en letras 
     doc.setFont("times", "bold");
     doc.text("Total en Letras:", leftMargin, startY);
     doc.setFont("times", "normal");
@@ -180,46 +180,48 @@ export const exportEntregaContrato = async (formState) => {
     doc.text(String(observaciones || ""), leftMargin, startY, {
       maxWidth: pageWidth - leftMargin - rightMargin,
     });
-
-    // Firmas
+    // ======== BLOQUE DE FIRMAS (ajustado) ========
     const mitadAltura = pageHeight / 2;
     const firmaBase = offsetY + mitadAltura - 25;
     const firmaWidth = 150;
-    const firmaY = firmaBase;
-
+    const firmaY = firmaBase - 8; 
     doc.setFont("times", "bold");
     doc.line(leftMargin, firmaY, leftMargin + firmaWidth, firmaY);
-    doc.text("FIRMA", leftMargin + 55, firmaY + 12);
-
+    doc.text("FIRMA", leftMargin + 55, firmaY + 14); 
     doc.line(pageWidth - rightMargin - firmaWidth, firmaY, pageWidth - rightMargin, firmaY);
-    doc.text("LUGAR Y FECHA", pageWidth - rightMargin - 140, firmaY + 12);
-
+    doc.text("LUGAR Y FECHA", pageWidth - rightMargin - 140, firmaY + 14); 
     doc.setFont("times", "normal");
     doc.setFontSize(9 * scale);
     doc.text("Beneficio Café Henola - El Paraíso, Honduras", pageWidth / 2, firmaY + 12, {
       align: "center",
     });
 
+    // “El Paraíso …” más arriba
     doc.setFont("times", "bold");
     doc.setFontSize(14);
     doc.setTextColor(255, 0, 0);
-    doc.text("El Paraíso 11/10/2025", (pageWidth / 2) + 120, firmaY - 5);
+    doc.text("El Paraíso 11/10/2025", (pageWidth / 2) + 120, firmaY - 6); 
     doc.setTextColor(0, 0, 0);
 
-
+    const selloFactor = 0.85; 
+    const selloW = selloimg.width * selloFactor;
+    const selloH = selloimg.height * selloFactor;
     doc.addImage(
       selloimg.src,
       "PNG",
-      leftMargin + firmaWidth / 2 - selloimg.width / 2,
-      firmaY - selloimg.height + 3,
-      selloimg.width,
-      selloimg.height
+      leftMargin + firmaWidth / 2 - selloW / 2,
+      firmaY - selloH - 1, 
+      selloW,
+      selloH
     );
+    
   };
 
+  // Doble comprobante (arriba y abajo)
   drawComprobante(0);
   drawComprobante(pageHeight / 2);
 
+  // Línea de corte
   doc.setLineDash([5, 3]);
   doc.line(40, pageHeight / 2, pageWidth - 40, pageHeight / 2);
   doc.setLineDash();

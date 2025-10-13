@@ -1,7 +1,15 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Table, Card, Typography, Divider, Popconfirm, Button } from "antd";
+import { useState, useMemo, useRef } from "react";
+import {
+  Table,
+  Card,
+  Typography,
+  Divider,
+  Popconfirm,
+  Button,
+  message,
+} from "antd";
 import dayjs from "dayjs";
 import { CalendarOutlined, UserOutlined } from "@ant-design/icons";
 import { generarReporteContratos } from "@/Doc/Reportes/FormatoContratoDoc";
@@ -20,15 +28,10 @@ export default function ReporteRegistroContrato() {
   const hoy = [dayjs().startOf("day"), dayjs().endOf("day")];
   const { mounted, isDesktop } = useClientAndDesktop();
   const [nombreFiltro, setNombreFiltro] = useState("");
+  const [messageApi, contextHolder] = message.useMessage();
 
-  const {
-    data,
-    loading,
-    rangoFechas,
-    onFechasChange,
-    contextHolder,
-    fetchData,
-  } = useFetchReport("/api/contratos/registrocontrato", hoy);
+  const { data, loading, rangoFechas, onFechasChange, fetchData } =
+    useFetchReport("/api/contratos/registrocontrato", hoy);
 
   const datosFiltrados = useMemo(() => {
     const lista = Array.isArray(data?.detalles) ? data.detalles : [];
@@ -115,11 +118,24 @@ export default function ReporteRegistroContrato() {
       title: "Estado",
       dataIndex: "estado",
       align: "center",
-      render: (estado) => (
-        <Text style={{ color: estado === "Pendiente" ? "#faad14" : "#52c41a" }}>
-          {estado}
-        </Text>
-      ),
+      render: (estado) => {
+        let color;
+        switch (estado) {
+          case "Pendiente":
+            color = "#faad14";
+            break;
+          case "Liquidado":
+            color = "#52c41a";
+            break;
+          case "Anulado":
+            color = "#f5222d";
+            break;
+          default:
+            color = "#000000"; // negro por defecto
+        }
+
+        return <Text style={{ color }}>{estado}</Text>;
+      },
     },
     {
       title: "Descripción",
@@ -142,7 +158,7 @@ export default function ReporteRegistroContrato() {
             gap: 5,
           }}
         >
-          <ProtectedButton allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+          {/* <ProtectedButton allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
             <Popconfirm
               title="¿Seguro que deseas EDITAR esta compra"
               onConfirm={() =>
@@ -159,11 +175,11 @@ export default function ReporteRegistroContrato() {
                 Editar
               </Button>
             </Popconfirm>
-          </ProtectedButton>
+          </ProtectedButton> */}
           <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
             <Popconfirm
-              title="¿Seguro que deseas eliminar esta compra"
-              onConfirm={() => eliminarCompra(record.compraId)}
+              title="¿Seguro que deseas eliminar este contrato"
+              onConfirm={() => eliminarContrato(record.contratoID)}
               okText="Sí"
               cancelText="No"
             >
@@ -176,6 +192,34 @@ export default function ReporteRegistroContrato() {
       ),
     },
   ];
+
+  // Eliminar contrato
+  const eliminarContrato = async (contratoID) => {
+    try {
+      const res = await fetch(`/api/contratos/${contratoID}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        messageApi.success("Contrato anulado correctamente");
+        // Espera a que la eliminación se confirme y luego recarga
+        if (rangoFechas?.[0] && rangoFechas?.[1]) {
+          await fetchData(
+            rangoFechas[0].startOf("day").toISOString(),
+            rangoFechas[1].endOf("day").toISOString()
+          );
+        } else {
+          await fetchData();
+        }
+      } else {
+        messageApi.error(data.error || "Error al anular el contrato");
+      }
+    } catch (error) {
+      console.error(error);
+      messageApi.error("Error al anular el contrato");
+    }
+  };
 
   // móviles
   const columnasMobile = [
@@ -311,7 +355,7 @@ export default function ReporteRegistroContrato() {
             <Table
               columns={columnasDesktop}
               dataSource={datosFiltrados}
-              rowKey="id"
+              rowKey="contratoID"
               loading={loading}
               pagination={false}
               bordered
@@ -324,7 +368,7 @@ export default function ReporteRegistroContrato() {
                 ...item,
                 acciones: (
                   <div style={{ display: "flex", gap: 6 }}>
-                    <ProtectedButton
+                    {/* <ProtectedButton
                       allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}
                     >
                       <Button
@@ -340,12 +384,12 @@ export default function ReporteRegistroContrato() {
                       >
                         Editar
                       </Button>
-                    </ProtectedButton>
+                    </ProtectedButton> */}
 
                     <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
                       <Popconfirm
                         title="¿Seguro que deseas eliminar esta compra?"
-                        onConfirm={() => eliminarCompra(item.compraId)}
+                        onConfirm={() => eliminarContrato(item.contratoID)}
                         okText="Sí"
                         cancelText="No"
                       >

@@ -191,7 +191,14 @@ export default function ReporteRegistroDeposito() {
       if (res.ok) {
         messageApiRef.current.success("Depósito eliminado correctamente");
         // Recargar datos después de eliminar
-        fetchData();
+        if (rangoFechas?.[0] && rangoFechas?.[1]) {
+          await fetchData(
+            rangoFechas[0].startOf("day").toISOString(),
+            rangoFechas[1].endOf("day").toISOString()
+          );
+        } else {
+          await fetchData();
+        }
       } else {
         messageApiRef.current.error(
           data.error || "Error al eliminar el depósito"
@@ -340,7 +347,7 @@ export default function ReporteRegistroDeposito() {
                 ...item,
                 acciones: (
                   <div style={{ display: "flex", gap: 6 }}>
-                    <ProtectedButton
+                    {/* <ProtectedButton
                       allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}
                     >
                       <Button
@@ -356,12 +363,12 @@ export default function ReporteRegistroDeposito() {
                       >
                         Editar
                       </Button>
-                    </ProtectedButton>
+                    </ProtectedButton> */}
 
                     <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
                       <Popconfirm
                         title="¿Seguro que deseas eliminar este depósito?"
-                        onConfirm={() => eliminarDeposito(item.depositoID)}
+                        onConfirm={() => eliminarDeposito(item.id)}
                         okText="Sí"
                         cancelText="No"
                       >

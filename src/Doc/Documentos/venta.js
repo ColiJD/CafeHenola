@@ -22,7 +22,16 @@ export const exportVentaDirecta = async (formState) => {
 
   const fondoGray = await processImageToGray(fondoImg.src, 0.15);
 
-  const fechaObj = new Date();
+  let fechaObj;
+  if (formState?.fecha) {
+    const partes = formState.fecha.split("-"); // "YYYY-MM-DD"
+    const year = parseInt(partes[0], 10);
+    const month = parseInt(partes[1], 10) - 1; // mes 0-11
+    const day = parseInt(partes[2], 10);
+    fechaObj = new Date(year, month, day); // evita desfase de zona horaria
+  } else {
+    fechaObj = new Date();
+  }
   const dia = String(fechaObj.getDate()).padStart(2, "0");
   const mes = String(fechaObj.getMonth() + 1).padStart(2, "0");
   const anio = fechaObj.getFullYear();
@@ -40,30 +49,30 @@ export const exportVentaDirecta = async (formState) => {
   const formaPago = formState?.formaPago || "";
 
   // evita repetir "lempiras" y muestra centavos correctamente
-const numeroALetrasExtendido = (num) => {
-  const entero = Math.floor(num);
-  const centavos = Math.round((num - entero) * 100);
+  const numeroALetrasExtendido = (num) => {
+    const entero = Math.floor(num);
+    const centavos = Math.round((num - entero) * 100);
 
-  // convierte número a letras y elimina "lempiras" si la función base ya la añade
-  let letrasEntero = numeroALetras(entero)
-    .replace(/lempiras?/gi, "")
-    .replace(/\s+/g, " ")
-    .trim();
+    // convierte número a letras y elimina "lempiras" si la función base ya la añade
+    let letrasEntero = numeroALetras(entero)
+      .replace(/lempiras?/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
 
-  const letrasCentavos =
-    centavos > 0
-      ? numeroALetras(centavos)
-          .replace(/lempiras?/gi, "")
-          .replace(/\s+/g, " ")
-          .trim()
-      : "";
+    const letrasCentavos =
+      centavos > 0
+        ? numeroALetras(centavos)
+            .replace(/lempiras?/gi, "")
+            .replace(/\s+/g, " ")
+            .trim()
+        : "";
 
-  if (centavos > 0) {
-    return `${letrasEntero} lempiras con ${letrasCentavos} centavos`;
-  } else {
-    return `${letrasEntero} lempiras exactos`;
-  }
-};
+    if (centavos > 0) {
+      return `${letrasEntero} lempiras con ${letrasCentavos} centavos`;
+    } else {
+      return `${letrasEntero} lempiras exactos`;
+    }
+  };
 
   const drawComprobante = (offsetY = 0) => {
     const imgWidth = pageWidth * 0.9 * scale;
@@ -114,9 +123,14 @@ const numeroALetrasExtendido = (num) => {
     doc.text("Propietario Enri Lagos", pageWidth / 2, 85 + offsetY, {
       align: "center",
     });
-    doc.text("Teléfono: (504) 3271-3188, (504) 9877-8789", pageWidth / 2, 100 + offsetY, {
-      align: "center",
-    });
+    doc.text(
+      "Teléfono: (504) 3271-3188, (504) 9877-8789",
+      pageWidth / 2,
+      100 + offsetY,
+      {
+        align: "center",
+      }
+    );
 
     let startY = topMargin + 80 + offsetY;
     doc.setFont("times", "bold");
@@ -152,8 +166,14 @@ const numeroALetrasExtendido = (num) => {
     const bodyProductos = productos.map((p) => [
       { content: cleanText(p.nombre), styles: { textColor: [255, 0, 0] } },
       { content: formatNumber(p.cantidad), styles: { textColor: [255, 0, 0] } },
-      { content: `L. ${formatNumber(p.precio)}`, styles: { textColor: [255, 0, 0] } },
-      { content: `L. ${formatNumber(p.total)}`, styles: { textColor: [255, 0, 0] } },
+      {
+        content: `L. ${formatNumber(p.precio)}`,
+        styles: { textColor: [255, 0, 0] },
+      },
+      {
+        content: `L. ${formatNumber(p.total)}`,
+        styles: { textColor: [255, 0, 0] },
+      },
     ]);
 
     autoTable(doc, {
@@ -229,11 +249,19 @@ const numeroALetrasExtendido = (num) => {
       pageWidth - rightMargin + 25 - 20,
       firmaY
     );
-    doc.text("LUGAR Y FECHA", pageWidth - rightMargin - firmaWidth / 2 - 50, firmaY + 12);
+    doc.text(
+      "LUGAR Y FECHA",
+      pageWidth - rightMargin - firmaWidth / 2 - 50,
+      firmaY + 12
+    );
 
     doc.setFont("times", "normal");
     doc.setTextColor(255, 0, 0);
-    doc.text(`El Paraíso  ${fecha}`, pageWidth - rightMargin - firmaWidth / 2 - 60, firmaY - 4);
+    doc.text(
+      `El Paraíso  ${fecha}`,
+      pageWidth - rightMargin - firmaWidth / 2 - 60,
+      firmaY - 4
+    );
     doc.setTextColor(0, 0, 0);
 
     doc.addImage(
@@ -261,6 +289,9 @@ const numeroALetrasExtendido = (num) => {
   doc.line(40, pageHeight / 2, pageWidth - 40, pageHeight / 2);
   doc.setLineDash();
 
-  const nombreArchivo = `VentaDirecta_${comprador.replace(/\s+/g, "_")}_${comprobanteID}.pdf`;
+  const nombreArchivo = `VentaDirecta_${comprador.replace(
+    /\s+/g,
+    "_"
+  )}_${comprobanteID}.pdf`;
   doc.save(nombreArchivo);
 };

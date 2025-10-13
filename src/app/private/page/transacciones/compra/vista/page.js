@@ -22,6 +22,8 @@ import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import Link from "next/link";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
+import { exportCompraDirecta } from "@/Doc/Documentos/compra";
+import { exportVentaDirecta } from "@/Doc/Documentos/venta";
 
 import ProtectedPage from "@/components/ProtectedPage";
 import { formatNumber } from "@/components/Formulario";
@@ -34,7 +36,12 @@ import { useRouter } from "next/navigation";
 import SectionHeader from "@/components/ReportesElement/AccionesResporte";
 import { generarReportePDF } from "@/Doc/Reportes/compraVenta";
 
-import CalendarOutlined from "@ant-design/icons/CalendarOutlined";
+import {
+  FilePdfOutlined,
+  CalendarOutlined,
+  EditFilled,
+  DeleteFilled,
+} from "@ant-design/icons";
 
 export default function TablaCompras() {
   const { mounted, isDesktop } = useClientAndDesktop();
@@ -111,6 +118,10 @@ export default function TablaCompras() {
           compraCantidadQQ: parseFloat(item.compraCantidadQQ || 0),
           compraPrecioQQ: parseFloat(item.compraPrecioQQ || 0),
           totalLps,
+          clienteNombreCompleto:
+            movimientoFiltro === "Salida"
+              ? item.compradorNombre
+              : item.clienteNombreCompleto,
         });
       });
 
@@ -267,6 +278,77 @@ export default function TablaCompras() {
             gap: 5,
           }}
         >
+          {" "}
+          <Popconfirm
+            title="¿Seguro que deseas EXPORTAR esta compra?"
+            onConfirm={async () => {
+              const esVenta = movimientoFiltro === "Salida";
+
+              // Mostrar mensaje inicial
+              messageApi.open({
+                type: "loading",
+                content: esVenta
+                  ? "Generando comprobante de venta, por favor espere..."
+                  : "Generando comprobante de compra, por favor espere...",
+                duration: 0,
+                key: "generandoComprobante",
+              });
+
+              try {
+                if (esVenta) {
+                  // ✅ VENTA
+                  const { exportVentaDirecta } = await import(
+                    "@/Doc/Documentos/venta"
+                  );
+
+                  await exportVentaDirecta({
+                    comprador: { label: record.clienteNombreCompleto },
+                    productos: [
+                      {
+                        nombre: record.tipoCafeNombre,
+                        cantidad: parseFloat(record.compraCantidadQQ),
+                        precio: parseFloat(record.compraPrecioQQ),
+                        total: parseFloat(record.totalLps),
+                      },
+                    ],
+                    total: parseFloat(record.totalLps),
+                    observaciones: record.compraDescripcion,
+                    comprobanteID: record.compraId,
+                    fecha: record.compraFecha,
+                  });
+                } else {
+                  // ✅ COMPRA
+                  await exportCompraDirecta({
+                    cliente: { label: record.clienteNombreCompleto },
+                    productos: [
+                      {
+                        nombre: record.tipoCafeNombre,
+                        cantidad: parseFloat(record.compraCantidadQQ),
+                        precio: parseFloat(record.compraPrecioQQ),
+                        total: parseFloat(record.totalLps),
+                      },
+                    ],
+                    total: parseFloat(record.totalLps),
+                    observaciones: record.compraDescripcion,
+                    comprobanteID: record.compraId,
+                    fecha: record.compraFecha,
+                  });
+                }
+
+                // Éxito
+                messageApi.destroy("generandoComprobante");
+                messageApi.success("Comprobante generado correctamente");
+              } catch (err) {
+                console.error("Error generando comprobante:", err);
+                messageApi.destroy("generandoComprobante");
+                messageApi.error("Error generando comprobante PDF");
+              }
+            }}
+            okText="Sí"
+            cancelText="No"
+          >
+            <Button size="small" type="primary" icon={<FilePdfOutlined />} />
+          </Popconfirm>
           <ProtectedButton allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
             <Popconfirm
               title="¿Seguro que deseas EDITAR esta compra"
@@ -280,9 +362,7 @@ export default function TablaCompras() {
               okText="Sí"
               cancelText="No"
             >
-              <Button size="small" type="default">
-                Editar
-              </Button>
+              <Button size="small" type="default" icon={<EditFilled />} />
             </Popconfirm>
           </ProtectedButton>
           <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
@@ -292,9 +372,7 @@ export default function TablaCompras() {
               okText="Sí"
               cancelText="No"
             >
-              <Button size="small" danger>
-                Eliminar
-              </Button>
+              <Button size="small" danger icon={<DeleteFilled />} />
             </Popconfirm>
           </ProtectedButton>
         </div>
@@ -495,6 +573,97 @@ export default function TablaCompras() {
                         <Dropdown
                           menu={{
                             items: [
+                              {
+                                key: "exportar",
+                                label: (
+                                  <Button
+                                    type="text"
+                                    block
+                                    onClick={async () => {
+                                      // Mensaje de carga
+                                      messageApi.open({
+                                        type: "loading",
+                                        content: `Generando comprobante de ${titulo}, por favor espere...`,
+                                        duration: 0,
+                                        key: "generandoComprobante",
+                                      });
+
+                                      try {
+                                        if (isVenta) {
+                                          await exportVentaDirecta({
+                                            comprador: {
+                                              label:
+                                                record.clienteNombreCompleto,
+                                            },
+                                            productos: [
+                                              {
+                                                nombre: record.tipoCafeNombre,
+                                                cantidad: parseFloat(
+                                                  record.compraCantidadQQ
+                                                ),
+                                                precio: parseFloat(
+                                                  record.compraPrecioQQ
+                                                ),
+                                                total: parseFloat(
+                                                  record.totalLps
+                                                ),
+                                              },
+                                            ],
+                                            total: parseFloat(record.totalLps),
+                                            observaciones:
+                                              record.compraDescripcion,
+                                            comprobanteID: record.compraId,
+                                            fecha: record.compraFecha,
+                                          });
+                                        } else {
+                                          await exportCompraDirecta({
+                                            cliente: {
+                                              label:
+                                                record.clienteNombreCompleto,
+                                            },
+                                            productos: [
+                                              {
+                                                nombre: record.tipoCafeNombre,
+                                                cantidad: parseFloat(
+                                                  record.compraCantidadQQ
+                                                ),
+                                                precio: parseFloat(
+                                                  record.compraPrecioQQ
+                                                ),
+                                                total: parseFloat(
+                                                  record.totalLps
+                                                ),
+                                              },
+                                            ],
+                                            total: parseFloat(record.totalLps),
+                                            observaciones:
+                                              record.compraDescripcion,
+                                            comprobanteID: record.compraId,
+                                            fecha: record.compraFecha,
+                                          });
+                                        }
+
+                                        messageApi.destroy(
+                                          "generandoComprobante"
+                                        );
+                                        messageApi.success(
+                                          `Comprobante de ${titulo} generado`
+                                        );
+                                      } catch (err) {
+                                        console.error(err);
+                                        messageApi.destroy(
+                                          "generandoComprobante"
+                                        );
+                                        messageApi.error(
+                                          `Error generando comprobante de ${titulo}`
+                                        );
+                                      }
+                                    }}
+                                  >
+                                    Exportar PDF
+                                  </Button>
+                                ),
+                              },
                               {
                                 key: "editar",
                                 label: (

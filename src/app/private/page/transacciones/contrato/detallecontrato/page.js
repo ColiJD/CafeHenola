@@ -1,7 +1,15 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Table, Card, Typography, Divider } from "antd";
+import { useState, useMemo, useRef } from "react";
+import {
+  Table,
+  Card,
+  Typography,
+  Divider,
+  Popconfirm,
+  Button,
+  message,
+} from "antd";
 import dayjs from "dayjs";
 import { FileTextOutlined } from "@ant-design/icons";
 import Filtros from "@/components/Filtros";
@@ -10,33 +18,27 @@ import EstadisticasCards from "@/components/ReportesElement/DatosEstadisticos";
 import SectionHeader from "@/components/ReportesElement/AccionesResporte";
 import { useFetchReport } from "@/hook/useFetchReport";
 import TarjetaMobile from "@/components/TarjetaMobile";
-import ProtectedPage from "@/components/ProtectedPage"
+import ProtectedPage from "@/components/ProtectedPage";
 import { generarReporteDetalleContrato } from "@/Doc/Reportes/FormatoDetalleContratoDoc";
-
+import ProtectedButton from "@/components/ProtectedButton";
 const { Title, Text } = Typography;
 
 export default function Reportedetallecontrato() {
   const hoy = [dayjs().startOf("day"), dayjs().endOf("day")];
   const { mounted, isDesktop } = useClientAndDesktop();
   const [nombreFiltro, setNombreFiltro] = useState("");
+  const [messageApi, contextHolder] = message.useMessage();
+  const messageApiRef = useRef(messageApi);
 
-  const {
-  data,
-  loading,
-  rangoFechas,
-  onFechasChange,
-  contextHolder,
-  fetchData,
-} = useFetchReport("/api/contratos/detallecontrato", hoy);
+  const { data, loading, rangoFechas, onFechasChange, fetchData } =
+    useFetchReport("/api/contratos/detallecontrato", hoy);
 
   const datosFiltrados = useMemo(() => {
     const lista = Array.isArray(data?.detalles) ? data.detalles : [];
     return lista.filter((item) =>
       !nombreFiltro
         ? true
-        : item.nombreCliente
-            ?.toLowerCase()
-            .includes(nombreFiltro.toLowerCase())
+        : item.nombreCliente?.toLowerCase().includes(nombreFiltro.toLowerCase())
     );
   }, [data, nombreFiltro]);
 
@@ -55,7 +57,12 @@ export default function Reportedetallecontrato() {
   // columnas desktop
   const columnasDesktop = [
     { title: "Detalle ID", dataIndex: "detalleID", width: 90, align: "center" },
-    { title: "Contrato ID", dataIndex: "contratoID", width: 90, align: "center" },
+    {
+      title: "Contrato ID",
+      dataIndex: "contratoID",
+      width: 120,
+      align: "center",
+    },
     {
       title: "Fecha",
       dataIndex: "fecha",
@@ -87,9 +94,106 @@ export default function Reportedetallecontrato() {
       align: "right",
       render: (v) => <Text>L. {v.toFixed(2)}</Text>,
     },
-    { title: "Movimiento", dataIndex: "tipoMovimiento", align: "center" },
     { title: "Observaciones", dataIndex: "observaciones", width: 250 },
+
+    {
+      title: "Acciones",
+      key: "acciones",
+      fixed: "right",
+      align: "center",
+      width: 160,
+      render: (text, record) => (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 5,
+          }}
+        >
+          {/* <ProtectedButton allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+                <Popconfirm
+                  title="¿Seguro que deseas EDITAR esta compra"
+                  onConfirm={() =>
+                    router.push(
+                      movimientoFiltro === "Salida"
+                        ? `/private/page/transacciones/venta/${record.compraId}`
+                        : `/private/page/transacciones/compra/${record.compraId}`
+                    )
+                  }
+                  okText="Sí"
+                  cancelText="No"
+                >
+                  <Button size="small" type="default">
+                    Editar
+                  </Button>
+                </Popconfirm>
+              </ProtectedButton> */}
+          <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
+            <Popconfirm
+              title="¿Seguro que deseas eliminar este contrato?"
+              onConfirm={() =>
+                eliminarEntidad({
+                  endpoint: `/api/contratos/detallecontrato`,
+
+                  id: record.detalleID,
+                  entidadNombre: "Entrega Contrato",
+                  onSuccess: async () => {
+                    if (rangoFechas?.[0] && rangoFechas?.[1]) {
+                      await fetchData(
+                        rangoFechas[0].startOf("day").toISOString(),
+                        rangoFechas[1].endOf("day").toISOString()
+                      );
+                    } else {
+                      await fetchData();
+                    }
+                  },
+                })
+              }
+              okText="Sí"
+              cancelText="No"
+            >
+              <Button size="small" danger>
+                Eliminar
+              </Button>
+            </Popconfirm>
+          </ProtectedButton>
+        </div>
+      ),
+    },
   ];
+
+  const eliminarEntidad = async ({
+    endpoint, // Ej: "/api/contratos" o "/api/depositos"
+    id, // Ej: record.contratoID
+    entidadNombre, // Ej: "contrato", "depósito", "cliente"
+    onSuccess, // Función opcional para ejecutar después del borrado
+  }) => {
+    try {
+      const res = await fetch(`${endpoint}/${id}`, { method: "DELETE" });
+      const data = await res.json();
+
+      if (res.ok) {
+        messageApiRef.current.success(
+          `${capitalizar(entidadNombre)} anulado correctamente`
+        );
+
+        // Ejecutar acción personalizada después del borrado
+        if (onSuccess) await onSuccess();
+      } else {
+        messageApiRef.current.error(
+          data.error || `Error al anular el ${entidadNombre}`
+        );
+      }
+    } catch (error) {
+      console.error(error);
+      messageApiRef.current.error(`Error al anular el ${entidadNombre}`);
+    }
+  };
+
+  // Función auxiliar para capitalizar el nombre de la entidad
+  const capitalizar = (texto) =>
+    texto.charAt(0).toUpperCase() + texto.slice(1).toLowerCase();
 
   // columnas mobile
   const columnasMobile = [
@@ -101,7 +205,7 @@ export default function Reportedetallecontrato() {
     { label: "Cantidad QQ", key: "cantidadQQ" },
     { label: "Precio QQ", key: "precioQQ" },
     { label: "Total Lps", key: "totalLps" },
-    { label: "Movimiento", key: "tipoMovimiento" },
+    { label: "Acciones", key: "acciones" },
   ];
 
   if (!mounted) return null;
@@ -231,7 +335,41 @@ export default function Reportedetallecontrato() {
             />
           ) : (
             <TarjetaMobile
-              data={datosFiltrados}
+              data={datosFiltrados.map((item) => ({
+                ...item,
+                acciones: (
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
+                      <Popconfirm
+                        title="¿Seguro que deseas eliminar esta Entrega?"
+                        onConfirm={() =>
+                          eliminarEntidad({
+                            endpoint: "/api/contratos/detallecontrato",
+                            id: item.detalleID,
+                            entidadNombre: "Entrega Contrato",
+                            onSuccess: async () => {
+                              if (rangoFechas?.[0] && rangoFechas?.[1]) {
+                                await fetchData(
+                                  rangoFechas[0].startOf("day").toISOString(),
+                                  rangoFechas[1].endOf("day").toISOString()
+                                );
+                              } else {
+                                await fetchData();
+                              }
+                            },
+                          })
+                        }
+                        okText="Sí"
+                        cancelText="No"
+                      >
+                        <Button size="small" danger>
+                          Eliminar
+                        </Button>
+                      </Popconfirm>
+                    </ProtectedButton>
+                  </div>
+                ),
+              }))}
               columns={columnasMobile}
               loading={loading}
             />

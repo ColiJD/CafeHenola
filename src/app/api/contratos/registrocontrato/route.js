@@ -26,6 +26,7 @@ export async function GET(req) {
     const contratos = await prisma.contrato.findMany({
       where: {
         contratoFecha: { gte: inicio, lte: fin },
+        estado: { not: "Anulado" },
       },
       select: {
         contratoID: true,

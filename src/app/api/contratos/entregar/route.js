@@ -139,8 +139,8 @@ export async function POST(request, req) {
         data: {
           inventarioClienteID: inventarioCliente.inventarioClienteID,
           tipoMovimiento: "Entrada",
-          referenciaTipo: `Contrato #${contratoID}`,
-          referenciaID: contratoID,
+          referenciaTipo: `EntregaContrato #${detalleEntrega.detalleID}`,
+          referenciaID: detalleEntrega.detalleID,
           cantidadQQ: Number(cantidadQQ),
           cantidadSacos: Number(totalSacos),
           nota: "Entrada de café por entrega de contrato",

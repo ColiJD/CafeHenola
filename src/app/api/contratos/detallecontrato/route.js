@@ -13,7 +13,8 @@ export async function GET(req) {
 
   try {
     const { searchParams } = new URL(req.url);
-    const fechaInicio = searchParams.get("desde") || searchParams.get("fechaInicio");
+    const fechaInicio =
+      searchParams.get("desde") || searchParams.get("fechaInicio");
     const fechaFin = searchParams.get("hasta") || searchParams.get("fechaFin");
 
     const inicio = fechaInicio ? new Date(fechaInicio) : new Date();
@@ -22,6 +23,7 @@ export async function GET(req) {
     const detalles = await prisma.detallecontrato.findMany({
       where: {
         fecha: { gte: inicio, lte: fin },
+        NOT: { tipoMovimiento: "Anulado" },
       },
       select: {
         detalleID: true,
@@ -50,7 +52,10 @@ export async function GET(req) {
       orderBy: { fecha: "desc" },
     });
 
-    const totalQQ = detalles.reduce((acc, c) => acc + Number(c.cantidadQQ || 0), 0);
+    const totalQQ = detalles.reduce(
+      (acc, c) => acc + Number(c.cantidadQQ || 0),
+      0
+    );
     const totalLps = detalles.reduce(
       (acc, c) => acc + Number(c.cantidadQQ * c.precioQQ || 0),
       0
@@ -68,9 +73,10 @@ export async function GET(req) {
           fecha: d.fecha,
           contratoID: d.contrato?.contratoID || 0,
           clienteID: d.contrato?.cliente?.clienteID || 0,
-          nombreCliente: `${d.contrato?.cliente?.clienteNombre || ""} ${
-            d.contrato?.cliente?.clienteApellido || ""
-          }`.trim() || "Sin nombre",
+          nombreCliente:
+            `${d.contrato?.cliente?.clienteNombre || ""} ${
+              d.contrato?.cliente?.clienteApellido || ""
+            }`.trim() || "Sin nombre",
           tipoCafe: d.contrato?.producto?.productName || "Sin especificar",
           cantidadQQ: Number(d.cantidadQQ || 0),
           precioQQ: Number(d.precioQQ || 0),

@@ -6,16 +6,16 @@ export async function DELETE(req, { params }) {
   if (sessionOrResponse instanceof Response) return sessionOrResponse;
 
   try {
-    const depositoID = Number(params.id);
-    if (!depositoID) {
+    const detalleID = Number(params.detalleID);
+    if (!detalleID) {
       return new Response(JSON.stringify({ error: "ID inválido" }), {
         status: 400,
       });
     }
 
     // 🔹 Buscar el registro (puede ser compra o venta)
-    const registro = await prisma.deposito.findUnique({
-      where: { depositoID },
+    const registro = await prisma.detallecontrato.findUnique({
+      where: { detalleID },
     });
     if (!registro) {
       return new Response(JSON.stringify({ error: "Registro no encontrado" }), {
@@ -26,8 +26,7 @@ export async function DELETE(req, { params }) {
     // 🔹 Buscar el movimiento asociado
     const movimiento = await prisma.movimientoinventario.findFirst({
       where: {
-        referenciaTipo: { contains: `Deposito #${depositoID}` },
-        tipoMovimiento: "Entrada",
+        referenciaTipo: { contains: `EntregaContrato #${detalleID}` },
         NOT: { tipoMovimiento: "Anulado" },
       },
     });
@@ -46,8 +45,7 @@ export async function DELETE(req, { params }) {
     if (!esEntrada && !esSalida) {
       return new Response(
         JSON.stringify({
-          error:
-            "El movimiento no es ni Entrada ni Salida (posiblemente ya fue anulado)",
+          error: "El movimiento ya fue anulado)",
         }),
         { status: 400 }
       );
@@ -61,8 +59,8 @@ export async function DELETE(req, { params }) {
         data: {
           tipoMovimiento: "Anulado",
           nota: `${
-            esEntrada ? "Desposito" : "desposito"
-          } anulada #${depositoID}`,
+            esEntrada ? "EntregaContrato" : "Contrato"
+          } anulada #${detalleID}`,
         },
       }),
 
@@ -83,15 +81,15 @@ export async function DELETE(req, { params }) {
       }),
 
       // 3️⃣ Actualizar estado del registro (compra/venta)
-      prisma.deposito.update({
-        where: { depositoID },
-        data: { depositoMovimiento: "Anulado", estado: "Anulado" },
+      prisma.detallecontrato.update({
+        where: { detalleID },
+        data: { tipoMovimiento: "Anulado" },
       }),
     ]);
 
     return new Response(
       JSON.stringify({
-        message: `${esEntrada ? "Compra" : "Venta"} anulada correctamente`,
+        message: `${esEntrada ? "Entrega" : "Contrato"} anulada correctamente`,
       }),
       { status: 200 }
     );

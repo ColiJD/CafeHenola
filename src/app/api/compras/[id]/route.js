@@ -23,7 +23,14 @@ export async function DELETE(req, { params }) {
 
     // 🔹 Buscar el movimiento asociado
     const movimiento = await prisma.movimientoinventario.findFirst({
-      where: { referenciaID: compraId },
+      where: {
+        // Filtramos tanto compras como ventas
+        OR: [
+          { referenciaTipo: { contains: `Compra directa #${compraId}` } },
+          { referenciaTipo: { contains: `Venta directa #${compraId}` } },
+        ],
+        NOT: { tipoMovimiento: "Anulado" },
+      },
     });
 
     if (!movimiento) {
@@ -202,7 +209,10 @@ export async function PUT(request, { params }) {
 
       // 3️⃣ Actualizar movimiento de inventario
       const movimiento = await prisma.movimientoinventario.findFirst({
-        where: { referenciaID: compraId },
+        where: {
+          referenciaTipo: { contains: `Compra directa #${compraId}` },
+          NOT: { tipoMovimiento: "Anulado" },
+        },
       });
 
       if (movimiento) {

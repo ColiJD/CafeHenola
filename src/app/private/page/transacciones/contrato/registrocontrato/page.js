@@ -388,7 +388,7 @@ export default function ReporteRegistroContrato() {
 
                     <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
                       <Popconfirm
-                        title="¿Seguro que deseas eliminar esta compra?"
+                        title="¿Seguro que deseas eliminar este contrato?"
                         onConfirm={() => eliminarContrato(item.contratoID)}
                         okText="Sí"
                         cancelText="No"

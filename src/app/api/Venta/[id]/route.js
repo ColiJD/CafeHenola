@@ -142,7 +142,12 @@ export async function PUT(request, { params }) {
         // 🧾 Actualizar movimiento existente
         // 🧾 Actualizar movimientos existentes
         const movimientos = await tx.movimientoinventario.findMany({
-          where: { referenciaID: ventaId, tipoMovimiento: "Salida" },
+          where: {
+            referenciaTipo: { contains: `Venta directa #${ventaId}` },
+            tipoMovimiento: "Salida",
+            NOT: { tipoMovimiento: "Anulado" },
+          },
+
           orderBy: { movimientoID: "asc" }, // FIFO
         });
 

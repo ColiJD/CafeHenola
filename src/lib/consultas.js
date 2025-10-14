@@ -12,7 +12,7 @@ export async function obtenerClientesSelect(messageApi) {
     }));
   } catch (err) {
     console.error("Error al cargar clientes:", err);
-    messageApi.error("⚠️ No se pudieron cargar los clientes.");
+    messageApi.error(" No se pudieron cargar los clientes.");
     return [];
   }
 }
@@ -31,7 +31,7 @@ export async function obtenerProductosSelect(messageApi) {
     }));
   } catch (err) {
     console.error("Error al cargar productos:", err);
-    messageApi.error("⚠️ No se pudieron cargar los productos.");
+    messageApi.error(" No se pudieron cargar los productos.");
     return [];
   }
 }
@@ -113,7 +113,7 @@ export async function obtenerClientesPendientesContratos(messageApi) {
     }));
   } catch (err) {
     console.error("Error al cargar clientes:", err);
-    messageApi.error("⚠️ No se pudieron cargar los clientes.");
+    messageApi.error("No se pudieron cargar los clientes.");
     return [];
   }
 }
@@ -138,7 +138,59 @@ export async function obtenerSelectData({
     }));
   } catch (err) {
     console.error(`Error al cargar datos desde ${url}:`, err);
-    if (messageApi) messageApi.error("⚠️ No se pudieron cargar los datos.");
+    if (messageApi) messageApi.error(" No se pudieron cargar los datos.");
     return [];
+  }
+}
+
+
+export async function verificarClientesPendientesContratos(
+  messageApi,
+  clienteID
+) {
+  if (!clienteID) return; // 🔹 No hacer nada si no hay cliente
+
+  try {
+    const url = `/api/contratos/disponibles?clienteID=${clienteID}`;
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Error en la respuesta del servidor");
+
+    const data = await res.json();
+
+    if (Array.isArray(data) && data.length > 0) {
+      messageApi.warning(
+        `El cliente seleccionado tiene ${data.length} contrato(s) pendiente(s).`
+      );
+    }
+  } catch (err) {
+    console.error("Error al verificar contratos pendientes:", err);
+    messageApi.error("No se pudieron verificar los contratos pendientes.");
+  }
+}
+
+export async function verificarDepositosPendientes(
+  messageApi,
+  clienteID = null
+) {
+  try {
+    const url = clienteID
+      ? `/api/liqDeposito/clienteConDeposito?clienteID=${clienteID}`
+      : "/api/clientes/pendientes";
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Error en la respuesta del servidor");
+
+    const data = await res.json();
+
+    if (Array.isArray(data) && data.length > 0) {
+      const mensaje = clienteID
+        ? `El cliente seleccionado tiene ${data.length} depósito(s) pendiente(s).`
+        : `Hay ${data.length} depósito(s) pendiente(s).`;
+      messageApi.warning(mensaje);
+    }
+  } catch (err) {
+    console.error("Error al verificar depósitos pendientes:", err);
+    messageApi.error("No se pudieron verificar los depósitos pendientes.");
   }
 }

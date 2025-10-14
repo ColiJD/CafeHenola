@@ -14,6 +14,10 @@ import {
 import { exportCompraDirecta } from "@/Doc/Documentos/compra";
 import ProtectedPage from "@/components/ProtectedPage";
 import { useRouter } from "next/navigation";
+import {
+  verificarClientesPendientesContratos,
+  verificarDepositosPendientes,
+} from "@/lib/consultas";
 
 import {
   limpiarFormulario,
@@ -47,6 +51,20 @@ export default function CompraForm({ compraId }) {
   const [submitting, setSubmitting] = useState(false);
 
   const [messageApi, contextHolder] = message.useMessage();
+
+  useEffect(() => {
+    async function verificarPendientesCliente() {
+      if (!cliente || !cliente.value) {
+        messageApi.info("Seleccione un cliente para continuar.");
+        return;
+      }
+
+      await verificarClientesPendientesContratos(messageApi, cliente.value);
+      await verificarDepositosPendientes(messageApi, cliente.value);
+    }
+
+    verificarPendientesCliente();
+  }, [cliente, messageApi]);
 
   // Carga clientes y productos
   useEffect(() => {

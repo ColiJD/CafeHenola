@@ -10,12 +10,29 @@ export async function GET(req) {
     "AUDITORES",
   ]);
   if (sessionOrResponse instanceof Response) return sessionOrResponse;
-  try {
-    const clientes = await prisma.$queryRaw`
-      SELECT clienteID, clienteNombreCompleto 
-      FROM vw_cliente_con_deposito
-    `;
 
+  try {
+    const { searchParams } = new URL(req.url);
+    const clienteID = searchParams.get("clienteID");
+
+    let query;
+
+    if (clienteID) {
+      // 🔹 Si se envía clienteID, filtra solo los depósitos de ese cliente
+      query = prisma.$queryRaw`
+        SELECT clienteID, clienteNombreCompleto 
+        FROM vw_cliente_con_deposito
+        WHERE clienteID = ${Number(clienteID)}
+      `;
+    } else {
+      // 🔹 Si no se envía clienteID, devuelve todos los clientes con depósitos pendientes
+      query = prisma.$queryRaw`
+        SELECT clienteID, clienteNombreCompleto 
+        FROM vw_cliente_con_deposito
+      `;
+    }
+
+    const clientes = await query;
     return new Response(JSON.stringify(clientes), {
       status: 200,
       headers: { "Content-Type": "application/json" },

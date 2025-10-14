@@ -19,11 +19,16 @@ export const exportEntregaContrato = async (formState) => {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
+  const fechaInput = formState?.fecha ? new Date(formState.fecha) : new Date();
+  const fechaCorta = `${String(fechaInput.getDate()).padStart(2, "0")}/${String(
+    fechaInput.getMonth() + 1
+  ).padStart(2, "0")}/${fechaInput.getFullYear()}`;
+
   // ---------- Un solo tamaño----------
   const scale = 1.1;
-  const FS_H1 = 16 * scale;    
-  const FS_BODY = 11 * scale;   
-  const FS_SMALL = 9 * scale;   
+  const FS_H1 = 16 * scale;
+  const FS_BODY = 11 * scale;
+  const FS_SMALL = 9 * scale;
 
   const fondoGray = await processImageToGray(fondoImg.src, 0.15);
   const logo = await getLogoScaled(tasa.src, 80 * scale, 80 * scale);
@@ -49,7 +54,10 @@ export const exportEntregaContrato = async (formState) => {
       .trim();
     const letrasCentavos =
       centavos > 0
-        ? numeroALetras(centavos).replace(/lempiras?/gi, "").replace(/\s+/g, " ").trim()
+        ? numeroALetras(centavos)
+            .replace(/lempiras?/gi, "")
+            .replace(/\s+/g, " ")
+            .trim()
         : "";
     return centavos > 0
       ? `${letrasEntero} lempiras con ${letrasCentavos} centavos`
@@ -67,7 +75,14 @@ export const exportEntregaContrato = async (formState) => {
     doc.addImage(fondoGray, "PNG", imgX, imgY, imgWidth, imgHeight);
 
     // Logos
-    doc.addImage(logo.src, "PNG", leftMargin, 20 + offsetY, logo.width, logo.height);
+    doc.addImage(
+      logo.src,
+      "PNG",
+      leftMargin,
+      20 + offsetY,
+      logo.width,
+      logo.height
+    );
     const frijolY = 20 + offsetY;
     doc.addImage(
       frijolimg.src,
@@ -81,20 +96,31 @@ export const exportEntregaContrato = async (formState) => {
     // Encabezado
     doc.setFont("times", "bold");
     doc.setFontSize(FS_H1);
-    doc.text("BENEFICIO CAFÉ HENOLA", pageWidth / 2, 50 + offsetY, { align: "center" });
+    doc.text("BENEFICIO CAFÉ HENOLA", pageWidth / 2, 50 + offsetY, {
+      align: "center",
+    });
 
     doc.setFont("times", "normal");
     doc.setFontSize(FS_BODY);
-    doc.text("ENTREGA DE CONTRATO", pageWidth / 2, 70 + offsetY, { align: "center" });
-    doc.text("Propietario Enri Lagos", pageWidth / 2, 85 + offsetY, { align: "center" });
-    doc.text("Teléfono: (504) 3271-3188, (504) 9877-8789", pageWidth / 2, 100 + offsetY, { align: "center" });
+    doc.text("ENTREGA DE CONTRATO", pageWidth / 2, 70 + offsetY, {
+      align: "center",
+    });
+    doc.text("Propietario Enri Lagos", pageWidth / 2, 85 + offsetY, {
+      align: "center",
+    });
+    doc.text(
+      "Teléfono: (504) 3271-3188, (504) 9877-8789",
+      pageWidth / 2,
+      100 + offsetY,
+      { align: "center" }
+    );
 
-    // Cosecha 
+    // Cosecha
     doc.setFont("times", "bold");
     doc.setFontSize(FS_BODY);
     doc.text("Cosecha 2025 - 2026", leftMargin, topMargin + 60 + offsetY);
 
-    // Productor 
+    // Productor
     doc.setFont("times", "normal");
     doc.setFontSize(FS_BODY);
     const yProd = topMargin + 80 + offsetY;
@@ -120,18 +146,44 @@ export const exportEntregaContrato = async (formState) => {
     autoTable(doc, {
       startY,
       margin: { left: leftMargin, right: rightMargin },
-      head: [["Contrato", "Tipo Café", "Quintales Ingresados", "Precio (Lps)", "Total a Pagar (Lps)"]],
+      head: [
+        [
+          "Contrato",
+          "Tipo Café",
+          "Quintales Ingresados",
+          "Precio (Lps)",
+          "Total a Pagar (Lps)",
+        ],
+      ],
       body: [
         [
           { content: contratoID, styles: { textColor: [255, 0, 0] } },
           { content: tipoCafe, styles: { textColor: [255, 0, 0] } },
-          { content: formatNumber(quintalesIngresados), styles: { textColor: [255, 0, 0] } },
-          { content: `L. ${formatNumber(precio)}`, styles: { textColor: [255, 0, 0] } },
-          { content: `L. ${formatNumber(totalPagar)}`, styles: { textColor: [255, 0, 0] } },
+          {
+            content: formatNumber(quintalesIngresados),
+            styles: { textColor: [255, 0, 0] },
+          },
+          {
+            content: `L. ${formatNumber(precio)}`,
+            styles: { textColor: [255, 0, 0] },
+          },
+          {
+            content: `L. ${formatNumber(totalPagar)}`,
+            styles: { textColor: [255, 0, 0] },
+          },
         ],
       ],
-      styles: { font: "times", fontSize: 9 * scale, lineColor: [0, 0, 0], lineWidth: 0.5 },
-      headStyles: { fillColor: [255, 255, 255], textColor: [0, 0, 0], lineColor: [0, 0, 0] },
+      styles: {
+        font: "times",
+        fontSize: 9 * scale,
+        lineColor: [0, 0, 0],
+        lineWidth: 0.5,
+      },
+      headStyles: {
+        fillColor: [255, 255, 255],
+        textColor: [0, 0, 0],
+        lineColor: [0, 0, 0],
+      },
     });
 
     startY = doc.lastAutoTable.finalY + 30;
@@ -147,7 +199,7 @@ export const exportEntregaContrato = async (formState) => {
     const textoEnLetras = doc.splitTextToSize(cantidadLetras, maxWidth);
     doc.text(textoEnLetras, leftMargin + 115, startY);
     const lineCount = textoEnLetras.length;
-    startY += 20 + (lineCount * 12);
+    startY += 20 + lineCount * 12;
     doc.setTextColor(0, 0, 0);
 
     // Forma de pago
@@ -174,7 +226,7 @@ export const exportEntregaContrato = async (formState) => {
 
     startY += 35;
 
-    // Observaciones 
+    // Observaciones
     doc.setFont("times", "bold");
     doc.setFontSize(FS_BODY);
     doc.text("Observaciones:", leftMargin, startY);
@@ -196,18 +248,28 @@ export const exportEntregaContrato = async (formState) => {
     doc.line(leftMargin, firmaY, leftMargin + firmaWidth, firmaY);
     doc.text("FIRMA", leftMargin + 55, firmaY + 14);
 
-    doc.line(pageWidth - rightMargin - firmaWidth, firmaY, pageWidth - rightMargin, firmaY);
+    doc.line(
+      pageWidth - rightMargin - firmaWidth,
+      firmaY,
+      pageWidth - rightMargin,
+      firmaY
+    );
     doc.text("LUGAR Y FECHA", pageWidth - rightMargin - 140, firmaY + 14);
 
     doc.setFont("times", "normal");
     doc.setFontSize(FS_SMALL);
-    doc.text("Beneficio Café Henola - El Paraíso, Honduras", pageWidth / 2, firmaY + 12, { align: "center" });
+    doc.text(
+      "Beneficio Café Henola - El Paraíso, Honduras",
+      pageWidth / 2,
+      firmaY + 12,
+      { align: "center" }
+    );
 
     // Fecha roja
     doc.setFont("times", "bold");
-    doc.setFontSize(14); 
+    doc.setFontSize(14);
     doc.setTextColor(255, 0, 0);
-    doc.text("El Paraíso 11/10/2025", (pageWidth / 2) + 120, firmaY - 6);
+    doc.text(`El Paraíso ${fechaCorta}`, pageWidth / 2 + 120, firmaY - 6);
     doc.setTextColor(0, 0, 0);
 
     // Sello ajustado
@@ -233,6 +295,9 @@ export const exportEntregaContrato = async (formState) => {
   doc.line(40, pageHeight / 2, pageWidth - 40, pageHeight / 2);
   doc.setLineDash();
 
-  const nombreArchivo = `EntregaContrato_${cliente.replace(/\s+/g, "_")}_${comprobanteID}.pdf`;
+  const nombreArchivo = `EntregaContrato_${cliente.replace(
+    /\s+/g,
+    "_"
+  )}_${comprobanteID}.pdf`;
   doc.save(nombreArchivo);
 };

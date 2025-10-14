@@ -21,6 +21,8 @@ import { useFetchReport } from "@/hook/useFetchReport";
 import TarjetaMobile from "@/components/TarjetaMobile";
 import ProtectedPage from "@/components/ProtectedPage";
 import ProtectedButton from "@/components/ProtectedButton";
+import { exportContratoCafe } from "@/Doc/Documentos/contrato";
+import { DeleteFilled, FilePdfOutlined } from "@ant-design/icons";
 
 const { Title, Text } = Typography;
 
@@ -158,6 +160,45 @@ export default function ReporteRegistroContrato() {
             gap: 5,
           }}
         >
+          <Popconfirm
+            title="¿Seguro que deseas EXPORTAR esta compra?"
+            onConfirm={async () => {
+              // Mostrar mensaje inicial
+              messageApi.open({
+                type: "loading",
+                content:
+                  "Generando comprobante de contrato, por favor espere...",
+                duration: 0,
+                key: "generandoComprobante",
+              });
+
+              try {
+                // ✅ COMPRA
+                await exportContratoCafe({
+                  cliente: { label: record.nombreCliente },
+                  producto: { label: record.tipoCafe },
+                  contratoCantidadQQ: parseFloat(record.cantidadQQ),
+                  contratoPrecio: parseFloat(record.precio),
+                  contratoTotalLps: parseFloat(record.totalLps),
+                  contratoDescripcion: record.descripcion,
+                  contratoID: record.contratoID,
+                  fecha: record.fecha,
+                });
+
+                // Éxito
+                messageApi.destroy("generandoComprobante");
+                messageApi.success("Comprobante generado correctamente");
+              } catch (err) {
+                console.error("Error generando comprobante:", err);
+                messageApi.destroy("generandoComprobante");
+                messageApi.error("Error generando comprobante PDF");
+              }
+            }}
+            okText="Sí"
+            cancelText="No"
+          >
+            <Button size="small" type="primary" icon={<FilePdfOutlined />} />
+          </Popconfirm>
           {/* <ProtectedButton allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
             <Popconfirm
               title="¿Seguro que deseas EDITAR esta compra"
@@ -183,9 +224,7 @@ export default function ReporteRegistroContrato() {
               okText="Sí"
               cancelText="No"
             >
-              <Button size="small" danger>
-                Eliminar
-              </Button>
+              <Button size="small" danger icon={<DeleteFilled />} />
             </Popconfirm>
           </ProtectedButton>
         </div>
@@ -368,6 +407,50 @@ export default function ReporteRegistroContrato() {
                 ...item,
                 acciones: (
                   <div style={{ display: "flex", gap: 6 }}>
+                    <Popconfirm
+                      title="¿Seguro que deseas EXPORTAR esta compra?"
+                      onConfirm={async () => {
+                        // Mostrar mensaje inicial
+                        messageApi.open({
+                          type: "loading",
+                          content:
+                            "Generando comprobante de contrato, por favor espere...",
+                          duration: 0,
+                          key: "generandoComprobante",
+                        });
+
+                        try {
+                          await exportContratoCafe({
+                            cliente: { label: item.nombreCliente },
+                            producto: { label: item.tipoCafe },
+                            contratoCantidadQQ: parseFloat(item.cantidadQQ),
+                            contratoPrecio: parseFloat(item.precio),
+                            contratoTotalLps: parseFloat(item.totalLps),
+                            contratoDescripcion: item.descripcion,
+                            contratoID: item.contratoID,
+                            fecha: item.fecha,
+                          });
+
+                          // Éxito
+                          messageApi.destroy("generandoComprobante");
+                          messageApi.success(
+                            "Comprobante generado correctamente"
+                          );
+                        } catch (err) {
+                          console.error("Error generando comprobante:", err);
+                          messageApi.destroy("generandoComprobante");
+                          messageApi.error("Error generando comprobante PDF");
+                        }
+                      }}
+                      okText="Sí"
+                      cancelText="No"
+                    >
+                      <Button
+                        size="small"
+                        type="primary"
+                        icon={<FilePdfOutlined />}
+                      />
+                    </Popconfirm>
                     {/* <ProtectedButton
                       allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}
                     >

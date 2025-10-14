@@ -24,15 +24,17 @@ export const exportContratoCafe = async (formState) => {
   const fondoGray = await processImageToGray(fondoImg.src, 0.15);
 
   // Fecha larga (si la quieres usar en texto) y fecha corta para la firma
-  const fecha = new Date().toLocaleDateString("es-HN", {
+  const fechaInput = formState?.fecha ? new Date(formState.fecha) : new Date();
+
+  const fecha = fechaInput.toLocaleDateString("es-HN", {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
-  const now = new Date();
-  const fechaCorta = `${String(now.getDate()).padStart(2, "0")}/${String(
-    now.getMonth() + 1
-  ).padStart(2, "0")}/${now.getFullYear()}`;
+
+  const fechaCorta = `${String(fechaInput.getDate()).padStart(2, "0")}/${String(
+    fechaInput.getMonth() + 1
+  ).padStart(2, "0")}/${fechaInput.getFullYear()}`;
 
   const scale = 1.1;
   const logo = await getLogoScaled(tasa.src, 80 * scale, 80 * scale);
@@ -90,9 +92,9 @@ export const exportContratoCafe = async (formState) => {
   doc.setFontSize(10 * scale);
   doc.text("Cosecha 2025 - 2026", leftMargin, startY);
 
-  //Contrato No. pasa donde estaba Cosecha 
+  //Contrato No. pasa donde estaba Cosecha
   const cosechaX = pageWidth - rightMargin - frijolimg.width;
-  const cosechaY = frijolY + frijolimg.height + 20; 
+  const cosechaY = frijolY + frijolimg.height + 20;
   doc.setFont("times", "bold");
   doc.setFontSize(10 * scale);
   const labelContrato = "Contrato No:";
@@ -110,7 +112,7 @@ export const exportContratoCafe = async (formState) => {
     { maxWidth: pageWidth - leftMargin - rightMargin }
   );
 
-  // Productor 
+  // Productor
   startY += 25;
   doc.setFont("times", "bold");
   const labelProd = "Productor:";
@@ -134,7 +136,9 @@ export const exportContratoCafe = async (formState) => {
     startY: startY + 40,
     margin: { left: leftMargin, right: rightMargin },
     head: [["Producto", "Cantidad (QQ)", "Precio (Lps)", "Total (Lps)"]],
-    body: [[cleanText(producto), cantidadQQ, `L. ${precioQQ}`, `L. ${totalLps}`]],
+    body: [
+      [cleanText(producto), cantidadQQ, `L. ${precioQQ}`, `L. ${totalLps}`],
+    ],
     styles: {
       font: "times",
       fontSize: 10 * scale,
@@ -148,7 +152,7 @@ export const exportContratoCafe = async (formState) => {
       lineWidth: 0.5,
     },
     bodyStyles: {
-      textColor: [255, 0, 0], 
+      textColor: [255, 0, 0],
     },
   });
 
@@ -190,22 +194,24 @@ export const exportContratoCafe = async (formState) => {
   });
 
   // === BLOQUE DE FIRMAS (centrado y más abajo) ===
-  const firmaOffsetY = 90;     
-  const firmaWidth   = 160;   
-  const gapBetween   = 80;     
+  const firmaOffsetY = 90;
+  const firmaWidth = 160;
+  const gapBetween = 80;
 
   const centerX = pageWidth / 2;
-  const leftX   = centerX - gapBetween - firmaWidth; 
-  const rightX  = centerX + gapBetween;              
-  const firmaY  = startY + firmaOffsetY;             
+  const leftX = centerX - gapBetween - firmaWidth;
+  const rightX = centerX + gapBetween;
+  const firmaY = startY + firmaOffsetY;
 
- // Línea y texto: FIRMA (centrado)
- doc.line(leftX, firmaY, leftX + firmaWidth, firmaY);
- doc.text("FIRMA", leftX + firmaWidth / 2, firmaY + 12, { align: "center" });
+  // Línea y texto: FIRMA (centrado)
+  doc.line(leftX, firmaY, leftX + firmaWidth, firmaY);
+  doc.text("FIRMA", leftX + firmaWidth / 2, firmaY + 12, { align: "center" });
 
- // Línea y texto: LUGAR Y FECHA (centrado)
- doc.line(rightX, firmaY, rightX + firmaWidth, firmaY);
- doc.text("LUGAR Y FECHA", rightX + firmaWidth / 2, firmaY + 12, { align: "center" });
+  // Línea y texto: LUGAR Y FECHA (centrado)
+  doc.line(rightX, firmaY, rightX + firmaWidth, firmaY);
+  doc.text("LUGAR Y FECHA", rightX + firmaWidth / 2, firmaY + 12, {
+    align: "center",
+  });
 
   // Fecha roja sobre la línea derecha
   doc.setFont("times", "bold");
@@ -233,6 +239,9 @@ export const exportContratoCafe = async (formState) => {
     { align: "center" }
   );
 
-  const nombreArchivo = `Contrato_${cliente.replace(/\s+/g, "_")}_${contratoID}.pdf`;
+  const nombreArchivo = `Contrato_${cliente.replace(
+    /\s+/g,
+    "_"
+  )}_${contratoID}.pdf`;
   doc.save(nombreArchivo);
 };

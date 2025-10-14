@@ -22,6 +22,8 @@ import SectionHeader from "@/components/ReportesElement/AccionesResporte";
 import { useFetchReport } from "@/hook/useFetchReport";
 import ProtectedPage from "@/components/ProtectedPage";
 import ProtectedButton from "@/components/ProtectedButton";
+import { exportDeposito } from "@/Doc/Documentos/desposito";
+import { FilePdfOutlined, DeleteFilled, EditFilled } from "@ant-design/icons";
 
 const { Title, Text } = Typography;
 
@@ -146,6 +148,50 @@ export default function ReporteRegistroDeposito() {
             gap: 5,
           }}
         >
+          <Popconfirm
+            title="¿Seguro que deseas EXPORTAR esta compra?"
+            onConfirm={async () => {
+           
+
+              // Mostrar mensaje inicial
+              messageApi.open({
+                type: "loading",
+                content:
+                  "Generando comprobante de depósito, por favor espere...",
+                duration: 0,
+                key: "generandoComprobante",
+              });
+
+              try {
+                // ✅ COMPRA
+                await exportDeposito({
+                  cliente: { label: record.nombreCliente },
+                  productos: [
+                    {
+                      nombre: record.tipoCafe,
+                      cantidad: parseFloat(record.cantidadQQ),
+                    },
+                  ],
+                  total: parseFloat(record.totalLps),
+                  observaciones: record.descripcion,
+                  comprobanteID: record.id,
+                  fecha: record.fecha,
+                });
+
+                // Éxito
+                messageApi.destroy("generandoComprobante");
+                messageApi.success("Comprobante generado correctamente");
+              } catch (err) {
+                console.error("Error generando comprobante:", err);
+                messageApi.destroy("generandoComprobante");
+                messageApi.error("Error generando comprobante PDF");
+              }
+            }}
+            okText="Sí"
+            cancelText="No"
+          >
+            <Button size="small" type="primary" icon={<FilePdfOutlined />} />
+          </Popconfirm>
           {/* <ProtectedButton allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
             <Popconfirm
               title="¿Seguro que deseas EDITAR esta compra"
@@ -171,9 +217,7 @@ export default function ReporteRegistroDeposito() {
               okText="Sí"
               cancelText="No"
             >
-              <Button size="small" danger>
-                Eliminar
-              </Button>
+              <Button size="small" danger icon={<DeleteFilled />} />
             </Popconfirm>
           </ProtectedButton>
         </div>
@@ -365,6 +409,55 @@ export default function ReporteRegistroDeposito() {
                       </Button>
                     </ProtectedButton> */}
 
+                    <Popconfirm
+                      title="¿Seguro que deseas EXPORTAR esta compra?"
+                      onConfirm={async () => {
+                        // Mostrar mensaje inicial
+                        messageApi.open({
+                          type: "loading",
+                          content:
+                            "Generando comprobante de depósito, por favor espere...",
+                          duration: 0,
+                          key: "generandoComprobante",
+                        });
+
+                        try {
+                          // ✅ COMPRA
+                          await exportDeposito({
+                            cliente: { label: item.nombreCliente },
+                            productos: [
+                              {
+                                nombre: item.tipoCafe,
+                                cantidad: parseFloat(item.cantidadQQ),
+                              },
+                            ],
+                            total: parseFloat(item.totalLps),
+                            observaciones: item.descripcion,
+                            comprobanteID: item.id,
+                            fecha: item.fecha,
+                          });
+
+                          // Éxito
+                          messageApi.destroy("generandoComprobante");
+                          messageApi.success(
+                            "Comprobante generado correctamente"
+                          );
+                        } catch (err) {
+                          console.error("Error generando comprobante:", err);
+                          messageApi.destroy("generandoComprobante");
+                          messageApi.error("Error generando comprobante PDF");
+                        }
+                      }}
+                      okText="Sí"
+                      cancelText="No"
+                    >
+                      <Button
+                        size="small"
+                        type="primary"
+                        icon={<FilePdfOutlined />}
+                      />
+                    </Popconfirm>
+
                     <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
                       <Popconfirm
                         title="¿Seguro que deseas eliminar este depósito?"
@@ -372,9 +465,7 @@ export default function ReporteRegistroDeposito() {
                         okText="Sí"
                         cancelText="No"
                       >
-                        <Button size="small" danger>
-                          Eliminar
-                        </Button>
+                        <Button size="small" danger icon={<DeleteFilled />} />
                       </Popconfirm>
                     </ProtectedButton>
                   </div>

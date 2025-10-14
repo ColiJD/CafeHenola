@@ -23,7 +23,16 @@ export const exportCompraDirecta = async (formState) => {
   const fondoGray = await processImageToGray(fondoImg.src, 0.15);
 
   // Fecha actual
-  const fechaObj = new Date();
+  let fechaObj;
+  if (formState?.fecha) {
+    const partes = formState.fecha.split("-"); // "YYYY-MM-DD"
+    const year = parseInt(partes[0], 10);
+    const month = parseInt(partes[1], 10) - 1; // mes 0-11
+    const day = parseInt(partes[2], 10);
+    fechaObj = new Date(year, month, day); // evita desfase de zona horaria
+  } else {
+    fechaObj = new Date();
+  }
   const dia = String(fechaObj.getDate()).padStart(2, "0");
   const mes = String(fechaObj.getMonth() + 1).padStart(2, "0");
   const anio = fechaObj.getFullYear();

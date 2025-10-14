@@ -11,7 +11,7 @@ import {
   message,
 } from "antd";
 import dayjs from "dayjs";
-import { FileTextOutlined } from "@ant-design/icons";
+import { DeleteOutlined, FileTextOutlined } from "@ant-design/icons";
 import Filtros from "@/components/Filtros";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
 import EstadisticasCards from "@/components/ReportesElement/DatosEstadisticos";
@@ -21,6 +21,8 @@ import TarjetaMobile from "@/components/TarjetaMobile";
 import ProtectedPage from "@/components/ProtectedPage";
 import { generarReporteDetalleContrato } from "@/Doc/Reportes/FormatoDetalleContratoDoc";
 import ProtectedButton from "@/components/ProtectedButton";
+import { exportEntregaContrato } from "@/Doc/Documentos/entregaContrato";
+import { FilePdfOutlined, DeleteFilled } from "@ant-design/icons";
 const { Title, Text } = Typography;
 
 export default function Reportedetallecontrato() {
@@ -111,6 +113,45 @@ export default function Reportedetallecontrato() {
             gap: 5,
           }}
         >
+          <Popconfirm
+            title="¿Seguro que deseas EXPORTAR esta compra?"
+            onConfirm={async () => {
+              // Mostrar mensaje inicial
+              messageApi.open({
+                type: "loading",
+                content:
+                  "Generando comprobante de contrato, por favor espere...",
+                duration: 0,
+                key: "generandoComprobante",
+              });
+
+              try {
+                await exportEntregaContrato({
+                  cliente: { label: record.nombreCliente },
+                  contratoID: record.contratoID,
+                  comprobanteID: record.detalleID,
+                  tipoCafe: record.tipoCafe,
+                  quintalesIngresados: parseFloat(record.cantidadQQ),
+                  precio: parseFloat(record.precioQQ),
+                  totalPagar: parseFloat(record.totalLps),
+                  observaciones: record.observaciones,
+                  fecha: record.fecha, // 👈 Aquí se pasa la fecha del registro
+                });
+
+                // Éxito
+                messageApi.destroy("generandoComprobante");
+                messageApi.success("Comprobante generado correctamente");
+              } catch (err) {
+                console.error("Error generando comprobante:", err);
+                messageApi.destroy("generandoComprobante");
+                messageApi.error("Error generando comprobante PDF");
+              }
+            }}
+            okText="Sí"
+            cancelText="No"
+          >
+            <Button size="small" type="primary" icon={<FilePdfOutlined />} />
+          </Popconfirm>
           {/* <ProtectedButton allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
                 <Popconfirm
                   title="¿Seguro que deseas EDITAR esta compra"
@@ -153,9 +194,7 @@ export default function Reportedetallecontrato() {
               okText="Sí"
               cancelText="No"
             >
-              <Button size="small" danger>
-                Eliminar
-              </Button>
+              <Button size="small" danger icon={<DeleteFilled />} />
             </Popconfirm>
           </ProtectedButton>
         </div>
@@ -205,6 +244,7 @@ export default function Reportedetallecontrato() {
     { label: "Cantidad QQ", key: "cantidadQQ" },
     { label: "Precio QQ", key: "precioQQ" },
     { label: "Total Lps", key: "totalLps" },
+    { label: "Observaciones", key: "observaciones" },
     { label: "Acciones", key: "acciones" },
   ];
 
@@ -341,6 +381,51 @@ export default function Reportedetallecontrato() {
                   <div style={{ display: "flex", gap: 6 }}>
                     <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
                       <Popconfirm
+                        title="¿Seguro que deseas EXPORTAR esta compra?"
+                        onConfirm={async () => {
+                          // Mostrar mensaje inicial
+                          messageApi.open({
+                            type: "loading",
+                            content:
+                              "Generando comprobante de contrato, por favor espere...",
+                            duration: 0,
+                            key: "generandoComprobante",
+                          });
+
+                          try {
+                            await exportEntregaContrato({
+                              cliente: { label: item.nombreCliente },
+                              contratoID: item.contratoID,
+                              comprobanteID: item.detalleID,
+                              tipoCafe: item.tipoCafe,
+                              quintalesIngresados: parseFloat(item.cantidadQQ),
+                              precio: parseFloat(item.precioQQ),
+                              totalPagar: parseFloat(item.totalLps),
+                              observaciones: item.observaciones,
+                              fecha: item.fecha, // 👈 Aquí se pasa la fecha del registro
+                            });
+
+                            // Éxito
+                            messageApi.destroy("generandoComprobante");
+                            messageApi.success(
+                              "Comprobante generado correctamente"
+                            );
+                          } catch (err) {
+                            console.error("Error generando comprobante:", err);
+                            messageApi.destroy("generandoComprobante");
+                            messageApi.error("Error generando comprobante PDF");
+                          }
+                        }}
+                        okText="Sí"
+                        cancelText="No"
+                      >
+                        <Button
+                          size="small"
+                          type="primary"
+                          icon={<FilePdfOutlined />}
+                        />
+                      </Popconfirm>
+                      <Popconfirm
                         title="¿Seguro que deseas eliminar esta Entrega?"
                         onConfirm={() =>
                           eliminarEntidad({
@@ -362,9 +447,7 @@ export default function Reportedetallecontrato() {
                         okText="Sí"
                         cancelText="No"
                       >
-                        <Button size="small" danger>
-                          Eliminar
-                        </Button>
+                        <Button size="small" danger icon={<DeleteFilled />} />
                       </Popconfirm>
                     </ProtectedButton>
                   </div>

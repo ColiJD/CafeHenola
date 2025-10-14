@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { message, Spin } from "antd";
+import { message, Spin, Drawer, List, Button, Badge, Tooltip } from "antd";
 import Formulario from "@/components/Formulario";
 import PreviewModal from "@/components/Modal";
 import { obtenerClientesSelect, obtenerProductosSelect } from "@/lib/consultas";
 import { FloatingButton } from "@/components/Button";
-import { UnorderedListOutlined } from "@ant-design/icons";
+import { SolutionOutlined, UnorderedListOutlined } from "@ant-design/icons";
 import {
   calcularCafeDesdeProducto,
   calcularPesoBrutoDesdeOro,
@@ -18,6 +18,8 @@ import {
   verificarClientesPendientesContratos,
   verificarDepositosPendientes,
 } from "@/lib/consultas";
+import { BellOutlined } from "@ant-design/icons";
+import NotificationDrawer from "@/components/NotificationDrawer";
 
 import {
   limpiarFormulario,
@@ -31,6 +33,8 @@ export default function CompraForm({ compraId }) {
   const [productos, setProductos] = useState([]);
 
   const [loadingDatos, setLoadingDatos] = useState(true); // 🔹 loading general
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const [loadingCompra, setLoadingCompra] = useState(false); // 🔹 loading para editar
 
   const [cliente, setCliente] = useState(null);
@@ -53,18 +57,29 @@ export default function CompraForm({ compraId }) {
   const [messageApi, contextHolder] = message.useMessage();
 
   useEffect(() => {
-    async function verificarPendientesCliente() {
-      if (!cliente || !cliente.value) {
-        messageApi.info("Seleccione un cliente para continuar.");
-        return;
-      }
+    async function cargarNotificaciones() {
+      // Limpiar notificaciones al cambiar de cliente
+      setNotifications([]);
 
-      await verificarClientesPendientesContratos(messageApi, cliente.value);
-      await verificarDepositosPendientes(messageApi, cliente.value);
+      if (!cliente || !cliente.value) return;
+
+      // Obtener contratos pendientes
+      const mensajesContratos = await verificarClientesPendientesContratos(
+        cliente.value
+      );
+      // Obtener depósitos pendientes
+      const mensajesDepositos = await verificarDepositosPendientes(
+        cliente.value
+      );
+
+      // Combinar todos los mensajes
+      const todosMensajes = [...mensajesContratos, ...mensajesDepositos];
+
+      setNotifications(todosMensajes);
     }
 
-    verificarPendientesCliente();
-  }, [cliente, messageApi]);
+    cargarNotificaciones();
+  }, [cliente]);
 
   // Carga clientes y productos
   useEffect(() => {
@@ -385,13 +400,13 @@ export default function CompraForm({ compraId }) {
 
   return (
     <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
-      <FloatingButton
+      {/* <FloatingButton
         title="Ir al registro"
         icon={<UnorderedListOutlined />}
         top={20}
         right={30}
         route="/private/page/transacciones/compra/vista"
-      />
+      /> */}
       <>
         {contextHolder}
         {loadingDatos || loadingCompra ? (
@@ -407,6 +422,42 @@ export default function CompraForm({ compraId }) {
           </div>
         ) : (
           <>
+            {/* Contenedor fijo para el botón + badge */}
+            <div
+              style={{
+                position: "fixed",
+                bottom: 20,
+                right: 20,
+                zIndex: 1000,
+              }}
+            >
+              <Badge count={notifications.length} offset={[0, 0]}>
+                <Button
+                  type="primary"
+                  shape="circle"
+                  icon={<BellOutlined />}
+                  size="large"
+                  onClick={() => setDrawerVisible(true)}
+                />
+              </Badge>
+            </div>
+
+            <NotificationDrawer
+              visible={drawerVisible}
+              onClose={() => setDrawerVisible(false)}
+              title="Notificaciones"
+              subtitle={cliente?.label}
+              notifications={notifications}
+              actions={[
+                {
+                  tooltip: "Ir a Registro de Compras",
+                  icon: <SolutionOutlined />,
+                  onClick: () =>
+                    router.push("/private/page/transacciones/compra/vista"),
+                },
+              ]}
+            />
+
             <Formulario
               title={
                 compraId ? "Editar Compra Directa" : "Registrar Compra Directa"

@@ -142,55 +142,41 @@ export async function obtenerSelectData({
     return [];
   }
 }
-
-
-export async function verificarClientesPendientesContratos(
-  messageApi,
-  clienteID
-) {
-  if (!clienteID) return; // 🔹 No hacer nada si no hay cliente
-
+// consultas.js
+export async function verificarClientesPendientesContratos(clienteID) {
+  if (!clienteID) return [];
   try {
-    const url = `/api/contratos/disponibles?clienteID=${clienteID}`;
-
-    const res = await fetch(url);
+    const res = await fetch(
+      `/api/contratos/disponibles?clienteID=${clienteID}`
+    );
     if (!res.ok) throw new Error("Error en la respuesta del servidor");
-
     const data = await res.json();
-
     if (Array.isArray(data) && data.length > 0) {
-      messageApi.warning(
-        `El cliente seleccionado tiene ${data.length} contrato(s) pendiente(s).`
-      );
+      return [
+        `Tiene ${data.length} contrato(s) pendiente(s).`,
+      ];
     }
+    return [];
   } catch (err) {
-    console.error("Error al verificar contratos pendientes:", err);
-    messageApi.error("No se pudieron verificar los contratos pendientes.");
+    console.error(err);
+    return ["No se pudieron verificar los contratos pendientes."];
   }
 }
 
-export async function verificarDepositosPendientes(
-  messageApi,
-  clienteID = null
-) {
+export async function verificarDepositosPendientes(clienteID) {
   try {
-    const url = clienteID
-      ? `/api/liqDeposito/clienteConDeposito?clienteID=${clienteID}`
-      : "/api/clientes/pendientes";
-
+    const url = `/api/liqDeposito/clienteConDeposito?clienteID=${clienteID}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error("Error en la respuesta del servidor");
-
     const data = await res.json();
-
     if (Array.isArray(data) && data.length > 0) {
-      const mensaje = clienteID
-        ? `El cliente seleccionado tiene ${data.length} depósito(s) pendiente(s).`
-        : `Hay ${data.length} depósito(s) pendiente(s).`;
-      messageApi.warning(mensaje);
+      return [
+        ` Tiene ${data.length} depósito(s) pendiente(s).`,
+      ];
     }
+    return [];
   } catch (err) {
-    console.error("Error al verificar depósitos pendientes:", err);
-    messageApi.error("No se pudieron verificar los depósitos pendientes.");
+    console.error(err);
+    return ["No se pudieron verificar los depósitos pendientes."];
   }
 }

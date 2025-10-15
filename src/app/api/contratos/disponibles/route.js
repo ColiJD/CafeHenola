@@ -10,11 +10,27 @@ export async function GET(req) {
     "AUDITORES",
   ]);
   if (sessionOrResponse instanceof Response) return sessionOrResponse;
+
   try {
-    const clientes = await prisma.$queryRaw`
-      SELECT clienteID, clienteNombreCompleto 
+    const { searchParams } = new URL(req.url);
+    const clienteID = searchParams.get("clienteID");
+    let query;
+    if (clienteID) {
+      // 🔹 Si se envía clienteID, filtra solo los contratos de ese cliente
+      query = prisma.$queryRaw`
+        SELECT clienteID, clienteNombreCompleto 
       FROM vw_clientes_con_contratos
-    `;
+        WHERE clienteID = ${Number(clienteID)}
+      `;
+    } else {
+      // 🔹 Si no se envía clienteID, devuelve todos los contratos disponibles
+      query = prisma.$queryRaw`
+        SELECT clienteID, clienteNombreCompleto 
+      FROM vw_clientes_con_contratos
+      `;
+    }
+
+    const clientes = await query;
 
     return new Response(JSON.stringify(clientes), {
       status: 200,

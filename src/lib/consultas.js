@@ -12,7 +12,7 @@ export async function obtenerClientesSelect(messageApi) {
     }));
   } catch (err) {
     console.error("Error al cargar clientes:", err);
-    messageApi.error("⚠️ No se pudieron cargar los clientes.");
+    messageApi.error(" No se pudieron cargar los clientes.");
     return [];
   }
 }
@@ -31,7 +31,7 @@ export async function obtenerProductosSelect(messageApi) {
     }));
   } catch (err) {
     console.error("Error al cargar productos:", err);
-    messageApi.error("⚠️ No se pudieron cargar los productos.");
+    messageApi.error(" No se pudieron cargar los productos.");
     return [];
   }
 }
@@ -113,7 +113,7 @@ export async function obtenerClientesPendientesContratos(messageApi) {
     }));
   } catch (err) {
     console.error("Error al cargar clientes:", err);
-    messageApi.error("⚠️ No se pudieron cargar los clientes.");
+    messageApi.error("No se pudieron cargar los clientes.");
     return [];
   }
 }
@@ -138,7 +138,45 @@ export async function obtenerSelectData({
     }));
   } catch (err) {
     console.error(`Error al cargar datos desde ${url}:`, err);
-    if (messageApi) messageApi.error("⚠️ No se pudieron cargar los datos.");
+    if (messageApi) messageApi.error(" No se pudieron cargar los datos.");
     return [];
+  }
+}
+// consultas.js
+export async function verificarClientesPendientesContratos(clienteID) {
+  if (!clienteID) return [];
+  try {
+    const res = await fetch(
+      `/api/contratos/disponibles?clienteID=${clienteID}`
+    );
+    if (!res.ok) throw new Error("Error en la respuesta del servidor");
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0) {
+      return [
+        `Tiene ${data.length} contrato(s) pendiente(s).`,
+      ];
+    }
+    return [];
+  } catch (err) {
+    console.error(err);
+    return ["No se pudieron verificar los contratos pendientes."];
+  }
+}
+
+export async function verificarDepositosPendientes(clienteID) {
+  try {
+    const url = `/api/liqDeposito/clienteConDeposito?clienteID=${clienteID}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Error en la respuesta del servidor");
+    const data = await res.json();
+    if (Array.isArray(data) && data.length > 0) {
+      return [
+        ` Tiene ${data.length} depósito(s) pendiente(s).`,
+      ];
+    }
+    return [];
+  } catch (err) {
+    console.error(err);
+    return ["No se pudieron verificar los depósitos pendientes."];
   }
 }

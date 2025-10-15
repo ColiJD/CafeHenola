@@ -293,5 +293,30 @@ export const exportVentaDirecta = async (formState) => {
     /\s+/g,
     "_"
   )}_${comprobanteID}.pdf`;
-  doc.save(nombreArchivo);
+  const pdfBlob = doc.output("blob");
+  const pdfURL = URL.createObjectURL(pdfBlob);
+
+  // Detección básica de dispositivo móvil
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  if (isMobile) {
+    // 📱 En móvil: abrir PDF visible (el usuario imprime desde el visor)
+    const newWindow = window.open(pdfURL, "_blank");
+    if (!newWindow) {
+      alert(
+        "Por favor permite las ventanas emergentes para poder ver el documento."
+      );
+    }
+  } else {
+    // 💻 En escritorio: imprimir directamente
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.src = pdfURL;
+    document.body.appendChild(iframe);
+
+    iframe.onload = function () {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+    };
+  }
 };

@@ -71,7 +71,7 @@ export default function NotificationDrawer({
       width={360}
       onClose={onClose}
       open={visible}
-      bodyStyle={{ background: "#fafafa", padding: "1rem 1.5rem" }}
+   
     >
       {/* 🔹 Botones configurables */}
       {actions.length > 0 && (

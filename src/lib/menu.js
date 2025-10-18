@@ -51,6 +51,12 @@ export const menuItems = [
         href: Ruta + "/informe/reporteCliente",
         image: deposito,
       },
+      {
+        id: 403,
+        name: "Reporte de Liquidación de Depósitos",
+        href: RutaTransaccion + "/deposito/lipdedeposito",
+        image: deposito,
+      },
     ],
   },
   {

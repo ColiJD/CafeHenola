@@ -56,14 +56,25 @@ export async function GET(req) {
       });
 
       // Contratos entrada
-      const contratoAgg = await prisma.detallecontrato.aggregate({
-        _sum: { cantidadQQ: true, precioQQ: true },
+      // Contratos entrada
+      const contratos = await prisma.detallecontrato.findMany({
         where: {
           contrato: { contratoclienteID: c.clienteID },
           tipoMovimiento: "Entrada",
           fecha: { gte: desde, lte: hasta },
         },
+        select: { cantidadQQ: true, precioQQ: true },
       });
+
+      const contratoCantidadQQ = contratos.reduce(
+        (sum, r) => sum + Number(r.cantidadQQ || 0),
+        0
+      );
+
+      const contratoTotalLps = contratos.reduce(
+        (sum, r) => sum + Number(r.cantidadQQ || 0) * Number(r.precioQQ || 0),
+        0
+      );
 
       // Depósitos entrada usando detalleliqdeposito y liqdeposito
       const depositoAgg = await prisma.detalleliqdeposito.aggregate({
@@ -80,7 +91,7 @@ export async function GET(req) {
       // 🔹 Si no hay movimientos, retornamos null
       const hasMovimientos =
         (compraAgg._sum.compraCantidadQQ ?? 0) > 0 ||
-        (contratoAgg._sum.cantidadQQ ?? 0) > 0 ||
+        contratoCantidadQQ > 0 ||
         (depositoAgg._sum.cantidadQQ ?? 0) > 0;
 
       if (!hasMovimientos) return null;
@@ -90,8 +101,8 @@ export async function GET(req) {
         nombre: `${c.clienteNombre || ""} ${c.clienteApellido || ""}`.trim(),
         compraCantidadQQ: Number(compraAgg._sum.compraCantidadQQ || 0),
         compraTotalLps: Number(compraAgg._sum.compraTotal || 0),
-        contratoCantidadQQ: Number(contratoAgg._sum.cantidadQQ || 0),
-        contratoTotalLps: Number(contratoAgg._sum.precioQQ || 0),
+        contratoCantidadQQ,
+        contratoTotalLps,
         depositoCantidadQQ: Number(depositoAgg._sum.cantidadQQ || 0),
         depositoTotalLps: Number(depositoAgg._sum.totalLps || 0),
       };

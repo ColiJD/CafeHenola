@@ -38,3 +38,50 @@ export async function GET(req, { params }) {
     );
   }
 }
+
+
+import { checkRole } from "@/lib/checkRole";
+
+export async function DELETE(req) {
+  // Validar permisos
+  const sessionOrResponse = await checkRole(req, ["ADMIN", "GERENCIA"]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
+
+  try {
+    // Obtener ID desde la URL
+    const url = new URL(req.url);
+    const prestamoId = Number(url.pathname.split("/").pop());
+
+    if (!prestamoId || isNaN(prestamoId)) {
+      return new Response(JSON.stringify({ error: "ID de préstamo inválido" }), {
+        status: 400,
+      });
+    }
+
+    // Buscar el préstamo
+    const prestamoExistente = await prisma.prestamos.findUnique({
+      where: { prestamoId },
+    });
+
+    if (!prestamoExistente) {
+      return new Response(JSON.stringify({ error: "Préstamo no encontrado" }), {
+        status: 404,
+      });
+    }
+
+    // Anular el préstamo
+    await prisma.prestamos.update({
+      where: { prestamoId },
+      data: { estado: "ANULADO" },
+    });
+
+    return new Response(JSON.stringify({ message: "Préstamo anulado correctamente" }), {
+      status: 200,
+    });
+  } catch (error) {
+    console.error("❌ Error al anular préstamo:", error);
+    return new Response(JSON.stringify({ error: "Error interno al anular el préstamo" }), {
+      status: 500,
+    });
+  }
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import {
   Table,
   Card,
@@ -14,7 +14,9 @@ import {
   Col,
   Tag,
   Empty,
+  message,
   Button,
+  Popconfirm,
 } from "antd";
 import {
   PlusOutlined,
@@ -24,6 +26,8 @@ import {
 import DrawerPrestamo from "@/components/Prestamos/DrawerPrestamo.jsx";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
 import DrawerCalculoInteres from "@/components/Prestamos/calculoInteres";
+import ProtectedPage from "@/components/ProtectedPage";
+import { DeleteFilled } from "@ant-design/icons";
 
 const { Title, Text } = Typography;
 
@@ -36,6 +40,8 @@ export default function PrestamosGeneral() {
   const [error, setError] = useState(null);
   const [openDrawer, setOpenDrawer] = useState(false);
   const [openDrawerInteres, setOpenDrawerInteres] = useState(false);
+  const [messageApi, contextHolder] = message.useMessage();
+  const messageApiRef = useRef(messageApi);
 
   useEffect(() => {
     const cargarClientes = async () => {
@@ -53,6 +59,7 @@ export default function PrestamosGeneral() {
   }, []);
 
   const cargarPrestamos = useCallback(async (clienteId) => {
+    if (!clienteId) return;
     setLoading(true);
     setError(null);
 
@@ -65,7 +72,12 @@ export default function PrestamosGeneral() {
       if (data?.prestamos?.length > 0) {
         const filas = [];
 
-        data.prestamos.forEach((prestamo, idxPrestamo) => {
+        // Filtrar solo préstamos activos (no anulados)
+        const prestamosActivos = data.prestamos.filter(
+          (p) => p.estado !== "ANULADO"
+        );
+
+        prestamosActivos.forEach((prestamo, idxPrestamo) => {
           const prestamoKey = `prestamo-${prestamo.prestamo_id || idxPrestamo}`;
           if (
             prestamo.estado !== "INICIAL" &&
@@ -73,6 +85,7 @@ export default function PrestamosGeneral() {
           ) {
             filas.push({
               key: prestamoKey,
+              prestamoId: prestamo.prestamoId,
               fecha: prestamo.fecha
                 ? new Date(prestamo.fecha).toLocaleDateString("es-HN")
                 : "",
@@ -84,11 +97,17 @@ export default function PrestamosGeneral() {
               intAbono: null,
               anticipo: null,
               tipo: "PRESTAMO_INICIAL",
-              totalGeneral: Number(prestamo.monto || 0), // ← agregar aquí para que se vea
+              totalGeneral: Number(prestamo.monto || 0),
+              estado: prestamo.estado,
             });
           }
 
-          (prestamo.movimientos_prestamo || []).forEach((mov, idxMov) => {
+          // Filtrar solo movimientos activos (no anulados)
+          const movimientosActivos = (
+            prestamo.movimientos_prestamo || []
+          ).filter((mov) => mov.tipo_movimiento !== "ANULADO");
+
+          movimientosActivos.forEach((mov, idxMov) => {
             const descripcion = [
               mov.descripcion || mov.tipo_movimiento,
               mov.observacion ? `(${mov.observacion})` : "",
@@ -98,6 +117,7 @@ export default function PrestamosGeneral() {
 
             filas.push({
               key: `mov-${prestamo.prestamo_id || idxPrestamo}-${idxMov}`,
+              MovimientoId: mov.MovimientoId,
               fecha: mov.fecha
                 ? new Date(mov.fecha).toLocaleDateString("es-HN")
                 : "",
@@ -350,9 +370,85 @@ export default function PrestamosGeneral() {
           );
         },
       },
+      {
+        title: "Acciones",
+        key: "acciones",
+        fixed: isDesktop ? "right" : false,
+        width: 100,
+        align: "center",
+        render: (_, record) => {
+          // No mostrar para totales, préstamo inicial o ya anulados
+          if (
+            record.tipo === "TOTAL" ||
+            record.tipo === "ANULADO" ||
+            record.estado === "ANULADO"
+          )
+            return null;
+
+          const tipo = record.MovimientoId ? "MOVIMIENTO" : "PRESTAMO";
+          const id = record.MovimientoId || record.prestamoId;
+
+          return (
+            <Popconfirm
+              title={`¿Anular ${
+                tipo === "MOVIMIENTO" ? "movimiento" : "préstamo"
+              }? Esta acción no se puede deshacer.`}
+              okText="Sí, anular"
+              cancelText="Cancelar"
+              okType="danger"
+              onConfirm={() => handleAnular(id, tipo)}
+            >
+              <Button size="small" danger icon={<DeleteFilled />} />
+            </Popconfirm>
+          );
+        },
+      },
     ],
     [isDesktop]
   );
+
+  const handleAnular = async (id, tipo) => {
+    try {
+      console.log(`Anulando ${tipo} ID:`, id);
+
+      let endpoint = "";
+      if (tipo === "MOVIMIENTO") {
+        endpoint = `/api/prestamos/movimiento/${id}`;
+      } else if (tipo === "PRESTAMO") {
+        // ⚠️ Aquí usamos el mismo id que viene de la tabla, en la ruta
+        endpoint = `/api/prestamos/${id}`;
+      } else {
+        throw new Error("Tipo inválido");
+      }
+
+      const res = await fetch(endpoint, {
+        method: "DELETE", // DELETE seguirá usándose pero la API solo actualiza el estado
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})); // evita crash si no hay JSON
+        throw new Error(
+          data?.error || `No se pudo anular el ${tipo.toLowerCase()}`
+        );
+      }
+
+      messageApiRef.current.success(
+        `${
+          tipo === "MOVIMIENTO" ? "Movimiento" : "Préstamo"
+        } anulado correctamente`
+      );
+
+      // Recarga los movimientos/préstamos del cliente
+      if (clienteSeleccionado?.clienteID) {
+        await cargarPrestamos(clienteSeleccionado.clienteID);
+      }
+    } catch (err) {
+      console.error(err);
+      messageApiRef.current.error(
+        err.message || `Error al anular ${tipo.toLowerCase()}`
+      );
+    }
+  };
 
   const handleAgregarPrestamo = async (nuevoRegistro) => {
     try {
@@ -397,7 +493,8 @@ export default function PrestamosGeneral() {
       }
 
       // 4️⃣ Volver a cargar los préstamos actualizados
-      await cargarPrestamos(nuevoRegistro.clienteID);
+      (await clienteSeleccionado) &&
+        cargarPrestamos(clienteSeleccionado.clienteID);
 
       // 5️⃣ Cerrar Drawer
       setOpenDrawer(false);
@@ -410,147 +507,165 @@ export default function PrestamosGeneral() {
   };
 
   return (
-    <div style={{ background: "#f0f2f5", minHeight: "100vh" }}>
-      <Card
-        title={<Title level={isDesktop ? 3 : 4}>Préstamos y Anticipos</Title>}
-        style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
-      >
-        <Row
-          gutter={[8, 8]}
-          align="middle"
-          justify="start"
-          style={{ marginBottom: 24 }}
-        >
-          {/* Select del cliente */}
-          <Col xs={24} sm={24} md={12} lg={8} xl={6}>
-            <Select
-              showSearch
-              placeholder="🔍 Buscar cliente..."
-              style={{ width: "100%" }}
-              onChange={cargarPrestamos}
-              optionFilterProp="children"
-              size="large"
-              loading={clientes.length === 0}
-              filterOption={(input, option) =>
-                option?.children?.toLowerCase().includes(input.toLowerCase())
-              }
-              value={
-                clienteSeleccionado ? clienteSeleccionado.clienteID : undefined
-              } // ✅ asegúrate que sea solo el ID
-            >
-              {clientes.map((c) => (
-                <Select.Option key={c.clienteID} value={c.clienteID}>
-                  {`${c.clienteNombre} ${c.clienteApellido}`}
-                </Select.Option>
-              ))}
-            </Select>
-          </Col>
-
-          {/* Botones solo si hay cliente seleccionado */}
-          {clienteSeleccionado && (
-            <Col xs={24} sm={24} md={12} lg={16} xl={18}>
-              <Space wrap style={{ marginTop: 8 }}>
-                <Button
-                  type="primary"
-                  icon={<PlusOutlined />}
-                  onClick={() => setOpenDrawer(true)}
-                />
-                <Button
-                  type="default"
-                  onClick={() => setOpenDrawerInteres(true)}
-                  icon={<CalculatorOutlined />}
-                />
-
-                <Button
-                  danger
-                  onClick={() => cargarPrestamos()}
-                  icon={<ReloadOutlined />}
-                />
-              </Space>
-            </Col>
-          )}
-        </Row>
-
-        {clienteSeleccionado && (
-          <>
-            <Card
-              size="small"
-              style={{ marginBottom: 24, background: "#fafafa" }}
-            >
-              <Descriptions
-                bordered
-                size="small"
-                column={{
-                  xs: 1, // móviles
-                  sm: 1, // tablets pequeñas
-                  md: 2, // tablets grandes
-                  lg: 3, // escritorio
-                  xl: 3,
-                  xxl: 3,
-                }}
-              >
-                <Descriptions.Item label={<Text strong>ID Cliente</Text>}>
-                  <Tag color="blue">{clienteSeleccionado.clienteID}</Tag>
-                </Descriptions.Item>
-
-                <Descriptions.Item label={<Text strong>Nombre Completo</Text>}>
-                  <Text strong style={{ color: "#1890ff", fontSize: 15 }}>
-                    {clienteSeleccionado.clienteNombre}{" "}
-                    {clienteSeleccionado.clienteApellido}
-                  </Text>
-                </Descriptions.Item>
-
-                <Descriptions.Item label={<Text strong>Cédula</Text>}>
-                  <Text style={{ fontSize: 15 }}>
-                    {clienteSeleccionado.clienteCedula || "N/A"}
-                  </Text>
-                </Descriptions.Item>
-              </Descriptions>
-            </Card>
-          </>
-        )}
-
-        <Divider />
-
-        {loading ? (
-          <div style={{ textAlign: "center", padding: 40 }}>
-            <Spin size="large" />
-          </div>
-        ) : dataTabla.length > 0 ? (
-          <Table
-            dataSource={dataTabla}
-            columns={columnas}
-            pagination={false}
-            size="small"
-            bordered
-            scroll={{ x: 800 }} // 🔹 Activa scroll horizontal
-            style={{
-              overflowX: "auto",
-              fontSize: "12px", // 🔹 Letras más pequeñas
-            }}
-            rowClassName={(record) =>
-              record.tipo === "TOTAL" ? "total-row" : ""
+    <ProtectedPage
+      allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS", "AUDITORES"]}
+    >
+      <>
+        {contextHolder}
+        <div style={{ background: "#f0f2f5", minHeight: "100vh" }}>
+          <Card
+            title={
+              <Title level={isDesktop ? 3 : 4}>Préstamos y Anticipos</Title>
             }
-          />
-        ) : clienteSeleccionado ? (
-          <Empty description="No hay movimientos registrados para este cliente" />
-        ) : (
-          <Empty description="Seleccione un cliente para ver sus préstamos" />
-        )}
-        <DrawerPrestamo
-          open={openDrawer}
-          onClose={() => setOpenDrawer(false)}
-          placement="left"
-          onSubmit={handleAgregarPrestamo}
-          cliente={clienteSeleccionado}
-        />
-        <DrawerCalculoInteres
-          open={openDrawerInteres}
-          onClose={() => setOpenDrawerInteres(false)}
-          onSubmit={handleAgregarPrestamo}
-          cliente={clienteSeleccionado}
-        />
-      </Card>
-    </div>
+            style={{ boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
+          >
+            <Row
+              gutter={[8, 8]}
+              align="middle"
+              justify="start"
+              style={{ marginBottom: 24 }}
+            >
+              {/* Select del cliente */}
+              <Col xs={24} sm={24} md={12} lg={8} xl={6}>
+                <Select
+                  showSearch
+                  placeholder="🔍 Buscar cliente..."
+                  style={{ width: "100%" }}
+                  onChange={cargarPrestamos}
+                  optionFilterProp="children"
+                  size="large"
+                  loading={clientes.length === 0}
+                  filterOption={(input, option) =>
+                    option?.children
+                      ?.toLowerCase()
+                      .includes(input.toLowerCase())
+                  }
+                  value={
+                    clienteSeleccionado
+                      ? clienteSeleccionado.clienteID
+                      : undefined
+                  } // ✅ asegúrate que sea solo el ID
+                >
+                  {clientes.map((c) => (
+                    <Select.Option key={c.clienteID} value={c.clienteID}>
+                      {`${c.clienteNombre} ${c.clienteApellido}`}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Col>
+
+              {/* Botones solo si hay cliente seleccionado */}
+              {clienteSeleccionado && (
+                <Col xs={24} sm={24} md={12} lg={16} xl={18}>
+                  <Space wrap style={{ marginTop: 8 }}>
+                    <Button
+                      type="primary"
+                      icon={<PlusOutlined />}
+                      onClick={() => setOpenDrawer(true)}
+                    />
+                    <Button
+                      type="default"
+                      onClick={() => setOpenDrawerInteres(true)}
+                      icon={<CalculatorOutlined />}
+                    />
+
+                    <Button
+                      danger
+                      onClick={() =>
+                        clienteSeleccionado &&
+                        cargarPrestamos(clienteSeleccionado.clienteID)
+                      }
+                      icon={<ReloadOutlined />}
+                    />
+                  </Space>
+                </Col>
+              )}
+            </Row>
+
+            {clienteSeleccionado && (
+              <>
+                <Card
+                  size="small"
+                  style={{ marginBottom: 24, background: "#fafafa" }}
+                >
+                  <Descriptions
+                    bordered
+                    size="small"
+                    column={{
+                      xs: 1, // móviles
+                      sm: 1, // tablets pequeñas
+                      md: 2, // tablets grandes
+                      lg: 3, // escritorio
+                      xl: 3,
+                      xxl: 3,
+                    }}
+                  >
+                    <Descriptions.Item label={<Text strong>ID Cliente</Text>}>
+                      <Tag color="blue">{clienteSeleccionado.clienteID}</Tag>
+                    </Descriptions.Item>
+
+                    <Descriptions.Item
+                      label={<Text strong>Nombre Completo</Text>}
+                    >
+                      <Text strong style={{ color: "#1890ff", fontSize: 15 }}>
+                        {clienteSeleccionado.clienteNombre}{" "}
+                        {clienteSeleccionado.clienteApellido}
+                      </Text>
+                    </Descriptions.Item>
+
+                    <Descriptions.Item label={<Text strong>Cédula</Text>}>
+                      <Text style={{ fontSize: 15 }}>
+                        {clienteSeleccionado.clienteCedula || "N/A"}
+                      </Text>
+                    </Descriptions.Item>
+                  </Descriptions>
+                </Card>
+              </>
+            )}
+
+            <Divider />
+
+            {loading ? (
+              <div style={{ textAlign: "center", padding: 40 }}>
+                <Spin size="large" />
+              </div>
+            ) : dataTabla.length > 0 ? (
+              <Table
+                dataSource={dataTabla}
+                columns={columnas}
+                pagination={false}
+                size="small"
+                bordered
+                scroll={{ x: 800 }} // 🔹 Activa scroll horizontal
+                style={{
+                  overflowX: "auto",
+                  fontSize: "12px", // 🔹 Letras más pequeñas
+                }}
+                rowClassName={(record) =>
+                  record.tipo === "TOTAL" ? "total-row" : ""
+                }
+              />
+            ) : clienteSeleccionado ? (
+              <Empty description="No hay movimientos registrados para este cliente" />
+            ) : (
+              <Empty description="Seleccione un cliente para ver sus préstamos" />
+            )}
+            <DrawerPrestamo
+              open={openDrawer}
+              onClose={() => setOpenDrawer(false)}
+              placement="left"
+              onSubmit={handleAgregarPrestamo}
+              cliente={clienteSeleccionado}
+            />
+            <DrawerCalculoInteres
+              open={openDrawerInteres}
+              onClose={() => setOpenDrawerInteres(false)}
+              onSubmit={handleAgregarPrestamo}
+              cliente={clienteSeleccionado}
+            />
+          </Card>
+        </div>
+      </>
+    </ProtectedPage>
   );
 }

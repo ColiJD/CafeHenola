@@ -11,6 +11,7 @@ import {
   Space,
 } from "antd";
 import dayjs from "dayjs";
+import { formatNumber } from "../Formulario";
 
 export default function DrawerInteres({ open, onClose, onSubmit, cliente }) {
   const [form] = Form.useForm();
@@ -174,6 +175,7 @@ export default function DrawerInteres({ open, onClose, onSubmit, cliente }) {
             style={inputStyle}
             readOnly
             value={totalInteres}
+            formatter={(value) => formatNumber(value)}
           />
         </Form.Item>
 

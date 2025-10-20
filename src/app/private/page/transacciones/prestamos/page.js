@@ -23,6 +23,7 @@ import {
 } from "@ant-design/icons";
 import DrawerPrestamo from "@/components/Prestamos/DrawerPrestamo.jsx";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
+import DrawerCalculoInteres from "@/components/Prestamos/calculoInteres";
 
 const { Title, Text } = Typography;
 
@@ -34,6 +35,7 @@ export default function PrestamosGeneral() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [openDrawer, setOpenDrawer] = useState(false);
+  const [openDrawerInteres, setOpenDrawerInteres] = useState(false);
 
   useEffect(() => {
     const cargarClientes = async () => {
@@ -88,7 +90,7 @@ export default function PrestamosGeneral() {
 
           (prestamo.movimientos_prestamo || []).forEach((mov, idxMov) => {
             const descripcion = [
-              mov.descripcion || "",
+              mov.descripcion || mov.tipo_movimiento,
               mov.observacion ? `(${mov.observacion})` : "",
             ]
               .filter(Boolean)
@@ -100,17 +102,16 @@ export default function PrestamosGeneral() {
                 ? new Date(mov.fecha).toLocaleDateString("es-HN")
                 : "",
               descripcion: descripcion || "-",
-              abono: ["ABONO", "ABONO_INTERES", "PAGO_INTERES"].includes(
-                mov.tipo_movimiento
-              )
-                ? -Number(mov.monto || 0)
-                : null,
+              abono:
+                mov.tipo_movimiento === "ABONO"
+                  ? -Number(mov.monto || 0)
+                  : null,
               prestamo:
                 mov.tipo_movimiento === "PRESTAMO"
                   ? Number(mov.monto || 0)
                   : null,
               intCargo:
-                mov.tipo_movimiento === "CARGO_INTERES"
+                mov.tipo_movimiento === "Int-Cargo"
                   ? Number(mov.monto || 0)
                   : null,
               intAbono: ["ABONO_INTERES", "PAGO_INTERES"].includes(
@@ -125,7 +126,7 @@ export default function PrestamosGeneral() {
               tipo: mov.tipo_movimiento,
               totalGeneral:
                 mov.tipo_movimiento === "PRESTAMO" ||
-                mov.tipo_movimiento === "CARGO_INTERES"
+                mov.tipo_movimiento === "Int-Cargo"
                   ? Number(mov.monto || 0)
                   : -Number(mov.monto || 0),
             });
@@ -186,7 +187,7 @@ export default function PrestamosGeneral() {
       {
         title: "Descripción / Observación",
         dataIndex: "descripcion",
-        ellipsis: true,
+        width: 250,
         render: (text, record) => {
           if (record.tipo === "TOTAL") return <Text strong>{text}</Text>;
           if (record.tipo === "PRESTAMO_INICIAL")
@@ -456,13 +457,13 @@ export default function PrestamosGeneral() {
                 />
                 <Button
                   type="default"
-                  onClick={() => console.log("Registrar abono")}
+                  onClick={() => setOpenDrawerInteres(true)}
                   icon={<CalculatorOutlined />}
                 />
 
                 <Button
                   danger
-                  onClick={() => console.log("Eliminar préstamo")}
+                  onClick={() => cargarPrestamos()}
                   icon={<ReloadOutlined />}
                 />
               </Space>
@@ -540,6 +541,12 @@ export default function PrestamosGeneral() {
           open={openDrawer}
           onClose={() => setOpenDrawer(false)}
           placement="left"
+          onSubmit={handleAgregarPrestamo}
+          cliente={clienteSeleccionado}
+        />
+        <DrawerCalculoInteres
+          open={openDrawerInteres}
+          onClose={() => setOpenDrawerInteres(false)}
           onSubmit={handleAgregarPrestamo}
           cliente={clienteSeleccionado}
         />

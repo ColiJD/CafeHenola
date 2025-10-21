@@ -103,11 +103,18 @@ export const menuItems = [
       },
     ],
   },
+
   {
     id: 3,
     name: "Inventario",
     image: producto,
     href: Ruta + "/inventario",
+  },
+  {
+    id: 7,
+    name: "Prestamo",
+    href: RutaTransaccion + "/prestamos",
+    image: Contrato,
   },
 
   {
@@ -117,7 +124,12 @@ export const menuItems = [
     subItems: [
       { id: 501, name: "Productos", href: Ruta + "/producto", image: cliente },
       { id: 502, name: "Clientes", href: Ruta + "/cliente", image: producto },
-      { id: 503, name: "Compradores", href: Ruta + "/compradores", image: cliente },
+      {
+        id: 503,
+        name: "Compradores",
+        href: Ruta + "/compradores",
+        image: cliente,
+      },
       { id: 504, name: "Usuarios", href: Ruta + "/user", image: cliente },
       {
         id: 505,
@@ -125,7 +137,6 @@ export const menuItems = [
         href: Ruta + "/cliente/Registros",
         image: Reportes,
       },
-      
     ],
   },
 ];
@@ -136,6 +147,7 @@ const iconMap = {
   Salidas: <MinusCircleOutlined />,
   Inventario: <AppstoreOutlined />,
   Informe: <FileTextOutlined />,
+  Prestamo: <FileTextOutlined />,
   Registros: <SettingOutlined />,
   Listado: <UserOutlined />,
 };

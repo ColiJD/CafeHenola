@@ -78,6 +78,7 @@ model cliente {
   deposito           deposito[]
   inventariocliente  inventariocliente[]
   liqdeposito        liqdeposito[]
+  prestamos          prestamos[]
 }
 
 model compra {
@@ -238,4 +239,33 @@ model producto {
   deposito          deposito[]
   inventariocliente inventariocliente[]
   liqdeposito       liqdeposito[]
+}
+
+model movimientos_prestamo {
+  MovimientoId    Int        @id @default(autoincrement())
+  prestamo_id     Int?
+  fecha           DateTime?  @db.DateTime(0)
+  tipo_movimiento String?    @db.VarChar(25)
+  monto           Decimal?   @db.Decimal(12, 2)
+  descripcion     String?    @db.Text
+  interes         Decimal?   @db.Decimal(5, 2)
+  dias            Int?
+  prestamos       prestamos? @relation(fields: [prestamo_id], references: [prestamoId], onDelete: NoAction, onUpdate: NoAction, map: "movimientos_prestamo_ibfk_1")
+
+  @@index([prestamo_id], map: "prestamo_id")
+}
+
+model prestamos {
+  prestamoId           Int                    @id @default(autoincrement())
+  clienteId            Int?
+  fecha                DateTime?              @db.DateTime(0)
+  monto                Decimal?               @db.Decimal(12, 2)
+  tasa_interes         Decimal?               @db.Decimal(5, 2)
+  tipo                 String?                @default("PRESTAMO") @db.VarChar(25)
+  estado               String?                @default("ACTIVO") @db.VarChar(25)
+  observacion          String?                @db.Text
+  movimientos_prestamo movimientos_prestamo[]
+  cliente              cliente?               @relation(fields: [clienteId], references: [clienteID], onDelete: NoAction, onUpdate: NoAction, map: "prestamos_ibfk_1")
+
+  @@index([clienteId], map: "clienteId")
 }

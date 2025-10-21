@@ -4,7 +4,16 @@ import prisma from "@/lib/prisma";
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { clienteID, tipo_movimiento, monto, fecha, observacion } = body;
+    const {
+      clienteID,
+      tipo_movimiento,
+      monto,
+      fecha,
+      observacion,
+      interes,
+      dias,
+    } = body;
+ 
 
     // 1️⃣ Validaciones básicas
     if (!clienteID || !tipo_movimiento || monto == null || isNaN(monto)) {
@@ -49,6 +58,8 @@ export async function POST(req) {
           fecha: fecha ? new Date(fecha) : new Date(),
           tipo_movimiento,
           monto: parseFloat(monto),
+          interes: parseFloat(interes),
+          dias: parseInt(dias),
           descripcion: observacion || tipo_movimiento,
         },
       });
@@ -69,6 +80,8 @@ export async function POST(req) {
         fecha: fecha ? new Date(fecha) : new Date(),
         tipo_movimiento,
         monto: parseFloat(monto),
+        interes: parseFloat(interes),
+          dias: parseInt(dias),
         descripcion: observacion || tipo_movimiento,
       },
     });

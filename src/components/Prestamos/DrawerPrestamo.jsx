@@ -12,6 +12,17 @@ import {
   Select,
 } from "antd";
 
+export const moneyFormatter = {
+  formatter: (value) =>
+    value ? `L. ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",") : "L. 0",
+  parser: (value) => value.replace(/L\.\s?|(,*)/g, ""),
+};
+
+export const percentFormatter = {
+  formatter: (value) => `${value}%`,
+  parser: (value) => value.replace("%", ""),
+};
+
 export default function DrawerPrestamo({ open, onClose, onSubmit, cliente }) {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -50,7 +61,7 @@ export default function DrawerPrestamo({ open, onClose, onSubmit, cliente }) {
     }
   };
 
-  const inputStyle = { width: "100%" }; // estilo uniforme para todos los inputs
+  const inputStyle = { width: "100%" };
 
   const camposPorTipo = {
     PRESTAMO: (
@@ -60,7 +71,12 @@ export default function DrawerPrestamo({ open, onClose, onSubmit, cliente }) {
           name="monto"
           rules={[{ required: true, message: "Ingrese el monto del préstamo" }]}
         >
-          <InputNumber prefix="L." min={0} step={100} style={inputStyle} />
+          <InputNumber
+            {...moneyFormatter}
+            min={0}
+            step={100}
+            style={inputStyle}
+          />
         </Form.Item>
 
         <Form.Item
@@ -68,7 +84,12 @@ export default function DrawerPrestamo({ open, onClose, onSubmit, cliente }) {
           name="tasa_interes"
           rules={[{ required: true, message: "Ingrese la tasa de interés" }]}
         >
-          <InputNumber min={0} step={0.1} style={inputStyle} />
+          <InputNumber
+            min={0}
+            step={0.1}
+            style={inputStyle}
+            {...percentFormatter}
+          />
         </Form.Item>
       </>
     ),
@@ -78,7 +99,12 @@ export default function DrawerPrestamo({ open, onClose, onSubmit, cliente }) {
         name="monto"
         rules={[{ required: true, message: "Ingrese el monto del anticipo" }]}
       >
-        <InputNumber prefix="L." min={0} step={100} style={inputStyle} />
+        <InputNumber
+          {...moneyFormatter}
+          min={0}
+          step={100}
+          style={inputStyle}
+        />
       </Form.Item>
     ),
     ABONO: (
@@ -87,7 +113,12 @@ export default function DrawerPrestamo({ open, onClose, onSubmit, cliente }) {
         name="monto"
         rules={[{ required: true, message: "Ingrese el monto del abono" }]}
       >
-        <InputNumber prefix="L." min={0} step={100} style={inputStyle} />
+        <InputNumber
+          {...moneyFormatter}
+          min={0}
+          step={100}
+          style={inputStyle}
+        />
       </Form.Item>
     ),
     PAGO_INTERES: (
@@ -96,7 +127,12 @@ export default function DrawerPrestamo({ open, onClose, onSubmit, cliente }) {
         name="monto"
         rules={[{ required: true, message: "Ingrese el monto del pago" }]}
       >
-        <InputNumber prefix="L." min={0} step={100} style={inputStyle} />
+        <InputNumber
+          {...moneyFormatter}
+          min={0}
+          step={100}
+          style={inputStyle}
+        />
       </Form.Item>
     ),
   };

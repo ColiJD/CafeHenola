@@ -12,6 +12,7 @@ import {
 } from "antd";
 import dayjs from "dayjs";
 import { formatNumber } from "../Formulario";
+import { moneyFormatter, percentFormatter } from "./DrawerPrestamo";
 
 export default function DrawerInteres({ open, onClose, onSubmit, cliente }) {
   const [form] = Form.useForm();
@@ -70,6 +71,7 @@ export default function DrawerInteres({ open, onClose, onSubmit, cliente }) {
         fecha: new Date(),
         descripcion: values.observacion,
         interes: values.interes,
+        dias: values.dias,
       });
 
       form.resetFields();
@@ -146,7 +148,7 @@ export default function DrawerInteres({ open, onClose, onSubmit, cliente }) {
           rules={[{ required: true, message: "Ingrese el saldo base" }]}
         >
           <InputNumber
-            prefix="L."
+            {...moneyFormatter}
             min={0}
             step={100}
             style={inputStyle}
@@ -166,6 +168,7 @@ export default function DrawerInteres({ open, onClose, onSubmit, cliente }) {
             style={inputStyle}
             suffix="%"
             onChange={calcularInteres}
+            {...percentFormatter}
           />
         </Form.Item>
 

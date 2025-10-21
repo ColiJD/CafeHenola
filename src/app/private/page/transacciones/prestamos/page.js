@@ -122,6 +122,8 @@ export default function PrestamosGeneral() {
                 ? new Date(mov.fecha).toLocaleDateString("es-HN")
                 : "",
               descripcion: descripcion || "-",
+              interes: mov.interes ? `${mov.interes}%` : "", // ya lo usas arriba
+              dias: mov.tipo_movimiento === "Int-Cargo" ? mov.dias || "" : "",
               abono:
                 mov.tipo_movimiento === "ABONO"
                   ? -Number(mov.monto || 0)
@@ -201,8 +203,25 @@ export default function PrestamosGeneral() {
           return dateA - dateB;
         },
         sortDirections: ["ascend", "descend"], // solo estos dos, no hay opción de "none"
-        defaultSortOrder: "descend",
+        defaultSortOrder: "ascend",
       },
+      {
+        title: "Días",
+        dataIndex: "dias",
+        align: "center",
+        width: 80,
+        render: (val, record) => {
+          // Solo mostrar si hay valor
+          if (!val) return "";
+          // Puedes poner un estilo especial si quieres, por ejemplo para Int-Cargo
+          return record.tipo === "Int-Cargo" ? (
+            <Text style={{ color: "#fa8c16", fontWeight: 500 }}>{val}</Text>
+          ) : (
+            val
+          );
+        },
+      },
+
       { title: "% Interés", dataIndex: "interes", align: "center", width: 90 },
       {
         title: "Descripción / Observación",
@@ -254,6 +273,32 @@ export default function PrestamosGeneral() {
         render: (val, record) =>
           val ? (
             record.tipo === "TOTAL" ? (
+              <Text strong style={{ color: "#ff4d4f" }}>
+                {val.toLocaleString("es-HN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </Text>
+            ) : (
+              <Text style={{ color: "#ff4d4f" }}>
+                {val.toLocaleString("es-HN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </Text>
+            )
+          ) : (
+            ""
+          ),
+      },
+      {
+        title: "Préstamo",
+        dataIndex: "prestamo",
+        align: "right",
+        width: 120,
+        render: (val, record) =>
+          val ? (
+            record.tipo === "TOTAL" ? (
               <Text strong style={{ color: "#52c41a" }}>
                 {val.toLocaleString("es-HN", {
                   minimumFractionDigits: 2,
@@ -273,8 +318,34 @@ export default function PrestamosGeneral() {
           ),
       },
       {
-        title: "Préstamo",
-        dataIndex: "prestamo",
+        title: "Int-Cargo",
+        dataIndex: "intCargo",
+        align: "right",
+        width: 120,
+        render: (val, record) =>
+          val ? (
+            record.tipo === "TOTAL" ? (
+              <Text strong style={{ color: "#52c41a" }}>
+                {val.toLocaleString("es-HN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </Text>
+            ) : (
+              <Text style={{ color: "#52c41a" }}>
+                {val.toLocaleString("es-HN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </Text>
+            )
+          ) : (
+            ""
+          ),
+      },
+      {
+        title: "Int-Abono",
+        dataIndex: "intAbono",
         align: "right",
         width: 120,
         render: (val, record) =>
@@ -299,58 +370,6 @@ export default function PrestamosGeneral() {
           ),
       },
       {
-        title: "Int-Cargo",
-        dataIndex: "intCargo",
-        align: "right",
-        width: 120,
-        render: (val, record) =>
-          val ? (
-            record.tipo === "TOTAL" ? (
-              <Text strong style={{ color: "#fa8c16" }}>
-                {val.toLocaleString("es-HN", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </Text>
-            ) : (
-              <Text style={{ color: "#fa8c16" }}>
-                {val.toLocaleString("es-HN", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </Text>
-            )
-          ) : (
-            ""
-          ),
-      },
-      {
-        title: "Int-Abono",
-        dataIndex: "intAbono",
-        align: "right",
-        width: 120,
-        render: (val, record) =>
-          val ? (
-            record.tipo === "TOTAL" ? (
-              <Text strong style={{ color: "#13c2c2" }}>
-                {val.toLocaleString("es-HN", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </Text>
-            ) : (
-              <Text style={{ color: "#13c2c2" }}>
-                {val.toLocaleString("es-HN", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </Text>
-            )
-          ) : (
-            ""
-          ),
-      },
-      {
         title: "Saldo Total",
         dataIndex: "totalGeneral",
         align: "right",
@@ -362,7 +381,7 @@ export default function PrestamosGeneral() {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           });
-          const color = val > 0 ? "#ff4d4f" : val < 0 ? "#52c41a" : "#000";
+          const color = val > 0 ? "#52c41a" : val < 0 ? "#ff4d4f" : "#000";
           return (
             <Text strong style={{ fontSize: 16, color }}>
               {formatted}
@@ -480,6 +499,8 @@ export default function PrestamosGeneral() {
             tipo_movimiento: nuevoRegistro.tipo,
             monto: nuevoRegistro.monto,
             fecha: nuevoRegistro.fecha,
+            interes: nuevoRegistro.interes || 0,
+            dias: nuevoRegistro.dias || 0,
             observacion: nuevoRegistro.observacion,
           }),
         });
@@ -562,12 +583,16 @@ export default function PrestamosGeneral() {
                       type="primary"
                       icon={<PlusOutlined />}
                       onClick={() => setOpenDrawer(true)}
-                    />
+                    >
+                      Ingresar Movimiento
+                    </Button>
                     <Button
-                      type="default"
+                      type="primary"
                       onClick={() => setOpenDrawerInteres(true)}
                       icon={<CalculatorOutlined />}
-                    />
+                    >
+                      Calculo de Interes
+                    </Button>
 
                     <Button
                       danger
@@ -576,7 +601,9 @@ export default function PrestamosGeneral() {
                         cargarPrestamos(clienteSeleccionado.clienteID)
                       }
                       icon={<ReloadOutlined />}
-                    />
+                    >
+                      Recargar
+                    </Button>
                   </Space>
                 </Col>
               )}

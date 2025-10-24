@@ -42,6 +42,7 @@ export default function PrestamosGeneral() {
   const [openDrawerInteres, setOpenDrawerInteres] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
   const messageApiRef = useRef(messageApi);
+  const drawerFormRef = useRef(null);
 
   useEffect(() => {
     const cargarClientes = async () => {
@@ -72,17 +73,11 @@ export default function PrestamosGeneral() {
       if (data?.prestamos?.length > 0) {
         const filas = [];
 
-        // Filtrar solo préstamos activos (no anulados)
-        const prestamosActivos = data.prestamos.filter(
-          (p) => p.estado !== "ANULADO"
-        );
-
-        prestamosActivos.forEach((prestamo, idxPrestamo) => {
+        data.prestamos.forEach((prestamo, idxPrestamo) => {
           const prestamoKey = `prestamo-${prestamo.prestamo_id || idxPrestamo}`;
-          if (
-            prestamo.estado !== "INICIAL" &&
-            prestamo.estado !== "ABSORBIDO"
-          ) {
+
+          // Solo agregar fila de "préstamo inicial" si NO está anulado
+          if (!["ANULADO", "ABSORBIDO", "INICIAL"].includes(prestamo.estado)) {
             filas.push({
               key: prestamoKey,
               prestamoId: prestamo.prestamoId,
@@ -102,7 +97,7 @@ export default function PrestamosGeneral() {
             });
           }
 
-          // Filtrar solo movimientos activos (no anulados)
+          // Mostrar movimientos activos incluso si el préstamo está anulado
           const movimientosActivos = (
             prestamo.movimientos_prestamo || []
           ).filter((mov) => mov.tipo_movimiento !== "ANULADO");
@@ -122,7 +117,7 @@ export default function PrestamosGeneral() {
                 ? new Date(mov.fecha).toLocaleDateString("es-HN")
                 : "",
               descripcion: descripcion || "-",
-              interes: mov.interes ? `${mov.interes}%` : "", // ya lo usas arriba
+              interes: mov.interes ? `${mov.interes}%` : "",
               dias: mov.tipo_movimiento === "Int-Cargo" ? mov.dias || "" : "",
               abono:
                 mov.tipo_movimiento === "ABONO"
@@ -146,15 +141,16 @@ export default function PrestamosGeneral() {
                   ? -Number(mov.monto || 0)
                   : null,
               tipo: mov.tipo_movimiento,
-              totalGeneral:
-                mov.tipo_movimiento === "PRESTAMO" ||
-                mov.tipo_movimiento === "Int-Cargo"
-                  ? Number(mov.monto || 0)
-                  : -Number(mov.monto || 0),
+              totalGeneral: ["PRESTAMO", "Int-Cargo"].includes(
+                mov.tipo_movimiento
+              )
+                ? Number(mov.monto || 0)
+                : -Number(mov.monto || 0),
             });
           });
         });
 
+        // Totales
         const totales = {
           key: "total",
           descripcion: "Total general",
@@ -162,16 +158,17 @@ export default function PrestamosGeneral() {
           prestamo: filas.reduce((acc, f) => acc + (f.prestamo || 0), 0),
           intCargo: filas.reduce((acc, f) => acc + (f.intCargo || 0), 0),
           intAbono: filas.reduce((acc, f) => acc + (f.intAbono || 0), 0),
-          anticipo: filas.reduce((acc, f) => acc + (f.anticipo || 0), 0), // ← sumar anticipos
+          anticipo: filas.reduce((acc, f) => acc + (f.anticipo || 0), 0),
           tipo: "TOTAL",
         };
 
         totales.totalGeneral =
           totales.prestamo +
           totales.intCargo +
-          totales.abono + // abonos negativos
-          totales.intAbono + // intAbonos negativos
-          totales.anticipo; // anticipos negativos
+          totales.abono +
+          totales.intAbono +
+          totales.anticipo;
+
         filas.push(totales);
 
         setDataTabla(filas);
@@ -506,22 +503,33 @@ export default function PrestamosGeneral() {
         });
       }
 
-      // 3️⃣ Manejo de errores detallado
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Error detalle del fetch:", errorText);
-        throw new Error(`Error al guardar ${nuevoRegistro.tipo.toLowerCase()}`);
+      const data = await res.json();
+
+      if (res.ok) {
+        messageApiRef.current.destroy();
+        messageApiRef.current.success(
+          data.message || "Registro guardado correctamente"
+        );
+
+        await cargarPrestamos(clienteSeleccionado.clienteID);
+
+        // 🔹 Resetear el formulario usando la ref
+        drawerFormRef.current?.resetFields();
+
+        // 🔹 Cerrar Drawer
+        setOpenDrawer(false);
+        return;
       }
 
-      // 4️⃣ Volver a cargar los préstamos actualizados
-      (await clienteSeleccionado) &&
-        cargarPrestamos(clienteSeleccionado.clienteID);
-
-      // 5️⃣ Cerrar Drawer
-      setOpenDrawer(false);
+      // Si hubo error, solo mostrar mensaje
+      messageApiRef.current.destroy();
+      messageApiRef.current.error(data.error || "Error al guardar registro");
     } catch (error) {
-      console.error("Error al guardar:", error);
-      message.error(error.message || "Ocurrió un error al guardar el registro");
+      messageApiRef.current.destroy();
+      messageApiRef.current.error({
+        content: data.error || "Error al guardar",
+        duration: 8, // 8 segundos
+      });
     } finally {
       setLoading(false);
     }
@@ -680,9 +688,9 @@ export default function PrestamosGeneral() {
             <DrawerPrestamo
               open={openDrawer}
               onClose={() => setOpenDrawer(false)}
-              placement="left"
               onSubmit={handleAgregarPrestamo}
               cliente={clienteSeleccionado}
+              formRef={drawerFormRef}
             />
             <DrawerCalculoInteres
               open={openDrawerInteres}

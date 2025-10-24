@@ -42,6 +42,7 @@ export default function PrestamosGeneral() {
   const [openDrawerInteres, setOpenDrawerInteres] = useState(false);
   const [messageApi, contextHolder] = message.useMessage();
   const messageApiRef = useRef(messageApi);
+  const drawerFormRef = useRef(null);
 
   useEffect(() => {
     const cargarClientes = async () => {
@@ -506,22 +507,33 @@ export default function PrestamosGeneral() {
         });
       }
 
-      // 3️⃣ Manejo de errores detallado
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Error detalle del fetch:", errorText);
-        throw new Error(`Error al guardar ${nuevoRegistro.tipo.toLowerCase()}`);
+      const data = await res.json();
+
+      if (res.ok) {
+        messageApiRef.current.destroy();
+        messageApiRef.current.success(
+          data.message || "Registro guardado correctamente"
+        );
+
+        await cargarPrestamos(clienteSeleccionado.clienteID);
+
+        // 🔹 Resetear el formulario usando la ref
+        drawerFormRef.current?.resetFields();
+
+        // 🔹 Cerrar Drawer
+        setOpenDrawer(false);
+        return;
       }
 
-      // 4️⃣ Volver a cargar los préstamos actualizados
-      (await clienteSeleccionado) &&
-        cargarPrestamos(clienteSeleccionado.clienteID);
-
-      // 5️⃣ Cerrar Drawer
-      setOpenDrawer(false);
+      // Si hubo error, solo mostrar mensaje
+      messageApiRef.current.destroy();
+      messageApiRef.current.error(data.error || "Error al guardar registro");
     } catch (error) {
-      console.error("Error al guardar:", error);
-      message.error(error.message || "Ocurrió un error al guardar el registro");
+      messageApiRef.current.destroy();
+      messageApiRef.current.error({
+        content: data.error || "Error al guardar",
+        duration: 8, // 8 segundos
+      });
     } finally {
       setLoading(false);
     }
@@ -680,9 +692,9 @@ export default function PrestamosGeneral() {
             <DrawerPrestamo
               open={openDrawer}
               onClose={() => setOpenDrawer(false)}
-              placement="left"
               onSubmit={handleAgregarPrestamo}
               cliente={clienteSeleccionado}
+              formRef={drawerFormRef}
             />
             <DrawerCalculoInteres
               open={openDrawerInteres}

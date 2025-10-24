@@ -23,18 +23,31 @@ export const percentFormatter = {
   parser: (value) => value.replace("%", ""),
 };
 
-export default function DrawerPrestamo({ open, onClose, onSubmit, cliente }) {
+export default function DrawerPrestamo({
+  open,
+  onClose,
+  onSubmit,
+  cliente,
+  formRef,
+}) {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [tipoMovimiento, setTipoMovimiento] = useState("PRESTAMO");
 
+  // Pasamos el form al padre
+  useEffect(() => {
+    if (formRef) formRef.current = form;
+  }, [form, formRef]);
   // Inicializamos el tipo de movimiento al abrir el Drawer
   useEffect(() => {
     if (open) {
       const tipoActual = form.getFieldValue("tipo");
+      // Solo establecer PRESTAMO si no hay tipo definido
       if (!tipoActual) {
         setTipoMovimiento("PRESTAMO");
         form.setFieldsValue({ tipo: "PRESTAMO" });
+      } else {
+        setTipoMovimiento(tipoActual); // conserva la elección anterior
       }
     }
   }, [open, form]);
@@ -47,13 +60,7 @@ export default function DrawerPrestamo({ open, onClose, onSubmit, cliente }) {
         tipo: tipoMovimiento,
         clienteID: cliente?.clienteID,
       });
-
-      // Reiniciamos el Drawer después de guardar
-      setTipoMovimiento("PRESTAMO");
-      form.resetFields();
-      form.setFieldsValue({ tipo: "PRESTAMO" });
-
-      onClose();
+      // ❌ NO resetear ni cerrar aquí
     } catch (err) {
       console.error("Error al guardar:", err);
     } finally {
@@ -164,7 +171,12 @@ export default function DrawerPrestamo({ open, onClose, onSubmit, cliente }) {
             value={tipoMovimiento}
             onChange={(val) => {
               setTipoMovimiento(val);
-              form.resetFields(["monto", "tasa_interes"]);
+              // Solo limpiar campos que solo aplican a Préstamo
+              if (val === "PRESTAMO") {
+                form.resetFields(["monto", "tasa_interes"]);
+              } else {
+                form.resetFields(["monto"]);
+              }
             }}
           >
             <Select.Option value="PRESTAMO">Préstamo</Select.Option>

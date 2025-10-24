@@ -73,17 +73,11 @@ export default function PrestamosGeneral() {
       if (data?.prestamos?.length > 0) {
         const filas = [];
 
-        // Filtrar solo préstamos activos (no anulados)
-        const prestamosActivos = data.prestamos.filter(
-          (p) => p.estado !== "ANULADO"
-        );
-
-        prestamosActivos.forEach((prestamo, idxPrestamo) => {
+        data.prestamos.forEach((prestamo, idxPrestamo) => {
           const prestamoKey = `prestamo-${prestamo.prestamo_id || idxPrestamo}`;
-          if (
-            prestamo.estado !== "INICIAL" &&
-            prestamo.estado !== "ABSORBIDO"
-          ) {
+
+          // Solo agregar fila de "préstamo inicial" si NO está anulado
+          if (!["ANULADO", "ABSORBIDO", "INICIAL"].includes(prestamo.estado)) {
             filas.push({
               key: prestamoKey,
               prestamoId: prestamo.prestamoId,
@@ -103,7 +97,7 @@ export default function PrestamosGeneral() {
             });
           }
 
-          // Filtrar solo movimientos activos (no anulados)
+          // Mostrar movimientos activos incluso si el préstamo está anulado
           const movimientosActivos = (
             prestamo.movimientos_prestamo || []
           ).filter((mov) => mov.tipo_movimiento !== "ANULADO");
@@ -123,7 +117,7 @@ export default function PrestamosGeneral() {
                 ? new Date(mov.fecha).toLocaleDateString("es-HN")
                 : "",
               descripcion: descripcion || "-",
-              interes: mov.interes ? `${mov.interes}%` : "", // ya lo usas arriba
+              interes: mov.interes ? `${mov.interes}%` : "",
               dias: mov.tipo_movimiento === "Int-Cargo" ? mov.dias || "" : "",
               abono:
                 mov.tipo_movimiento === "ABONO"
@@ -147,15 +141,16 @@ export default function PrestamosGeneral() {
                   ? -Number(mov.monto || 0)
                   : null,
               tipo: mov.tipo_movimiento,
-              totalGeneral:
-                mov.tipo_movimiento === "PRESTAMO" ||
-                mov.tipo_movimiento === "Int-Cargo"
-                  ? Number(mov.monto || 0)
-                  : -Number(mov.monto || 0),
+              totalGeneral: ["PRESTAMO", "Int-Cargo"].includes(
+                mov.tipo_movimiento
+              )
+                ? Number(mov.monto || 0)
+                : -Number(mov.monto || 0),
             });
           });
         });
 
+        // Totales
         const totales = {
           key: "total",
           descripcion: "Total general",
@@ -163,16 +158,17 @@ export default function PrestamosGeneral() {
           prestamo: filas.reduce((acc, f) => acc + (f.prestamo || 0), 0),
           intCargo: filas.reduce((acc, f) => acc + (f.intCargo || 0), 0),
           intAbono: filas.reduce((acc, f) => acc + (f.intAbono || 0), 0),
-          anticipo: filas.reduce((acc, f) => acc + (f.anticipo || 0), 0), // ← sumar anticipos
+          anticipo: filas.reduce((acc, f) => acc + (f.anticipo || 0), 0),
           tipo: "TOTAL",
         };
 
         totales.totalGeneral =
           totales.prestamo +
           totales.intCargo +
-          totales.abono + // abonos negativos
-          totales.intAbono + // intAbonos negativos
-          totales.anticipo; // anticipos negativos
+          totales.abono +
+          totales.intAbono +
+          totales.anticipo;
+
         filas.push(totales);
 
         setDataTabla(filas);

@@ -83,45 +83,35 @@ export const generarReportePDF = (data, filtros = {}, options = {}) => {
 
   // RESUMEN GENERAL
   if (data && data.length > 0) {
+    // Calcular totales combinados
     const totales = data.reduce(
-      (acc, item) => ({
-        compraCantidadQQ:
-          (acc.compraCantidadQQ || 0) +
-          (parseFloat(item.compraCantidadQQ) || 0),
-        compraTotalLps:
-          (acc.compraTotalLps || 0) + (parseFloat(item.compraTotalLps) || 0),
-        contratoCantidadQQ:
-          (acc.contratoCantidadQQ || 0) +
-          (parseFloat(item.contratoCantidadQQ) || 0),
-        contratoTotalLps:
-          (acc.contratoTotalLps || 0) +
-          (parseFloat(item.contratoTotalLps) || 0),
-        depositoCantidadQQ:
-          (acc.depositoCantidadQQ || 0) +
-          (parseFloat(item.depositoCantidadQQ) || 0),
-        depositoTotalLps:
-          (acc.depositoTotalLps || 0) +
-          (parseFloat(item.depositoTotalLps) || 0),
-      }),
-      {}
+      (acc, item) => {
+        const totalQQ =
+          (parseFloat(item.compraCantidadQQ) || 0) +
+          (parseFloat(item.contratoCantidadQQ) || 0) +
+          (parseFloat(item.depositoCantidadQQ) || 0);
+
+        const totalLps =
+          (parseFloat(item.compraTotalLps) || 0) +
+          (parseFloat(item.contratoTotalLps) || 0) +
+          (parseFloat(item.depositoTotalLps) || 0);
+
+        acc.totalQQ += totalQQ;
+        acc.totalLps += totalLps;
+        return acc;
+      },
+      { totalQQ: 0, totalLps: 0 }
     );
+
+    const totalClientes = data.length;
 
     autoTable(doc, {
       startY: yPosition,
-      head: [["RESUMEN GENERAL", "COMPRA", "CONTRATO", "DEPÓSITO"]],
+      head: [["RESUMEN GENERAL", "TOTAL"]],
       body: [
-        [
-          "Total QQ",
-          formatNumber(totales.compraCantidadQQ),
-          formatNumber(totales.contratoCantidadQQ),
-          formatNumber(totales.depositoCantidadQQ),
-        ],
-        [
-          "Total Lps",
-          `L. ${formatNumber(totales.compraTotalLps)}`,
-          `L. ${formatNumber(totales.contratoTotalLps)}`,
-          `L. ${formatNumber(totales.depositoTotalLps)}`,
-        ],
+        ["Total de Clientes", formatNumber(totalClientes)],
+        ["Total Quintales (QQ)", formatNumber(totales.totalQQ)],
+        ["Total en Lempiras (Lps)", `L. ${formatNumber(totales.totalLps)}`],
       ],
       theme: "grid",
       headStyles: {
@@ -228,7 +218,7 @@ export const generarReportePDF = (data, filtros = {}, options = {}) => {
     doc.text(`Total de registros: ${data.length}`, 20, finalY + 10);
   }
 
-  const nombreArchivo = `reporte-clientes-${dayjs().format(
+  const nombreArchivo = `reporte-entradas-${dayjs().format(
     "YYYY-MM-DD-HHmm"
   )}.pdf`;
   doc.save(nombreArchivo);

@@ -25,7 +25,7 @@ import SectionHeader from "@/components/ReportesElement/AccionesResporte";
 import { useFetchReport } from "@/hook/useFetchReport";
 import TarjetaMobile from "@/components/TarjetaMobile";
 import ProtectedPage from "@/components/ProtectedPage";
-import ProtectedButton from "@/components/ProtectedButton";
+import { formatNumber } from "@/components/Formulario";
 
 const { Title, Text } = Typography;
 
@@ -43,9 +43,7 @@ export default function ReporteLiquidacionDeposito() {
     return lista.filter((item) =>
       !nombreFiltro
         ? true
-        : item.nombreCliente
-            ?.toLowerCase()
-            .includes(nombreFiltro.toLowerCase())
+        : item.nombreCliente?.toLowerCase().includes(nombreFiltro.toLowerCase())
     );
   }, [data, nombreFiltro]);
 
@@ -67,6 +65,7 @@ export default function ReporteLiquidacionDeposito() {
       dataIndex: "liqID",
       width: 90,
       align: "center",
+      fixed: "left",
     },
     {
       title: "Fecha",
@@ -79,6 +78,7 @@ export default function ReporteLiquidacionDeposito() {
       dataIndex: "liqclienteID",
       align: "center",
       width: 100,
+      fixed: "left",
     },
     {
       title: "Cliente",
@@ -98,142 +98,29 @@ export default function ReporteLiquidacionDeposito() {
       title: "Cantidad QQ",
       dataIndex: "liqCatidadQQ",
       align: "right",
-      render: (val) => <Text>{Number(val || 0).toFixed(2)}</Text>,
+      render: (val) => formatNumber(val),
       width: 120,
     },
     {
       title: "Precio (Lps)",
       dataIndex: "liqPrecio",
       align: "right",
-      render: (val) => <Text>L. {Number(val || 0).toFixed(2)}</Text>,
+      render: (val) => formatNumber(val),
       width: 130,
     },
     {
       title: "Total (Lps)",
       dataIndex: "liqTotalLps",
       align: "right",
-      render: (val) => <Text>L. {Number(val || 0).toFixed(2)}</Text>,
+      render: (val) => formatNumber(val),
       width: 130,
     },
-    {
-      title: "Estado",
-      dataIndex: "estado",
-      align: "center",
-      render: (estado) => {
-        let color;
-        switch (estado) {
-          case "Pendiente":
-            color = "#faad14";
-            break;
-          case "Liquidado":
-            color = "#52c41a";
-            break;
-          default:
-            color = "#000000";
-        }
-        return <Text style={{ color }}>{estado}</Text>;
-      },
-      width: 120,
-    },
+ 
     {
       title: "Descripción",
       dataIndex: "liqDescripcion",
       render: (text) => text || "—",
       width: 250,
-    },
-    {
-      title: "Acciones",
-      key: "acciones",
-      align: "center",
-      width: 150,
-      render: (_, record) => (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            gap: 8,
-          }}
-        >
-          {/* 🟦 Botón PDF */}
-          <Popconfirm
-            title="¿Exportar comprobante de liquidación?"
-            onConfirm={async () => {
-              messageApi.open({
-                type: "loading",
-                content: "Generando comprobante PDF...",
-                duration: 0,
-                key: "generandoPDF",
-              });
-              try {
-                await exportLiquidacionDeposito({
-                  cliente: { label: record.nombreCliente },
-                  tipoCafe: record.tipoCafe,
-                  cantidadLiquidar: parseFloat(record.liqCatidadQQ),
-                  totalPagar: parseFloat(record.liqTotalLps),
-                  descripcion: record.liqDescripcion,
-                  comprobanteID: record.liqID,
-                });
-                messageApi.destroy("generandoPDF");
-                messageApi.success("Comprobante generado correctamente");
-              } catch (err) {
-                console.error("Error PDF:", err);
-                messageApi.destroy("generandoPDF");
-                messageApi.error("Error generando comprobante PDF");
-              }
-            }}
-            okText="Sí"
-            cancelText="No"
-          >
-            <Button
-              size="small"
-              type="primary"
-              shape="circle"
-              icon={<FilePdfOutlined style={{ fontSize: 16 }} />}
-              style={{
-                backgroundColor: "#1E5BAA",
-                border: "none",
-              }}
-            />
-          </Popconfirm>
-
-          {/* 🔴 Botón eliminar */}
-          <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
-            <Popconfirm
-              title="¿Eliminar esta liquidación?"
-              onConfirm={async () => {
-                try {
-                  const res = await fetch(`/api/liqDeposito/${record.liqID}`, {
-                    method: "DELETE",
-                  });
-                  const data = await res.json();
-                  if (res.ok) {
-                    messageApi.success("Liquidación eliminada correctamente");
-                    await fetchData();
-                  } else {
-                    messageApi.error(data.error || "Error al eliminar");
-                  }
-                } catch {
-                  messageApi.error("Error de conexión al eliminar");
-                }
-              }}
-              okText="Sí"
-              cancelText="No"
-            >
-              <Button
-                size="small"
-                danger
-                shape="circle"
-                icon={<DeleteOutlined style={{ fontSize: 16 }} />}
-                style={{
-                  backgroundColor: "#6A0000",
-                  border: "none",
-                }}
-              />
-            </Popconfirm>
-          </ProtectedButton>
-        </div>
-      ),
     },
   ];
 
@@ -252,7 +139,9 @@ export default function ReporteLiquidacionDeposito() {
   if (!mounted) return null;
 
   return (
-    <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS", "AUDITORES"]}>
+    <ProtectedPage
+      allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS", "AUDITORES"]}
+    >
       <div
         style={{
           padding: isDesktop ? "24px" : "12px",

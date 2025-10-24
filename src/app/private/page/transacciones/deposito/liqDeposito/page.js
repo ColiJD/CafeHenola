@@ -11,6 +11,8 @@ import {
 } from "@/config/validacionesForm";
 import { validarDatos } from "@/lib/validacionesForm";
 import { exportLiquidacionDeposito } from "@/Doc/Documentos/liqDepositp";
+import { FloatingButton } from "@/components/Button";
+import { UnorderedListOutlined } from "@ant-design/icons";
 
 export default function DepositoForm() {
   const [clientes, setClientes] = useState([]);
@@ -334,6 +336,13 @@ export default function DepositoForm() {
   // ------------------------------
   return (
     <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+      <FloatingButton
+        title="Ir al registro"
+        icon={<UnorderedListOutlined />}
+        top={20}
+        right={30}
+        route="/private/page/transacciones/deposito/lipdedeposito"
+      />
       <>
         {contextHolder}
         <Formulario

@@ -43,27 +43,24 @@ export default function ReporteClientesEntradas() {
     if (!datosFiltrados.length) return null;
 
     return datosFiltrados.reduce(
-      (acc, item) => ({
-        totalClientes: datosFiltrados.length,
-        compraCantidadQQ:
-          (acc.compraCantidadQQ || 0) +
-          (parseFloat(item.compraCantidadQQ) || 0),
-        compraTotalLps:
-          (acc.compraTotalLps || 0) + (parseFloat(item.compraTotalLps) || 0),
-        contratoCantidadQQ:
-          (acc.contratoCantidadQQ || 0) +
-          (parseFloat(item.contratoCantidadQQ) || 0),
-        contratoTotalLps:
-          (acc.contratoTotalLps || 0) +
-          (parseFloat(item.contratoTotalLps) || 0),
-        depositoCantidadQQ:
-          (acc.depositoCantidadQQ || 0) +
-          (parseFloat(item.depositoCantidadQQ) || 0),
-        depositoTotalLps:
-          (acc.depositoTotalLps || 0) +
-          (parseFloat(item.depositoTotalLps) || 0),
-      }),
-      {}
+      (acc, item) => {
+        acc.totalClientes = datosFiltrados.length;
+        const totalQQ =
+          (parseFloat(item.compraCantidadQQ) || 0) +
+          (parseFloat(item.contratoCantidadQQ) || 0) +
+          (parseFloat(item.depositoCantidadQQ) || 0);
+
+        const totalLps =
+          (parseFloat(item.compraTotalLps) || 0) +
+          (parseFloat(item.contratoTotalLps) || 0) +
+          (parseFloat(item.depositoTotalLps) || 0);
+
+        acc.totalQQ += totalQQ;
+        acc.totalLps += totalLps;
+
+        return acc;
+      },
+      { totalClientes: 0, totalQQ: 0, totalLps: 0 }
     );
   }, [datosFiltrados]);
 
@@ -179,7 +176,9 @@ export default function ReporteClientesEntradas() {
   if (!mounted) return null;
 
   return (
-    <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS","AUDITORES"]}>
+    <ProtectedPage
+      allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS", "AUDITORES"]}
+    >
       <div
         style={{
           padding: isDesktop ? "24px" : "12px",
@@ -256,22 +255,16 @@ export default function ReporteClientesEntradas() {
                     color: "#1890ff",
                   },
                   {
-                    titulo: "Compras",
-                    valor: estadisticas.compraTotalLps,
-                    prefix: "L.",
+                    titulo: "Total Quintales",
+                    valor: estadisticas.totalQQ,
+                    prefix: "QQ.",
                     color: "#52c41a",
                   },
                   {
-                    titulo: "Contratos",
-                    valor: estadisticas.contratoTotalLps,
+                    titulo: "Total Lempiras",
+                    valor: estadisticas.totalLps,
                     prefix: "L.",
                     color: "#1890ff",
-                  },
-                  {
-                    titulo: "Depósitos",
-                    valor: estadisticas.depositoTotalLps,
-                    prefix: "L.",
-                    color: "#fa8c16",
                   },
                 ]}
               />

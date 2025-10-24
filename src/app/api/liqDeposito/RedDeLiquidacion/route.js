@@ -9,18 +9,16 @@ export async function GET() {
         L.liqID,
         L.liqFecha,
         L.liqclienteID,
-        C.clienteNombre AS nombreCliente,
+        CONCAT(C.clienteNombre, ' ', C.clienteApellido) AS nombreCliente,
         P.productName AS tipoCafe,
         L.liqCatidadQQ,
         L.liqPrecio,
         L.liqTotalLps,
         L.liqDescripcion,
         L.liqEn
-      FROM DesarrolloCafeHenola.liqdeposito AS L
-      LEFT JOIN DesarrolloCafeHenola.cliente AS C 
-        ON C.clienteID = L.liqclienteID
-      LEFT JOIN DesarrolloCafeHenola.producto AS P 
-        ON P.productID = L.liqTipoCafe
+      FROM liqdeposito AS L
+      LEFT JOIN cliente AS C ON C.clienteID = L.liqclienteID
+      LEFT JOIN producto AS P ON P.productID = L.liqTipoCafe
       ORDER BY L.liqFecha DESC;
     `);
 
@@ -28,7 +26,10 @@ export async function GET() {
   } catch (error) {
     console.error("⚠️ Error SQL:", error);
     return NextResponse.json(
-      { error: "Error al obtener reporte de liquidaciones", detalle: error.message },
+      {
+        error: "Error al obtener reporte de liquidaciones",
+        detalle: error.message,
+      },
       { status: 500 }
     );
   }

@@ -14,7 +14,12 @@ const { Text } = Typography;
  * @param {number} props.offset - Número de columnas iniciales que no se suman (ID, nombre, etc.)
  * @param {Function} props.formatNumber - Función para formatear números
  */
-const TablaTotales = ({ columns, data, offset = 2, formatNumber = (v) => v }) => {
+const TablaTotales = ({
+  columns,
+  data,
+  offset = 2,
+  formatNumber = (v) => v,
+}) => {
   if (!data || !data.length || !columns || !columns.length) return null;
 
   // Flatten columns to get all leaf dataIndex columns after offset
@@ -37,25 +42,48 @@ const TablaTotales = ({ columns, data, offset = 2, formatNumber = (v) => v }) =>
   data.forEach((row) => {
     leafColumns.forEach((col) => {
       const key = col.dataIndex;
+      // Excluir columna promedio
+      if (key?.toLowerCase().includes("promedio")) return;
       const value = parseFloat(row[key]);
       if (!isNaN(value)) totales[key] = (totales[key] || 0) + value;
     });
   });
 
+  // Calcular promedio general ponderado
+  const totalQQ = totales.totalQQ || 0;
+  const totalLps = totales.totalLps || 0;
+  const promedioGeneral = totalQQ > 0 ? totalLps / totalQQ : 0;
+
   return (
     <Table.Summary.Row>
+      {/* Celdas vacías iniciales */}
       <Table.Summary.Cell index={0} colSpan={offset}>
         <Text strong>Total</Text>
       </Table.Summary.Cell>
 
-      {leafColumns.map((col, idx) => (
-        <Table.Summary.Cell key={col.dataIndex} index={offset + idx} align="right">
-          <Text strong>
-            {col.title && col.title.toString().toLowerCase().includes("lps") ? "L. " : ""}
-            {formatNumber(totales[col.dataIndex])}
-          </Text>
-        </Table.Summary.Cell>
-      ))}
+      {leafColumns.map((col, idx) => {
+        const key = col.dataIndex;
+
+        // Mostrar el promedio general solo en la columna promedio
+        if (key?.toLowerCase().includes("promedio")) {
+          return (
+            <Table.Summary.Cell key={key} index={offset + idx} align="right">
+              <Text strong>L. {formatNumber(promedioGeneral)}</Text>
+            </Table.Summary.Cell>
+          );
+        }
+
+        return (
+          <Table.Summary.Cell key={key} index={offset + idx} align="right">
+            <Text strong>
+              {col.title && col.title.toString().toLowerCase().includes("lps")
+                ? "L. "
+                : ""}
+              {formatNumber(totales[key])}
+            </Text>
+          </Table.Summary.Cell>
+        );
+      })}
     </Table.Summary.Row>
   );
 };

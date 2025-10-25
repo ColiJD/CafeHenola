@@ -18,6 +18,22 @@ import ProtectedPage from "@/components/ProtectedPage";
 
 const { Title, Text } = Typography;
 
+export function calcularTotalesCliente(cliente = {}) {
+  const totalQQ =
+    (parseFloat(cliente.compraCantidadQQ) || 0) +
+    (parseFloat(cliente.contratoCantidadQQ) || 0) +
+    (parseFloat(cliente.depositoCantidadQQ) || 0);
+
+  const totalLps =
+    (parseFloat(cliente.compraTotalLps) || 0) +
+    (parseFloat(cliente.contratoTotalLps) || 0) +
+    (parseFloat(cliente.depositoTotalLps) || 0);
+
+  const promedio = totalLps / totalQQ;
+
+  return { totalQQ, totalLps, promedio };
+}
+
 export default function ReporteClientesEntradas() {
   const hoy = [dayjs().startOf("day"), dayjs().endOf("day")];
   const { mounted, isDesktop } = useClientAndDesktop();
@@ -32,29 +48,31 @@ export default function ReporteClientesEntradas() {
   } = useFetchReport("/api/reportes/reporteCliente", hoy);
 
   const datosFiltrados = useMemo(() => {
-    return data.filter((item) =>
-      !nombreFiltro
-        ? true
-        : item.nombre?.toLowerCase().includes(nombreFiltro.toLowerCase())
-    );
+    return data
+      .filter((item) =>
+        !nombreFiltro
+          ? true
+          : item.nombre?.toLowerCase().includes(nombreFiltro.toLowerCase())
+      )
+      .map((item) => {
+        const { totalQQ, totalLps } = calcularTotalesCliente(item);
+
+        // Promedio por cliente = totalLps / totalQQ (si hay cantidad)
+        const promediocalculado =
+          totalQQ && totalQQ > 0 ? totalLps / totalQQ : 0;
+
+        return { ...item, totalQQ, totalLps, promediocalculado };
+      });
   }, [data, nombreFiltro]);
 
   const estadisticas = useMemo(() => {
     if (!datosFiltrados.length) return null;
 
-    return datosFiltrados.reduce(
-      (acc, item) => {
-        acc.totalClientes = datosFiltrados.length;
-        const totalQQ =
-          (parseFloat(item.compraCantidadQQ) || 0) +
-          (parseFloat(item.contratoCantidadQQ) || 0) +
-          (parseFloat(item.depositoCantidadQQ) || 0);
+    const resultado = datosFiltrados.reduce(
+      (acc, cliente) => {
+        const { totalQQ, totalLps } = calcularTotalesCliente(cliente);
 
-        const totalLps =
-          (parseFloat(item.compraTotalLps) || 0) +
-          (parseFloat(item.contratoTotalLps) || 0) +
-          (parseFloat(item.depositoTotalLps) || 0);
-
+        acc.totalClientes += 1;
         acc.totalQQ += totalQQ;
         acc.totalLps += totalLps;
 
@@ -62,7 +80,15 @@ export default function ReporteClientesEntradas() {
       },
       { totalClientes: 0, totalQQ: 0, totalLps: 0 }
     );
+
+    // Promedio general ponderado
+    resultado.promedioGeneral =
+      resultado.totalQQ > 0 ? resultado.totalLps / resultado.totalQQ : 0;
+
+    return resultado;
   }, [datosFiltrados]);
+
+  // utils/totalesCliente.js
 
   const columnasDesktop = [
     {
@@ -160,6 +186,58 @@ export default function ReporteClientesEntradas() {
         },
       ],
     },
+
+    // Agregamos al final de columnasDesktop
+
+    // ...tus columnas existentes
+    {
+      title: "Totales",
+      align: "center",
+      children: [
+        {
+          title: "QQ",
+          key: "totalQQ",
+          dataIndex: "totalQQ",
+          align: "right",
+          render: (_, r) => {
+            const { totalQQ } = calcularTotalesCliente(r);
+            return (
+              <Text strong type={totalQQ > 0 ? "success" : "secondary"}>
+                {formatNumber(totalQQ)}
+              </Text>
+            );
+          },
+        },
+        {
+          title: "Lps",
+          key: "totalLps",
+          dataIndex: "totalLps",
+          align: "right",
+          render: (_, r) => {
+            const { totalLps } = calcularTotalesCliente(r);
+            return (
+              <Text strong type={totalLps > 0 ? "success" : "secondary"}>
+                L. {formatNumber(totalLps)}
+              </Text>
+            );
+          },
+        },
+        {
+          title: "Promedio",
+          key: "promedio",
+          align: "right",
+          dataIndex: "promediocalculado",
+          render: (_, r) => {
+            const { promedio } = calcularTotalesCliente(r);
+            return (
+              <Text strong type={promedio > 0 ? "success" : "secondary"}>
+                L. {formatNumber(promedio)}
+              </Text>
+            );
+          },
+        },
+      ],
+    },
   ];
 
   const columnasMobile = [
@@ -171,6 +249,8 @@ export default function ReporteClientesEntradas() {
     { label: "Contrato Lps", key: "contratoTotalLps" },
     { label: "Depósito QQ", key: "depositoCantidadQQ" },
     { label: "Depósito Lps", key: "depositoTotalLps" },
+    { label: "Total QQ", key: "totalQQ" },
+    { label: "Total Lps", key: "totalLps" },
   ];
 
   if (!mounted) return null;
@@ -250,21 +330,27 @@ export default function ReporteClientesEntradas() {
                 data={[
                   {
                     titulo: "Clientes",
-                    valor: estadisticas.totalClientes,
+                    valor: formatNumber(estadisticas.totalClientes),
                     icon: <UserOutlined style={{ color: "#1890ff" }} />,
                     color: "#1890ff",
                   },
                   {
                     titulo: "Total Quintales",
-                    valor: estadisticas.totalQQ,
+                    valor: formatNumber(estadisticas.totalQQ),
                     prefix: "QQ.",
                     color: "#52c41a",
                   },
                   {
                     titulo: "Total Lempiras",
-                    valor: estadisticas.totalLps,
+                    valor: formatNumber(estadisticas.totalLps),
                     prefix: "L.",
                     color: "#1890ff",
+                  },
+                  {
+                    titulo: "Promedio General",
+                    valor: formatNumber(estadisticas.promedioGeneral),
+                    prefix: "L.",
+                    color: "#faad14",
                   },
                 ]}
               />

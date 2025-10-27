@@ -138,10 +138,10 @@ export default function PrestamosGeneral() {
                 : null,
               anticipo:
                 mov.tipo_movimiento === "ANTICIPO"
-                  ? -Number(mov.monto || 0)
+                  ? Number(mov.monto || 0)
                   : null,
               tipo: mov.tipo_movimiento,
-              totalGeneral: ["PRESTAMO", "Int-Cargo"].includes(
+              totalGeneral: ["PRESTAMO", "Int-Cargo","ANTICIPO"].includes(
                 mov.tipo_movimiento
               )
                 ? Number(mov.monto || 0)

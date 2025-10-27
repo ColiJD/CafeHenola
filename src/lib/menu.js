@@ -51,6 +51,12 @@ export const menuItems = [
         href: Ruta + "/informe/reporteCliente",
         image: deposito,
       },
+       {
+        id: 403,
+        name: "Registro de Salidas",
+        href: Ruta + "/informe/reporteSalidas",
+        image: deposito,
+      },
     ],
   },
   {

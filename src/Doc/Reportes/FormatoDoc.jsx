@@ -1,226 +1,290 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import dayjs from "dayjs";
+import fondoImg from "@/img/frijoles.png";
 
 /**
- * Función para generar PDF con resumen y detalle.
- * @param {Array} data - Datos de la tabla
+ * Genera PDF para cualquier reporte de manera automática con diseño mejorado.
+ *
+ * @param {Array} data - Datos del reporte
  * @param {Object} filtros - Filtros aplicados
- * @param {Object} options - Opciones de configuración (colores, título, orientación)
+ * @param {Array} columnas - Columnas [{ header, key, format, isCantidad, isTotal }]
+ *      isCantidad -> columna de cantidad (QQ)
+ *      isTotal -> columna de monto (Lps)
+ * @param {Object} options - Opciones (title, colores, orientación)
  */
-export const generarReportePDF = (data, filtros = {}, options = {}) => {
+export const generarReportePDF = (data, filtros = {}, columnas = [], options = {}) => {
   const doc = new jsPDF({
     orientation: options.orientation || "landscape",
     unit: "mm",
     format: "a4",
   });
 
-  // Colores
-  const colorPrimario = options.colorPrimario || [41, 128, 185]; // Azul
-  const colorSecundario = options.colorSecundario || [236, 240, 241]; // Gris claro
-  const colorTexto = options.colorTexto || [44, 62, 80]; // Gris oscuro
+  const pageWidth = doc.internal.pageSize.width;
+  const pageHeight = doc.internal.pageSize.height;
+  const margin = 15;
+
+  const colorPrimario = options.colorPrimario || [41, 128, 185];
+  const colorSecundario = options.colorSecundario || [236, 240, 241];
+  const colorTexto = options.colorTexto || [44, 62, 80];
+  const colorAccento = options.colorAccento || [52, 152, 219];
 
   const formatNumber = (num) =>
-    !num || num === 0
+    !num || isNaN(num)
       ? "0.00"
-      : Number(num).toLocaleString("es-HN", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        });
+      : Number(num).toLocaleString("es-HN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  // ENCABEZADO
+  // -------------------------------
+  // ENCABEZADO CON LOGO
+  // -------------------------------
+  const headerHeight = 32;
+  
+  // Fondo del encabezado
   doc.setFillColor(...colorPrimario);
-  doc.rect(0, 0, 297, 25, "F");
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(18);
-  doc.setFont("helvetica", "bold");
-  doc.text(options.title || "REPORTE DE ENTRADAS", 148.5, 12, {
-    align: "center",
-  });
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text(`Generado el: ${dayjs().format("DD/MM/YYYY HH:mm")}`, 148.5, 18, {
-    align: "center",
-  });
+  doc.rect(0, 0, pageWidth, headerHeight, "F");
+  
+  // Franja decorativa superior
+  doc.setFillColor(colorAccento[0], colorAccento[1], colorAccento[2]);
+  doc.rect(0, 0, pageWidth, 3, "F");
+  
+  // Logo (izquierda con margen seguro)
+  const logoSize = 18;
+  const logoX = margin;
+  const logoY = 7;
+  
+  try {
+    doc.addImage(fondoImg, "PNG", logoX, logoY, logoSize, logoSize);
+  } catch (error) {
+    console.warn("No se pudo cargar el logo:", error);
+  }
 
-  // FILTROS
-  let yPosition = 35;
-  doc.setTextColor(...colorTexto);
+  // Título centrado (asegurando espacio para el logo)
+  const titleAreaStart = logoX + logoSize + 10;
+  const titleAreaEnd = pageWidth - margin;
+  const titleCenterX = (titleAreaStart + titleAreaEnd) / 2;
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(20);
+  doc.setFont("helvetica", "bold");
+  doc.text(options.title || "REPORTE", pageWidth / 2, 14, { align: "center" });
+  
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Generado el: ${dayjs().format("DD/MM/YYYY [a las] HH:mm")}`, pageWidth / 2, 22, { align: "center" });
+
+  // Línea decorativa inferior del encabezado
+  doc.setDrawColor(255, 255, 255);
+  doc.setLineWidth(0.5);
+  doc.line(margin + 30, headerHeight - 3, pageWidth - margin - 30, headerHeight - 3);
+
+  // -------------------------------
+  // SECCIÓN DE FILTROS
+  // -------------------------------
+  let yPos = headerHeight + 8;
+  
+  // Calcular altura necesaria para filtros
+  let filtrosLines = 1; // Título
+  if (filtros.fechaInicio && filtros.fechaFin) filtrosLines++;
+  if (filtros.nombreFiltro) filtrosLines++;
+  if (!filtros.fechaInicio && !filtros.nombreFiltro) filtrosLines++;
+  
+  const lineHeight = 5.5;
+  const filtrosHeight = filtrosLines * lineHeight + 8;
+  
+  // Caja de filtros
+  doc.setFillColor(250, 250, 252);
+  doc.setDrawColor(...colorPrimario);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(margin, yPos, pageWidth - (margin * 2), filtrosHeight, 2, 2, "FD");
+
+  // Contenido de filtros
+  yPos += 6;
+  doc.setTextColor(...colorPrimario);
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
-  doc.text("FILTROS APLICADOS:", 20, yPosition);
-  yPosition += 8;
+  doc.text("FILTROS APLICADOS", margin + 5, yPos);
+  
+  yPos += lineHeight + 1;
+  doc.setTextColor(...colorTexto);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
 
   if (filtros.fechaInicio && filtros.fechaFin) {
-    doc.text(
-      `• Período: ${dayjs(filtros.fechaInicio).format("DD/MM/YYYY")} - ${dayjs(
-        filtros.fechaFin
-      ).format("DD/MM/YYYY")}`,
-      20,
-      yPosition
-    );
-    yPosition += 6;
-  }
-
-  if (filtros.nombreFiltro) {
-    doc.text(`• Búsqueda por nombre: "${filtros.nombreFiltro}"`, 20, yPosition);
-    yPosition += 6;
-  }
-
-  if (filtros.clienteFiltro) {
-    doc.text(`• Cliente específico: "${filtros.clienteFiltro}"`, 20, yPosition);
-    yPosition += 6;
-  }
-
-  if (!filtros.fechaInicio && !filtros.nombreFiltro && !filtros.clienteFiltro) {
-    doc.text("• Sin filtros aplicados (todos los registros)", 20, yPosition);
-    yPosition += 6;
-  }
-
-  yPosition += 5;
-
-  // RESUMEN GENERAL
-  if (data && data.length > 0) {
-    // Calcular totales combinados
-    const totales = data.reduce(
-      (acc, item) => {
-        const totalQQ =
-          (parseFloat(item.compraCantidadQQ) || 0) +
-          (parseFloat(item.contratoCantidadQQ) || 0) +
-          (parseFloat(item.depositoCantidadQQ) || 0);
-
-        const totalLps =
-          (parseFloat(item.compraTotalLps) || 0) +
-          (parseFloat(item.contratoTotalLps) || 0) +
-          (parseFloat(item.depositoTotalLps) || 0);
-
-        acc.totalQQ += totalQQ;
-        acc.totalLps += totalLps;
-        return acc;
-      },
-      { totalQQ: 0, totalLps: 0 }
-    );
-
-    const totalClientes = data.length;
-
-    autoTable(doc, {
-      startY: yPosition,
-      head: [["RESUMEN GENERAL", "TOTAL"]],
-      body: [
-        ["Total de Clientes", formatNumber(totalClientes)],
-        ["Total Quintales (QQ)", formatNumber(totales.totalQQ)],
-        ["Total en Lempiras (Lps)", `L. ${formatNumber(totales.totalLps)}`],
-      ],
-      theme: "grid",
-      headStyles: {
-        fillColor: colorPrimario,
-        textColor: [255, 255, 255],
-        fontSize: 10,
-        fontStyle: "bold",
-      },
-      bodyStyles: { fontSize: 9, textColor: colorTexto },
-      alternateRowStyles: { fillColor: colorSecundario },
-      margin: { left: 20, right: 20 },
-    });
-
-    yPosition = doc.lastAutoTable.finalY + 10;
-  }
-
-  // TABLA DETALLE
-  if (data && data.length > 0) {
-    doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.text("DETALLE POR CLIENTE", 20, yPosition);
-    yPosition += 8;
-
-    const tableData = data.map((item) => [
-      item.clienteID || "",
-      item.nombre || "",
-      formatNumber(item.compraCantidadQQ),
-      `L. ${formatNumber(item.compraTotalLps)}`,
-      formatNumber(item.contratoCantidadQQ),
-      `L. ${formatNumber(item.contratoTotalLps)}`,
-      formatNumber(item.depositoCantidadQQ),
-      `L. ${formatNumber(item.depositoTotalLps)}`,
-    ]);
-
-    autoTable(doc, {
-      startY: yPosition,
-      head: [
-        [
-          "ID",
-          "Cliente",
-          "Compra QQ",
-          "Compra Lps",
-          "Contrato QQ",
-          "Contrato Lps",
-          "Depósito QQ",
-          "Depósito Lps",
-        ],
-      ],
-      body: tableData,
-      theme: "striped",
-      headStyles: {
-        fillColor: colorPrimario,
-        textColor: [255, 255, 255],
-        fontSize: 10,
-        fontStyle: "bold",
-        halign: "center",
-      },
-      bodyStyles: { fontSize: 8, textColor: colorTexto },
-      columnStyles: {
-        0: { halign: "center", cellWidth: 15 },
-        1: { halign: "left", cellWidth: 50 },
-        2: { halign: "right", cellWidth: 25 },
-        3: { halign: "right", cellWidth: 30 },
-        4: { halign: "right", cellWidth: 25 },
-        5: { halign: "right", cellWidth: 30 },
-        6: { halign: "right", cellWidth: 25 },
-        7: { halign: "right", cellWidth: 30 },
-      },
-      alternateRowStyles: { fillColor: colorSecundario },
-      margin: { left: 20, right: 20 },
-      didDrawPage: function (data) {
-        const pageCount = doc.internal.getNumberOfPages();
-        const pageSize = doc.internal.pageSize;
-        const pageHeight = pageSize.height
-          ? pageSize.height
-          : pageSize.getHeight();
-
-        doc.setFontSize(8);
-        doc.setTextColor(128, 128, 128);
-        doc.text(
-          `Página ${data.pageNumber} de ${pageCount}`,
-          pageSize.width - 20,
-          pageHeight - 10,
-          { align: "right" }
-        );
-
-        doc.setDrawColor(200, 200, 200);
-        doc.line(20, pageHeight - 15, pageSize.width - 20, pageHeight - 15);
-      },
-    });
-  } else {
-    doc.setFontSize(12);
-    doc.setTextColor(200, 100, 100);
-    doc.text("No hay datos disponibles para mostrar", 148.5, yPosition + 20, {
-      align: "center",
-    });
+    doc.text("Período:", margin + 5, yPos);
+    doc.setFont("helvetica", "normal");
+    doc.text(
+      `${dayjs(filtros.fechaInicio).format("DD/MM/YYYY")} - ${dayjs(filtros.fechaFin).format("DD/MM/YYYY")}`,
+      margin + 23,
+      yPos
+    );
+    yPos += lineHeight;
   }
-
-  // Pie adicional con total de registros
-  if (data && data.length > 0) {
-    const finalY = doc.lastAutoTable?.finalY || yPosition;
-    doc.setFontSize(8);
-    doc.setTextColor(128, 128, 128);
-    doc.text(`Total de registros: ${data.length}`, 20, finalY + 10);
+  if (filtros.nombreFiltro) {
+    doc.setFont("helvetica", "bold");
+    doc.text("Búsqueda:", margin + 5, yPos);
+    doc.setFont("helvetica", "normal");
+    const maxTextWidth = pageWidth - margin * 2 - 30;
+    const searchText = doc.splitTextToSize(`"${filtros.nombreFiltro}"`, maxTextWidth);
+    doc.text(searchText, margin + 25, yPos);
+    yPos += lineHeight * searchText.length;
   }
+  if (!filtros.fechaInicio && !filtros.nombreFiltro) {
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(100, 100, 100);
+    doc.text("Sin filtros aplicados (todos los registros)", margin + 5, yPos);
+    yPos += lineHeight;
+  }
+  
+  // Espacio después de filtros
+  yPos = headerHeight + 8 + filtrosHeight + 8;
 
-  const nombreArchivo = `reporte-entradas-${dayjs().format(
-    "YYYY-MM-DD-HHmm"
-  )}.pdf`;
-  doc.save(nombreArchivo);
+  // -------------------------------
+  // CALCULAR TOTALES Y PROMEDIO
+  // -------------------------------
+  const totales = {};
+  let totalCantidad = 0;
+  let totalMonto = 0;
+
+  columnas.forEach(col => {
+    if (col.isCantidad || col.isTotal) {
+      const suma = data.reduce((acc, r) => acc + (Number(r[col.key]) || 0), 0);
+      totales[col.key] = suma;
+
+      if (col.isCantidad) totalCantidad = suma;
+      if (col.isTotal) totalMonto = suma;
+    }
+  });
+
+  const promedioGeneral = totalCantidad > 0 ? totalMonto / totalCantidad : 0;
+
+  // -------------------------------
+  // TABLA DETALLE
+  // -------------------------------
+  const tableBody = data.map(row =>
+    columnas.map(col => {
+      if (col.format === "moneda") return `L. ${formatNumber(row[col.key])}`;
+      if (col.format === "numero") return formatNumber(row[col.key]);
+      return row[col.key] || "";
+    })
+  );
+
+  // Fila de totales
+  const totalRow = columnas.map(col => {
+    if (col.isCantidad) return formatNumber(totales[col.key] || 0);
+    if (col.isTotal) return `L. ${formatNumber(totales[col.key] || 0)}`;
+    if (col.key.toLowerCase().includes("promedio")) return `L. ${formatNumber(promedioGeneral)}`;
+    return "";
+  });
+
+  tableBody.push(totalRow);
+
+  const tableHead = columnas.map(col => col.header);
+
+  // Calcular espacio disponible para la tabla
+  const footerSpace = 20;
+  const availableHeight = pageHeight - yPos - footerSpace;
+
+  autoTable(doc, {
+    startY: yPos,
+    head: [tableHead],
+    body: tableBody,
+    theme: "striped",
+    headStyles: {
+      fillColor: colorPrimario,
+      textColor: [255, 255, 255],
+      fontSize: 9,
+      fontStyle: "bold",
+      halign: "center",
+      cellPadding: 3.5,
+      minCellHeight: 8,
+    },
+    bodyStyles: {
+      fontSize: 8,
+      textColor: colorTexto,
+      cellPadding: 2.5,
+      minCellHeight: 7,
+    },
+    alternateRowStyles: {
+      fillColor: colorSecundario,
+    },
+    columnStyles: columnas.reduce((acc, col, idx) => {
+      if (col.format === "moneda" || col.format === "numero" || col.isCantidad || col.isTotal) {
+        acc[idx] = { halign: "right" };
+      }
+      return acc;
+    }, {}),
+    margin: { left: margin, right: margin, bottom: footerSpace },
+    didParseCell: (data) => {
+      // Fila de totales con estilo especial
+      if (data.row.index === tableBody.length - 1 && data.section === 'body') {
+        data.cell.styles.fillColor = [52, 73, 94];
+        data.cell.styles.textColor = [255, 255, 255];
+        data.cell.styles.fontStyle = "bold";
+        data.cell.styles.fontSize = 9;
+        data.cell.styles.cellPadding = 3;
+      }
+    },
+    didDrawPage: (dataArg) => {
+      const pageCount = doc.internal.getNumberOfPages();
+      const currentPage = dataArg.pageNumber;
+      
+      // Solo dibujar encabezado en la primera página
+      if (currentPage === 1) {
+        // Ya dibujado arriba
+      } else {
+        // Encabezado simplificado para páginas siguientes
+        doc.setFillColor(...colorPrimario);
+        doc.rect(0, 0, pageWidth, 20, "F");
+        
+        doc.setFillColor(colorAccento[0], colorAccento[1], colorAccento[2]);
+        doc.rect(0, 0, pageWidth, 2, "F");
+        
+        try {
+          doc.addImage(fondoImg, "PNG", margin, 4, 12, 12);
+        } catch (error) {
+          // Silencioso
+        }
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(12);
+        doc.setFont("helvetica", "bold");
+        doc.text(options.title || "REPORTE", pageWidth / 2, 12, { align: "center" });
+      }
+      
+      // Pie de página
+      const footerY = pageHeight - 12;
+      
+      // Línea decorativa
+      doc.setDrawColor(...colorPrimario);
+      doc.setLineWidth(0.5);
+      doc.line(margin, footerY, pageWidth - margin, footerY);
+      
+      // Número de página (derecha)
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
+      doc.setFont("helvetica", "normal");
+      doc.text(
+        `Página ${currentPage} de ${pageCount}`,
+        pageWidth - margin,
+        footerY + 5,
+        { align: "right" }
+      );
+      
+      // Mini logo en el pie
+      const miniLogoSize = 5;
+      try {
+        doc.addImage(fondoImg, "PNG", margin, footerY + 1.5, miniLogoSize, miniLogoSize);
+      } catch (error) {
+        // Silencioso
+      }
+    },
+  });
+
+  // -------------------------------
+  // Guardar PDF
+  // -------------------------------
+  const filename = `${(options.title || "reporte").replace(/\s+/g, "_")}-${dayjs().format("YYYY-MM-DD-HHmm")}.pdf`;
+  doc.save(filename);
   return doc;
 };

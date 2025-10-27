@@ -53,13 +53,11 @@ export async function POST(req) {
     // 3️⃣ Calcular deuda total e intereses pendientes
     const deudaTotal = prestamosActivos.reduce((acc, p) => {
       const cargos = p.movimientos_prestamo
-        .filter((m) => m.tipo_movimiento === "Int-Cargo")
+        .filter((m) => ["Int-Cargo", "ANTICIPO"].includes(m.tipo_movimiento))
         .reduce((a, m) => a + Number(m.monto), 0);
 
       const pagos = p.movimientos_prestamo
-        .filter((m) =>
-          ["ABONO", "ANTICIPO", "PAGO_INTERES"].includes(m.tipo_movimiento)
-        )
+        .filter((m) => ["ABONO", "PAGO_INTERES"].includes(m.tipo_movimiento))
         .reduce((a, m) => a + Number(m.monto), 0);
 
       return acc + (Number(p.monto) + cargos - pagos);
@@ -67,7 +65,7 @@ export async function POST(req) {
 
     const interesesPendientes = prestamosActivos.reduce((acc, p) => {
       const cargos = p.movimientos_prestamo
-        .filter((m) => m.tipo_movimiento === "Int-Cargo")
+        .filter((m) => ["Int-Cargo"].includes(m.tipo_movimiento))
         .reduce((a, m) => a + Number(m.monto), 0);
 
       const pagos = p.movimientos_prestamo
@@ -90,11 +88,6 @@ export async function POST(req) {
         );
       }
     }
-
-    if (tipo_movimiento === "ANTICIPO") {
-      // ✅ Permitido aunque deje saldo negativo
-    }
-
     if (tipo_movimiento === "PAGO_INTERES") {
       if (interesesPendientes <= 0) {
         return NextResponse.json(
@@ -138,13 +131,11 @@ export async function POST(req) {
       for (const prestamo of prestamosActivos) {
         const totalCapital = Number(prestamo.monto || 0);
         const totalIntereses = prestamo.movimientos_prestamo
-          .filter((m) => m.tipo_movimiento === "Int-Cargo")
+          .filter((m) => ["Int-Cargo", "ANTICIPO"].includes(m.tipo_movimiento))
           .reduce((acc, m) => acc + Number(m.monto), 0);
 
         const totalPagos = prestamo.movimientos_prestamo
-          .filter((m) =>
-            ["ABONO", "ANTICIPO", "PAGO_INTERES"].includes(m.tipo_movimiento)
-          )
+          .filter((m) => ["ABONO", "PAGO_INTERES"].includes(m.tipo_movimiento))
           .reduce((acc, m) => acc + Number(m.monto), 0);
 
         const deudaPendiente = totalCapital + totalIntereses - totalPagos;

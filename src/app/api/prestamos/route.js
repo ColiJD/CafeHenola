@@ -58,14 +58,12 @@ export async function POST(req) {
     const totalCapital = Number(prestamoConMovimientos.monto || 0);
 
     const totalIntereses = prestamoConMovimientos.movimientos_prestamo
-      .filter((m) => m.tipo_movimiento === "CARGO_INTERES")
+      .filter((m) => ["CARGO_INTERES", "ANTICIPO"].includes(m.tipo_movimiento))
       .reduce((acc, m) => acc + Number(m.monto), 0);
 
     const totalAbonado = prestamoConMovimientos.movimientos_prestamo
       .filter((m) =>
-        ["ABONO", "ABONO_INTERES", "PAGO_INTERES", "ANTICIPO"].includes(
-          m.tipo_movimiento
-        )
+        ["ABONO", "ABONO_INTERES", "PAGO_INTERES"].includes(m.tipo_movimiento)
       )
       .reduce((acc, m) => acc + Number(m.monto), 0);
 

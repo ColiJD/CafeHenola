@@ -8,36 +8,33 @@ import TarjetaMobile from "@/components/TarjetaMobile";
 import Filtros from "@/components/Filtros";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
 import { UserOutlined, CalendarOutlined } from "@ant-design/icons";
-import { generarReportePDF } from "@/Doc/Reportes/FormatoDoc";
 import { formatNumber } from "@/components/Formulario";
 import SectionHeader from "@/components/ReportesElement/AccionesResporte";
 import { useFetchReport } from "@/hook/useFetchReport";
 import TablaTotales from "@/components/ReportesElement/TablaTotales";
-
 import ProtectedPage from "@/components/ProtectedPage";
+import { generarReportePDF } from "@/Doc/Reportes/FormatoDoc";
 
 const { Title, Text } = Typography;
 
-export function calcularTotalesCliente(cliente = {}) {
-  const totalQQ =
-    (parseFloat(cliente.compraCantidadQQ) || 0) +
-    (parseFloat(cliente.contratoCantidadQQ) || 0) +
-    (parseFloat(cliente.depositoCantidadQQ) || 0);
-
-  const totalLps =
-    (parseFloat(cliente.compraTotalLps) || 0) +
-    (parseFloat(cliente.contratoTotalLps) || 0) +
-    (parseFloat(cliente.depositoTotalLps) || 0);
-
-  const promedio = totalLps / totalQQ;
-
+// ---------------------------
+// Función universal para totales y promedio
+// ---------------------------
+export function calcularTotalesComprador(comprador = {}) {
+  const totalQQ = parseFloat(comprador.compraCantidadQQ) || 0;
+  const totalLps = parseFloat(comprador.compraTotalLps) || 0;
+  const promedio = totalQQ > 0 ? totalLps / totalQQ : 0; // promedio ponderado
   return { totalQQ, totalLps, promedio };
 }
 
-export default function ReporteClientesEntradas() {
+// ---------------------------
+// Componente principal
+// ---------------------------
+export default function ReporteCompradoresSalidas() {
   const hoy = [dayjs().startOf("day"), dayjs().endOf("day")];
   const { mounted, isDesktop } = useClientAndDesktop();
   const [nombreFiltro, setNombreFiltro] = useState("");
+
   const {
     data,
     loading,
@@ -45,8 +42,11 @@ export default function ReporteClientesEntradas() {
     onFechasChange,
     contextHolder,
     fetchData,
-  } = useFetchReport("/api/reportes/reporteCliente", hoy);
+  } = useFetchReport("/api/reportes/reporteSalidas", hoy);
 
+  // ---------------------------
+  // Filtrado y cálculo de totales por comprador
+  // ---------------------------
   const datosFiltrados = useMemo(() => {
     return data
       .filter((item) =>
@@ -55,30 +55,26 @@ export default function ReporteClientesEntradas() {
           : item.nombre?.toLowerCase().includes(nombreFiltro.toLowerCase())
       )
       .map((item) => {
-        const { totalQQ, totalLps } = calcularTotalesCliente(item);
-
-        // Promedio por cliente = totalLps / totalQQ (si hay cantidad)
-        const promediocalculado =
-          totalQQ && totalQQ > 0 ? totalLps / totalQQ : 0;
-
-        return { ...item, totalQQ, totalLps, promediocalculado };
+        const { totalQQ, totalLps, promedio } = calcularTotalesComprador(item);
+        return { ...item, totalQQ, totalLps, promedio };
       });
   }, [data, nombreFiltro]);
 
+  // ---------------------------
+  // Totales generales
+  // ---------------------------
   const estadisticas = useMemo(() => {
     if (!datosFiltrados.length) return null;
 
     const resultado = datosFiltrados.reduce(
-      (acc, cliente) => {
-        const { totalQQ, totalLps } = calcularTotalesCliente(cliente);
-
-        acc.totalClientes += 1;
+      (acc, comprador) => {
+        const { totalQQ, totalLps } = calcularTotalesComprador(comprador);
+        acc.totalCompradores += 1;
         acc.totalQQ += totalQQ;
         acc.totalLps += totalLps;
-
         return acc;
       },
-      { totalClientes: 0, totalQQ: 0, totalLps: 0 }
+      { totalCompradores: 0, totalQQ: 0, totalLps: 0 }
     );
 
     // Promedio general ponderado
@@ -88,25 +84,26 @@ export default function ReporteClientesEntradas() {
     return resultado;
   }, [datosFiltrados]);
 
-  // utils/totalesCliente.js
-
+  // ---------------------------
+  // Columnas configurables (reutilizable)
+  // ---------------------------
   const columnasDesktop = [
     {
-      title: "ID Cliente",
-      dataIndex: "clienteID",
+      title: "ID Comprador",
+      dataIndex: "compradorId",
       width: 100,
       align: "center",
       fixed: "left",
       render: (text) => <Text strong>{text}</Text>,
     },
     {
-      title: "Nombre Cliente",
+      title: "Nombre Comprador",
       dataIndex: "nombre",
-      width: 150,
+      width: 200,
       render: (text) => <Text style={{ color: "#1890ff" }}>{text}</Text>,
     },
     {
-      title: "Compra",
+      title: "Salidas",
       children: [
         {
           title: "QQ",
@@ -131,66 +128,6 @@ export default function ReporteClientesEntradas() {
       ],
     },
     {
-      title: "Contrato",
-      children: [
-        {
-          title: "QQ",
-          dataIndex: "contratoCantidadQQ",
-          align: "right",
-          render: (_, r) => (
-            <Text type={r.contratoCantidadQQ > 0 ? "success" : "secondary"}>
-              {formatNumber(r.contratoCantidadQQ)}
-            </Text>
-          ),
-        },
-        {
-          title: "Total Lps",
-          dataIndex: "contratoTotalLps",
-          align: "right",
-          render: (_, r) => (
-            <Text
-              strong
-              type={r.contratoTotalLps > 0 ? "success" : "secondary"}
-            >
-              L. {formatNumber(r.contratoTotalLps)}
-            </Text>
-          ),
-        },
-      ],
-    },
-    {
-      title: "Depósito",
-      children: [
-        {
-          title: "QQ",
-          dataIndex: "depositoCantidadQQ",
-          align: "right",
-          render: (_, r) => (
-            <Text type={r.depositoCantidadQQ > 0 ? "success" : "secondary"}>
-              {formatNumber(r.depositoCantidadQQ)}
-            </Text>
-          ),
-        },
-        {
-          title: "Total Lps",
-          dataIndex: "depositoTotalLps",
-          align: "right",
-          render: (_, r) => (
-            <Text
-              strong
-              type={r.depositoTotalLps > 0 ? "success" : "secondary"}
-            >
-              L. {formatNumber(r.depositoTotalLps)}
-            </Text>
-          ),
-        },
-      ],
-    },
-
-    // Agregamos al final de columnasDesktop
-
-    // ...tus columnas existentes
-    {
       title: "Totales",
       align: "center",
       children: [
@@ -199,82 +136,62 @@ export default function ReporteClientesEntradas() {
           key: "totalQQ",
           dataIndex: "totalQQ",
           align: "right",
-          render: (_, r) => {
-            const { totalQQ } = calcularTotalesCliente(r);
-            return (
-              <Text strong type={totalQQ > 0 ? "success" : "secondary"}>
-                {formatNumber(totalQQ)}
-              </Text>
-            );
-          },
+          render: (_, r) => (
+            <Text strong type={r.totalQQ > 0 ? "success" : "secondary"}>
+              {formatNumber(r.totalQQ)}
+            </Text>
+          ),
         },
         {
           title: "Lps",
           key: "totalLps",
           dataIndex: "totalLps",
           align: "right",
-          render: (_, r) => {
-            const { totalLps } = calcularTotalesCliente(r);
-            return (
-              <Text strong type={totalLps > 0 ? "success" : "secondary"}>
-                L. {formatNumber(totalLps)}
-              </Text>
-            );
-          },
+          render: (_, r) => (
+            <Text strong type={r.totalLps > 0 ? "success" : "secondary"}>
+              L. {formatNumber(r.totalLps)}
+            </Text>
+          ),
         },
         {
           title: "Promedio",
           key: "promedio",
           align: "right",
-          dataIndex: "promediocalculado",
-          render: (_, r) => {
-            const { promedio } = calcularTotalesCliente(r);
-            return (
-              <Text strong type={promedio > 0 ? "success" : "secondary"}>
-                L. {formatNumber(promedio)}
-              </Text>
-            );
-          },
+          dataIndex: "promedio",
+          render: (_, r) => (
+            <Text strong type={r.promedio > 0 ? "success" : "secondary"}>
+              L. {formatNumber(r.promedio)}
+            </Text>
+          ),
         },
       ],
     },
   ];
 
   const columnasMobile = [
-    { label: "ID Cliente", key: "clienteID" },
+    { label: "ID Comprador", key: "compradorId" },
     { label: "Nombre", key: "nombre" },
+    { label: "QQ", key: "compraCantidadQQ", render: (v) => formatNumber(v) },
+    { label: "Lps", key: "compraTotalLps", render: (v) => formatNumber(v) },
+    { label: "Promedio", key: "promedio", render: (v) => formatNumber(v) },
+  ];
+
+  const columnasPDF = [
+    { header: "ID Comprador", key: "compradorId" },
+    { header: "Nombre Comprador", key: "nombre" },
     {
-      label: "Compra QQ",
+      header: "QQ",
       key: "compraCantidadQQ",
-      render: (v) => formatNumber(v),
+      format: "numero",
+      isCantidad: true,
     },
     {
-      label: "Compra Lps",
+      header: "Total Lps",
       key: "compraTotalLps",
-      render: (v) => formatNumber(v),
+      format: "moneda",
+      isTotal: true,
     },
-    {
-      label: "Contrato QQ",
-      key: "contratoCantidadQQ",
-      render: (v) => formatNumber(v),
-    },
-    {
-      label: "Contrato Lps",
-      key: "contratoTotalLps",
-      render: (v) => formatNumber(v),
-    },
-    {
-      label: "Depósito QQ",
-      key: "depositoCantidadQQ",
-      render: (v) => formatNumber(v),
-    },
-    {
-      label: "Depósito Lps",
-      key: "depositoTotalLps",
-      render: (v) => formatNumber(v),
-    },
-    { label: "Total QQ", key: "totalQQ", render: (v) => formatNumber(v) },
-    { label: "Total Lps", key: "totalLps", render: (v) => formatNumber(v) },
+    { header: "Promedio", key: "promedio", format: "moneda" },
   ];
 
   if (!mounted) return null;
@@ -290,26 +207,22 @@ export default function ReporteClientesEntradas() {
           minHeight: "100vh",
         }}
       >
-        {/* Context Holder de message */}
         {contextHolder}
 
-        {/* Header */}
         <Card>
           <SectionHeader
             isDesktop={isDesktop}
             loading={loading}
             icon={<CalendarOutlined />}
-            titulo="Reporte de Entradas"
-            subtitulo="Resumen de actividades por cliente"
+            titulo="Reporte de Salidas"
+            subtitulo="Resumen de compras realizadas a compradores"
             onRefresh={() => {
               if (rangoFechas && rangoFechas[0] && rangoFechas[1]) {
                 fetchData(
                   rangoFechas[0].startOf("day").toISOString(),
                   rangoFechas[1].endOf("day").toISOString()
                 );
-              } else {
-                fetchData();
-              }
+              } else fetchData();
             }}
             onExportPDF={() => {
               if (!datosFiltrados.length) {
@@ -318,82 +231,25 @@ export default function ReporteClientesEntradas() {
                 return;
               }
               generarReportePDF(
-                datosFiltrados,
+                datosFiltrados, // datos filtrados de la tabla
                 {
                   fechaInicio: rangoFechas?.[0]?.toISOString(),
                   fechaFin: rangoFechas?.[1]?.toISOString(),
                   nombreFiltro,
                 },
-                [
-                  { header: "ID Cliente", key: "clienteID" },
-                  { header: "Nombre", key: "nombre" },
-                  {
-                    header: "Compra QQ",
-                    key: "compraCantidadQQ",
-                    format: "numero",
-                    isCantidad: true,
-                  },
-                  {
-                    header: "Compra Lps",
-                    key: "compraTotalLps",
-                    format: "moneda",
-                    isTotal: true,
-                  },
-                  {
-                    header: "Contrato QQ",
-                    key: "contratoCantidadQQ",
-                    format: "numero",
-                    isCantidad: true,
-                  },
-                  {
-                    header: "Contrato Lps",
-                    key: "contratoTotalLps",
-                    format: "moneda",
-                    isTotal: true,
-                  },
-                  {
-                    header: "Depósito QQ",
-                    key: "depositoCantidadQQ",
-                    format: "numero",
-                    isCantidad: true,
-                  },
-                  {
-                    header: "Depósito Lps",
-                    key: "depositoTotalLps",
-                    format: "moneda",
-                    isTotal: true,
-                  },
-                  {
-                    header: "Total QQ",
-                    key: "totalQQ",
-                    format: "numero",
-                    isCantidad: true,
-                  },
-                  {
-                    header: "Total Lps",
-                    key: "totalLps",
-                    format: "moneda",
-                    isTotal: true,
-                  },
-                  {
-                    header: "Promedio",
-                    key: "promediocalculado",
-                    format: "moneda",
-                  },
-                ],
-                { title: "Reporte de Entradas" }
+                columnasPDF,
+                { title: "Reporte de Salidas" }
               );
             }}
             disableExport={!datosFiltrados.length}
           />
-
           <Divider />
 
           <Filtros
             fields={[
               {
                 type: "input",
-                placeholder: "Buscar por nombre de cliente",
+                placeholder: "Buscar por nombre de comprador",
                 value: nombreFiltro,
                 setter: setNombreFiltro,
                 allowClear: true,
@@ -414,8 +270,8 @@ export default function ReporteClientesEntradas() {
                 isDesktop={isDesktop}
                 data={[
                   {
-                    titulo: "Clientes",
-                    valor: formatNumber(estadisticas.totalClientes),
+                    titulo: "Compradores",
+                    valor: formatNumber(estadisticas.totalCompradores),
                     icon: <UserOutlined style={{ color: "#1890ff" }} />,
                     color: "#1890ff",
                   },
@@ -449,7 +305,7 @@ export default function ReporteClientesEntradas() {
               level={4}
               style={{ margin: 0, fontSize: isDesktop ? 16 : 14 }}
             >
-              Detalle por Cliente ({datosFiltrados.length} registros)
+              Detalle por Comprador ({datosFiltrados.length} registros)
             </Title>
             <Text type="secondary" style={{ fontSize: isDesktop ? 14 : 12 }}>
               {rangoFechas?.[0] &&
@@ -464,7 +320,7 @@ export default function ReporteClientesEntradas() {
             <Table
               columns={columnasDesktop}
               dataSource={datosFiltrados}
-              rowKey="clienteID"
+              rowKey="compradorId"
               loading={loading}
               pagination={false}
               bordered
@@ -474,7 +330,7 @@ export default function ReporteClientesEntradas() {
                 <TablaTotales
                   columns={columnasDesktop}
                   data={datosFiltrados}
-                  offset={2} // columnas ID y Nombre no suman
+                  offset={2} // ID y nombre no cuentan
                   formatNumber={formatNumber}
                 />
               )}

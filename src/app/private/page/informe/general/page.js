@@ -30,32 +30,53 @@ export default function ResumenMovimientos() {
 
   const { mounted, isDesktop } = useClientAndDesktop();
 
-  // 🔹 Normalizamos la data en formato tabla
+  // 🔹 Normalizamos la data y agregamos totales
   const datosTabla = useMemo(() => {
     if (!data) return [];
 
-    return [
-      {
-        key: "entradas",
-        tipo: "Entradas",
-        compraQQ: data?.compras?.entradas?._sum?.compraCantidadQQ ?? 0,
-        compraLps: data?.compras?.entradas?._sum?.compraTotal ?? 0,
-        depositoQQ: data?.depositos?.entradas?._sum?.cantidadQQ ?? 0,
-        depositoLps: data?.depositos?.entradas?._sum?.totalLps ?? 0,
-        contratoQQ: data?.contratos?.entradas?._sum?.cantidadQQ ?? 0,
-        contratoLps: data?.contratos?.entradas?._sum?.precioQQ ?? 0,
-      },
-      {
-        key: "salidas",
-        tipo: "Salidas (Venta)",
-        compraQQ: data?.compras?.salidas?._sum?.compraCantidadQQ ?? 0,
-        compraLps: data?.compras?.salidas?._sum?.compraTotal ?? 0,
-        depositoQQ: data?.depositos?.salidas?._sum?.cantidadQQ ?? 0,
-        depositoLps: data?.depositos?.salidas?._sum?.totalLps ?? 0,
-        contratoQQ: data?.contratos?.salidas?._sum?.cantidadQQ ?? 0,
-        contratoLps: data?.contratos?.salidas?._sum?.precioQQ ?? 0,
-      },
-    ];
+    const entradas = {
+      key: "entradas",
+      tipo: "Entradas",
+      compraQQ: data?.compras?.entradas?._sum?.compraCantidadQQ ?? 0,
+      compraLps: data?.compras?.entradas?._sum?.compraTotal ?? 0,
+      depositoQQ: data?.depositos?.entradas?._sum?.cantidadQQ ?? 0,
+      depositoLps: data?.depositos?.entradas?._sum?.totalLps ?? 0,
+      contratoQQ: data?.contratos?.entradas?._sum?.cantidadQQ ?? 0,
+      contratoLps:
+        (data?.contratos?.entradas?._sum?.cantidadQQ ?? 0) *
+        (data?.contratos?.entradas?._sum?.precioQQ ?? 0),
+    };
+
+    const salidas = {
+      key: "salidas",
+      tipo: "Salidas (Venta)",
+      compraQQ: data?.compras?.salidas?._sum?.compraCantidadQQ ?? 0,
+      compraLps: data?.compras?.salidas?._sum?.compraTotal ?? 0,
+      depositoQQ: data?.depositos?.salidas?._sum?.cantidadQQ ?? 0,
+      depositoLps: data?.depositos?.salidas?._sum?.totalLps ?? 0,
+      contratoQQ: data?.contratos?.salidas?._sum?.cantidadQQ ?? 0,
+      contratoLps:
+        (data?.contratos?.salidas?._sum?.cantidadQQ ?? 0) *
+        (data?.contratos?.salidas?._sum?.precioQQ ?? 0),
+    };
+
+    // 🔹 Calcular totales combinados y promedio
+    const calcularTotales = (row) => {
+      const compraQQ = Number(row.compraQQ) || 0;
+      const compraLps = Number(row.compraLps) || 0;
+      const depositoQQ = Number(row.depositoQQ) || 0;
+      const depositoLps = Number(row.depositoLps) || 0;
+      const contratoQQ = Number(row.contratoQQ) || 0;
+      const contratoLps = Number(row.contratoLps) || 0;
+
+      const totalQQ = compraQQ + depositoQQ + contratoQQ;
+      const totalLps = compraLps + depositoLps + contratoLps;
+      const promedio = totalQQ > 0 ? totalLps / totalQQ : 0;
+
+      return { ...row, totalQQ, totalLps, promedio };
+    };
+
+    return [calcularTotales(entradas), calcularTotales(salidas)];
   }, [data]);
 
   // 🔹 Columnas de la tabla con subcolumnas
@@ -123,6 +144,32 @@ export default function ResumenMovimientos() {
         },
       ],
     },
+    {
+      title: "Totales",
+      children: [
+        {
+          title: "QQ Total",
+          dataIndex: "totalQQ",
+          key: "totalQQ",
+          align: "right",
+          render: (v) => formatNumber(v),
+        },
+        {
+          title: "Total Lps",
+          dataIndex: "totalLps",
+          key: "totalLps",
+          align: "right",
+          render: (v) => `L. ${formatNumber(v)}`,
+        },
+        {
+          title: "Promedio",
+          dataIndex: "promedio",
+          key: "promedio",
+          align: "right",
+          render: (v) => `L. ${formatNumber(v)}`,
+        },
+      ],
+    },
   ];
 
   const columnasMobile = [
@@ -166,6 +213,22 @@ export default function ResumenMovimientos() {
 
       render: (v) => `L. ${formatNumber(v)}`,
     },
+    // 🔹 Totales (nuevo bloque agregado)
+    {
+      label: "QQ Total",
+      key: "totalQQ",
+      render: (v) => formatNumber(v),
+    },
+    {
+      label: "Total Lps",
+      key: "totalLps",
+      render: (v) => `L. ${formatNumber(v)}`,
+    },
+    {
+      label: "Promedio",
+      key: "promedio",
+      render: (v) => `L. ${formatNumber(v)}`,
+    },
   ];
 
   const hayDatos = datosTabla.some(
@@ -181,7 +244,9 @@ export default function ResumenMovimientos() {
   if (!mounted) return <div style={{ padding: 24 }}>Cargando...</div>;
 
   return (
-    <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS","AUDITORES"]}>
+    <ProtectedPage
+      allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS", "AUDITORES"]}
+    >
       <div
         style={{
           padding: isDesktop ? "24px" : "12px",

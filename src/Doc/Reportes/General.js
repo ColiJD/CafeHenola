@@ -85,8 +85,10 @@ export const exportPDFGeneral = (data, filtros = {}, options = {}) => {
       `L. ${formatNumber(row.contratoLps)}`,
       formatNumber(row.depositoQQ),
       `L. ${formatNumber(row.depositoLps)}`,
+      formatNumber(row.totalQQ),
+      `L. ${formatNumber(row.totalLps)}`,
+      `L. ${formatNumber(row.promedio)}`,
     ]);
-
     autoTable(doc, {
       startY: yPosition,
       head: [
@@ -98,6 +100,9 @@ export const exportPDFGeneral = (data, filtros = {}, options = {}) => {
           "Contrato Lps",
           "Depósito QQ",
           "Depósito Lps",
+          "QQ Total",
+          "Total Lps",
+          "Promedio",
         ],
       ],
       body: entradasBody,
@@ -132,6 +137,9 @@ export const exportPDFGeneral = (data, filtros = {}, options = {}) => {
       `L. ${formatNumber(row.contratoLps)}`,
       formatNumber(row.depositoQQ),
       `L. ${formatNumber(row.depositoLps)}`,
+      formatNumber(row.totalQQ),
+      `L. ${formatNumber(row.totalLps)}`,
+      `L. ${formatNumber(row.promedio)}`,
     ]);
 
     autoTable(doc, {
@@ -145,6 +153,9 @@ export const exportPDFGeneral = (data, filtros = {}, options = {}) => {
           "Contrato Lps",
           "Depósito QQ",
           "Depósito Lps",
+          "QQ Total",
+          "Total Lps",
+          "Promedio",
         ],
       ],
       body: salidasBody,

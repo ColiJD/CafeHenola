@@ -50,6 +50,7 @@ export default function MovimientosComprasPage() {
   const [prestamos, setPrestamos] = useState([]);
   const [loading, setLoading] = useState(false);
   const { mounted, isDesktop } = useClientAndDesktop();
+  const [messageApi, contextHolder] = message.useMessage();
 
   useEffect(() => {
     const fetchClientes = async () => {
@@ -60,20 +61,20 @@ export default function MovimientosComprasPage() {
         setClientes(json || []);
       } catch (err) {
         console.error(err);
-        message.error("No se pudieron cargar los clientes");
+        messageApi.error("No se pudieron cargar los clientes");
       }
     };
     fetchClientes();
-  }, []);
+  }, [messageApi]);
 
   const fetchCompras = async () => {
     if (!clienteID) {
-      message.warning("Seleccione un cliente primero");
+      messageApi.warning("Seleccione un cliente primero");
       return;
     }
 
     if (!fechaRango || fechaRango.length !== 2) {
-      message.warning("Seleccione un rango de fechas válido");
+      messageApi.warning("Seleccione un rango de fechas válido");
       return;
     }
 
@@ -333,9 +334,20 @@ export default function MovimientosComprasPage() {
         prestamosAbonado: totalPrestamosAbonado,
         prestamosRestante: totalPrestamosRestante,
       });
+
+      const hayRegistros =
+        [filaCompras, filaContratos, filaDepositos].some(
+          (f) => f.detalles?.length > 0
+        ) || detallesPrestamos.length > 0;
+
+      if (hayRegistros) {
+        messageApi.success("Se encontraron registros");
+      } else {
+        messageApi.info("No se encontraron registros");
+      }
     } catch (err) {
       console.error(err);
-      message.error("No se pudieron cargar los movimientos");
+      messageApi.error("No se pudieron cargar los movimientos");
     } finally {
       setLoading(false);
     }
@@ -345,6 +357,7 @@ export default function MovimientosComprasPage() {
     <ProtectedPage
       allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS", "AUDITORES"]}
     >
+      {contextHolder}
       <Card>
         <SectionHeader
           isDesktop={isDesktop}

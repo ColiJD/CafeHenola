@@ -205,6 +205,9 @@ export async function GET(req) {
         estado: {
           not: "ABSORBIDO", // excluir préstamos borrados
         },
+        monto: {
+          gt: 0, // solo préstamos con monto mayor a 0
+        },
       },
       include: {
         movimientos_prestamo: {

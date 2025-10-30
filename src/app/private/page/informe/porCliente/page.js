@@ -8,7 +8,7 @@ import {
   Divider,
   message,
   Spin,
-  Tag,
+  Space,
   Select,
   DatePicker,
   Button,
@@ -17,6 +17,23 @@ import {
 } from "antd";
 import dayjs from "dayjs";
 import { formatNumber } from "@/components/Formulario";
+import ProtectedPage from "@/components/ProtectedPage";
+import useClientAndDesktop from "@/hook/useClientAndDesktop";
+import SectionHeader from "@/components/ReportesElement/AccionesResporte";
+import {
+  CalendarOutlined,
+  AppstoreOutlined,
+  DollarOutlined,
+  LineChartOutlined,
+} from "@ant-design/icons";
+import EstadisticasCards from "@/components/ReportesElement/DatosEstadisticos";
+import {
+  columnasPorTipo,
+  columnsDetalleInterno,
+  columns,
+  columnsPrestamos,
+  prestamosMovi,
+} from "./columnas";
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -30,7 +47,9 @@ export default function MovimientosComprasPage() {
   ]);
   const [data, setData] = useState([]);
   const [totales, setTotales] = useState({});
+  const [prestamos, setPrestamos] = useState([]);
   const [loading, setLoading] = useState(false);
+  const { mounted, isDesktop } = useClientAndDesktop();
 
   useEffect(() => {
     const fetchClientes = async () => {
@@ -164,7 +183,7 @@ export default function MovimientosComprasPage() {
         })),
       };
       // 🔹 Depósitos
-      // 🔹 Depósitos
+
       const detallesDepositos = (json.movimientos.Depositos || []).map(
         (dep) => {
           const detallesLiq = (dep.liqDeposito || []).map((l) => ({
@@ -222,7 +241,75 @@ export default function MovimientosComprasPage() {
           ),
         detalles: detallesDepositos,
       };
- 
+
+      // 🔹 Prestamos
+      const detallesPrestamos = (json.movimientos.Prestamos || []).map((p) => {
+        const movimientos = (p.movimientos || []).map((m) => ({
+          movimientoId: m.movimientoId,
+          fecha: m.fecha,
+          tipo: m.tipo,
+          monto: Number(m.monto) || 0,
+          interes: Number(m.interes) || 0,
+          descripcion: m.descripcion || "-",
+        }));
+
+        // 🔹 Agregar el préstamo base como un "movimiento"
+        movimientos.unshift({
+          movimientoId: `prestamo-${p.prestamoId}`,
+          fecha: p.fecha,
+          tipo: "PRÉSTAMO",
+          monto: Number(p.monto) || 0,
+          interes: 0,
+          descripcion: "Monto del préstamo",
+        });
+
+        // Totales por préstamo
+        // Monto = préstamo base + ANTICIPO + Int-Cargo (solo monto)
+        const monto = movimientos
+          .filter((m) =>
+            ["PRÉSTAMO", "ANTICIPO", "CARGO_INTERES", "Int-Cargo"].includes(
+              m.tipo
+            )
+          )
+          .reduce((sum, m) => sum + m.monto, 0);
+
+        const abonado = movimientos
+          .filter((m) => ["PAGO_INTERES", "ABONO"].includes(m.tipo))
+          .reduce((sum, m) => sum + m.monto, 0);
+
+        const total = monto - abonado;
+        // 🔹 Determinar estado automático
+        const estado = abonado >= monto ? "COMPLETADO" : "PENDIENTE";
+
+        return {
+          prestamoId: p.prestamoId,
+          fecha: p.fecha,
+          monto,
+          abonado,
+          total,
+          tipo: p.tipo || "-",
+          estado,
+          tasaInteres: Number(p.tasaInteres) || 0,
+          observacion: p.observacion || "-",
+          movimientos, // detalles
+        };
+      });
+
+      setPrestamos(detallesPrestamos);
+
+      // 🔹 Calcular totales de préstamos
+      const totalPrestamosMonto = detallesPrestamos.reduce(
+        (sum, p) => sum + p.monto,
+        0
+      );
+      const totalPrestamosAbonado = detallesPrestamos.reduce(
+        (sum, p) => sum + p.abonado,
+        0
+      );
+      const totalPrestamosRestante = detallesPrestamos.reduce(
+        (sum, p) => sum + p.total,
+        0
+      );
 
       setData([filaCompras, filaContratos, filaDepositos]);
 
@@ -241,6 +328,10 @@ export default function MovimientosComprasPage() {
             1,
             filaCompras.totalQQ + filaContratos.totalQQ + filaDepositos.totalQQ
           ),
+        // 🔹 Totales de préstamos
+        prestamosMonto: totalPrestamosMonto,
+        prestamosAbonado: totalPrestamosAbonado,
+        prestamosRestante: totalPrestamosRestante,
       });
     } catch (err) {
       console.error(err);
@@ -250,292 +341,207 @@ export default function MovimientosComprasPage() {
     }
   };
 
-  const columns = [
-    {
-      title: "Tipo",
-      dataIndex: "tipo",
-      key: "tipo",
-      render: (tipo) => <Tag color="green">{tipo}</Tag>,
-    },
-    {
-      title: "Total QQ",
-      dataIndex: "totalQQ",
-      key: "totalQQ",
-      align: "right",
-      render: (v) => formatNumber(v, 2),
-    },
-    {
-      title: "Total Lps",
-      dataIndex: "totalLps",
-      key: "totalLps",
-      align: "right",
-      render: (v) => "L. " + formatNumber(v, 2),
-    },
-    {
-      title: "Promedio Precio",
-      dataIndex: "promedioPrecio",
-      key: "promedioPrecio",
-      align: "right",
-      render: (v) => "L. " + formatNumber(v, 2),
-    },
-  ];
-
   return (
-    <Card className="p-4 shadow-md rounded-xl">
-      <Title level={3}>Registros por Cliente</Title>
+    <ProtectedPage
+      allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS", "AUDITORES"]}
+    >
+      <Card>
+        <SectionHeader
+          isDesktop={isDesktop}
+          loading={loading}
+          icon={<CalendarOutlined />}
+          titulo="Registros por Cliente"
+          subtitulo="Resumen de actividades por cliente"
+        />
 
-      <Row gutter={[12, 12]} align="middle" className="mb-4">
-        <Col xs={24} sm={12} md={8}>
-          <Text strong>Cliente:</Text>
-          <Select
-            style={{ width: "100%" }}
-            placeholder="Seleccione un cliente"
-            showSearch
-            optionFilterProp="children"
-            value={clienteID}
-            onChange={(val) => setClienteID(val)}
-            options={clientes.map((c) => ({
-              value: c.clienteID,
-              label: `${c.clienteNombre} ${c.clienteApellido}`,
-            }))}
-          />
-        </Col>
+        <Divider />
 
-        <Col xs={24} sm={12} md={10}>
-          <Text strong>Rango de fechas:</Text>
-          <RangePicker
-            value={fechaRango}
-            format="DD/MM/YYYY"
-            onChange={(val) => setFechaRango(val || [])}
-          />
-        </Col>
+        <Row gutter={[16, 16]} align="middle">
+          <Col xs={24} sm={12} md={8} lg={6}>
+            <Space direction="vertical" style={{ width: "100%" }}>
+              <Text strong>Cliente:</Text>
+              <Select
+                style={{ width: "100%" }}
+                placeholder="Seleccione un cliente"
+                showSearch
+                optionFilterProp="children"
+                value={clienteID}
+                onChange={setClienteID}
+                options={clientes.map((c) => ({
+                  value: c.clienteID,
+                  label: `${c.clienteNombre} ${c.clienteApellido}`,
+                }))}
+              />
+            </Space>
+          </Col>
 
-        <Col xs={24} sm={12} md={6}>
-          <Button
-            type="primary"
-            block
-            onClick={fetchCompras}
-            disabled={!clienteID}
+          <Col xs={24} sm={12} md={10} lg={8}>
+            <Space direction="vertical" style={{ width: "100%" }}>
+              <Text strong>Rango de fechas:</Text>
+              <RangePicker
+                style={{ width: "100%" }}
+                value={fechaRango}
+                format="DD/MM/YYYY"
+                onChange={(val) => setFechaRango(val || [])}
+              />
+            </Space>
+          </Col>
+
+          <Col xs={24} sm={12} md={10} lg={8}>
+            <Button
+              type="primary"
+              size="large"
+              onClick={fetchCompras}
+              disabled={!clienteID}
+              style={{ width: "100%", marginTop: 24 }}
+            >
+              Buscar Registros
+            </Button>
+          </Col>
+        </Row>
+
+        {totales && (
+          <>
+            <Divider />
+            <EstadisticasCards
+              isDesktop={isDesktop}
+              data={[
+                {
+                  titulo: "Total Quintales",
+                  valor: formatNumber(totales.totalQQ, 2),
+                  prefix: "QQ.",
+                  color: "#52c41a",
+                  icon: <AppstoreOutlined style={{ color: "#52c41a" }} />,
+                },
+                {
+                  titulo: "Total Lempiras",
+                  valor: formatNumber(totales.totalLps, 2),
+                  prefix: "L.",
+                  color: "#1890ff",
+                  icon: <DollarOutlined style={{ color: "#1890ff" }} />,
+                },
+                {
+                  titulo: "Promedio Precio",
+                  valor: formatNumber(totales.promedioPrecio, 2),
+                  prefix: "L.",
+                  color: "#faad14",
+                  icon: <LineChartOutlined style={{ color: "#faad14" }} />,
+                },
+              ]}
+            />
+
+            {prestamos.length > 0 && (
+              <>
+                <Divider />
+                <EstadisticasCards
+                  isDesktop={isDesktop}
+                  data={[
+                    {
+                      titulo: "Monto Total Préstamos",
+                      valor: formatNumber(totales.prestamosMonto, 2),
+                      prefix: "L.",
+                      color: "#722ed1",
+                      icon: <DollarOutlined style={{ color: "#722ed1" }} />,
+                    },
+                    {
+                      titulo: "Monto Abonado",
+                      valor: formatNumber(totales.prestamosAbonado, 2),
+                      prefix: "L.",
+                      color: "#52c41a",
+                      icon: <DollarOutlined style={{ color: "#52c41a" }} />,
+                    },
+                    {
+                      titulo: "Monto Restante",
+                      valor: formatNumber(totales.prestamosRestante, 2),
+                      prefix: "L.",
+                      color: "#cf1322",
+                      icon: <DollarOutlined style={{ color: "#cf1322" }} />,
+                    },
+                  ]}
+                />
+              </>
+            )}
+          </>
+        )}
+
+        <Divider />
+
+        {loading ? (
+          <div
+            style={{ display: "flex", justifyContent: "center", padding: 40 }}
           >
-            Buscar Registros
-          </Button>
-        </Col>
-      </Row>
-
-      <Divider />
-
-      {loading ? (
-        <div className="flex justify-center items-center py-10">
-          <Spin size="large" />
-        </div>
-      ) : (
-        <Table
-          columns={columns}
-          dataSource={data}
-          rowKey={(r) => r.tipo}
-          expandable={{
-            expandedRowRender: (record) => {
-              if (!record.detalles || record.detalles.length === 0) return null;
-
-              // Columns para compras, contratos y depósitos
-              if (record.tipo === "Contrato" || record.tipo === "Depósito") {
-                const columnsDetallePrincipal =
-                  record.tipo === "Contrato"
-                    ? [
-                        { title: "Contrato ID", dataIndex: "contratoID" },
-                        { title: "Producto", dataIndex: "producto" },
-                        { title: "Descripción", dataIndex: "descripcion" },
-                        {
-                          title: "Cantidad Contrato",
-                          dataIndex: "cantidadContrato",
-                          align: "right",
-                          render: (v) => formatNumber(v, 2),
-                        },
-                        {
-                          title: "Total QQ",
-                          dataIndex: "totalQQ",
-                          align: "right",
-                          render: (v) => formatNumber(v, 2),
-                        },
-                        {
-                          title: "Total Lps",
-                          dataIndex: "totalLps",
-                          align: "right",
-                          render: (v) => "L. " + formatNumber(v, 2),
-                        },
-                        {
-                          title: "Promedio Precio",
-                          dataIndex: "promedioPrecio",
-                          align: "right",
-                          render: (v) => "L. " + formatNumber(v, 2),
-                        },
-                        {
-                          title: "Completado",
-                          dataIndex: "liquidado",
-                          align: "center",
-                          render: (v) => (
-                            <Tag color={v === "Sí" ? "green" : "red"}>{v}</Tag>
-                          ),
-                        },
-                      ]
-                    : [
-                        { title: "Depósito ID", dataIndex: "depositoID" },
-                        { title: "Producto", dataIndex: "producto" },
-                        {
-                          title: "Fecha",
-                          dataIndex: "fecha",
-                          render: (v) => dayjs(v).format("DD/MM/YYYY"),
-                        },
-                        {
-                          title: "Cantidad QQ",
-                          dataIndex: "cantidadQQ",
-                          align: "right",
-                          render: (v) => formatNumber(v, 2),
-                        },
-                        {
-                          title: "Total QQ Liquidado",
-                          dataIndex: "totalQQLiquidado",
-                          align: "right",
-                          render: (v) => formatNumber(v, 2),
-                        },
-                        {
-                          title: "Total Lps Liquidado",
-                          dataIndex: "totalLpsLiquidado",
-                          align: "right",
-                          render: (v) => "L. " + formatNumber(v, 2),
-                        },
-                        {
-                          title: "Promedio Precio",
-                          dataIndex: "promedioPrecio",
-                          align: "right",
-                          render: (v) => "L. " + formatNumber(v, 2),
-                        },
-                        {
-                          title: "Liquidado",
-                          dataIndex: "liquidado",
-                          align: "center",
-                          render: (v) => (
-                            <Tag color={v === "Sí" ? "green" : "red"}>{v}</Tag>
-                          ),
-                        },
-                      ];
+            <Spin size="large" />
+          </div>
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={data}
+            scroll={{ x: "max-content" }}
+            rowKey={(r) => r.tipo}
+            expandable={{
+              expandedRowRender: (record) => {
+                if (!record.detalles?.length) return null;
+                const col =
+                  columnasPorTipo[record.tipo] || columnasPorTipo.Compra;
 
                 return (
                   <Table
                     size="small"
-                    columns={columnsDetallePrincipal}
+                    columns={col}
                     dataSource={record.detalles}
                     pagination={false}
-                    rowKey={(r) => r.contratoID || r.depositoID}
+                    scroll={{ x: "max-content" }}
+                    rowKey={(r) =>
+                      r.contratoID || r.depositoID || r.compraId || r.id
+                    }
                     expandable={{
-                      expandedRowRender: (item) => {
-                        if (!item.detalles || item.detalles.length === 0)
-                          return null;
-
-                        const columnsDetalle = [
-                          { title: "ID", dataIndex: "detalleID" },
-                          {
-                            title: "Fecha",
-                            dataIndex: "fecha",
-                            render: (v) => dayjs(v).format("DD/MM/YYYY"),
-                          },
-                          {
-                            title: "Cantidad QQ",
-                            dataIndex: "cantidadQQ",
-                            align: "right",
-                            render: (v) => formatNumber(v, 2),
-                          },
-                          {
-                            title: "Precio QQ",
-                            dataIndex: "precioQQ",
-                            align: "right",
-                            render: (v) => "L. " + formatNumber(v, 2),
-                          },
-                          {
-                            title: "Total Lps",
-                            dataIndex: "totalLps",
-                            align: "right",
-                            render: (v) => "L. " + formatNumber(v, 2),
-                          },
-                        ];
-
-                        return (
+                      expandedRowRender: (item) =>
+                        item.detalles?.length ? (
                           <Table
+                            scroll={{ x: "max-content" }}
                             size="small"
-                            columns={columnsDetalle}
+                            columns={columnsDetalleInterno}
                             dataSource={item.detalles}
                             pagination={false}
                             rowKey={(r) => r.detalleID || r.id}
                           />
-                        );
-                      },
+                        ) : null,
                     }}
                   />
                 );
-              }
+              },
+            }}
+            pagination={false}
+          />
+        )}
 
-              // Compras normales
-              const columnsDetallesCompras = [
-                {
-                  title: "Fecha",
-                  dataIndex: "fecha",
-                  render: (v) => dayjs(v).format("DD/MM/YYYY"),
-                },
-                { title: "Producto", dataIndex: "producto" },
-                {
-                  title: "Cantidad QQ",
-                  dataIndex: "cantidadQQ",
-                  align: "right",
-                  render: (v) => formatNumber(v, 2),
-                },
-                {
-                  title: "Precio QQ",
-                  dataIndex: "precioQQ",
-                  align: "right",
-                  render: (v) => "L. " + formatNumber(v, 2),
-                },
-                {
-                  title: "Total Lps",
-                  dataIndex: "totalLps",
-                  align: "right",
-                  render: (v) => "L. " + formatNumber(v, 2),
-                },
-              ];
-
-              return (
-                <Table
-                  size="small"
-                  columns={columnsDetallesCompras}
-                  dataSource={record.detalles}
-                  pagination={false}
-                  rowKey={(r) => r.compraId || r.fecha}
-                />
-              );
-            },
-          }}
-          pagination={false}
-        />
-      )}
-
-      {!loading && data.length > 0 && (
-        <>
-          <Divider />
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <Card>
-              <Text strong>Total Quintales</Text>
-              <div>{formatNumber(totales.totalQQ, 2)} QQ</div>
-            </Card>
-            <Card>
-              <Text strong>Total Lempiras</Text>
-              <div>L. {formatNumber(totales.totalLps, 2)}</div>
-            </Card>
-            <Card>
-              <Text strong>Promedio Precio</Text>
-              <div>L. {formatNumber(totales.promedioPrecio, 2)}</div>
-            </Card>
-          </div>
-        </>
-      )}
-    </Card>
+        {!loading && data.length > 0 && prestamos.length > 0 && (
+          <>
+            <Divider />
+            <Title level={4}>Préstamos y Anticipos</Title>
+            <Table
+              columns={columnsPrestamos}
+              dataSource={prestamos}
+              rowKey="prestamoId"
+              scroll={{ x: "max-content" }}
+              expandable={{
+                expandedRowRender: (record) => (
+                  <Table
+                    size="small"
+                    columns={prestamosMovi}
+                    dataSource={record.movimientos}
+                    pagination={false}
+                    rowKey="movimientoId"
+                    scroll={{ x: "max-content" }}
+                  />
+                ),
+              }}
+              pagination={false}
+            />
+            <Divider />
+          </>
+        )}
+      </Card>
+    </ProtectedPage>
   );
 }

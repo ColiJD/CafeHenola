@@ -45,6 +45,7 @@ export async function GET(req) {
         cantidadQQ,
         precioQQ,
         totalLps: cantidadQQ * precioQQ,
+        compraId: c.compraId,
       };
     });
 
@@ -197,6 +198,53 @@ export async function GET(req) {
       0
     );
 
+    /** -------- PRÉSTAMOS -------- */
+    const prestamos = await prisma.prestamos.findMany({
+      where: {
+        clienteId: Number(clienteID),
+        estado: {
+          not: "ABSORBIDO", // excluir préstamos borrados
+        },
+      },
+      include: {
+        movimientos_prestamo: {
+          where: {
+            tipo_movimiento: {
+              not: "ANULADO", // excluir movimientos anulados
+            },
+          },
+        },
+      },
+      orderBy: { fecha: "asc" },
+    });
+
+    const detallesPrestamos = prestamos.map((p) => {
+      const movimientos = (p.movimientos_prestamo || []).map((m) => ({
+        movimientoId: m.MovimientoId,
+        fecha: m.fecha,
+        tipo: m.tipo_movimiento,
+        monto: Number(m.monto) || 0,
+        interes: Number(m.interes) || 0,
+        dias: m.dias || 0,
+        descripcion: m.descripcion || "-",
+      }));
+
+      const totalPrestamo = Number(p.monto) || 0;
+      const totalMovimientos = movimientos.reduce((sum, m) => sum + m.monto, 0);
+
+      return {
+        prestamoId: p.prestamoId,
+        fecha: p.fecha,
+        monto: totalPrestamo,
+        tasaInteres: Number(p.tasa_interes) || 0,
+        tipo: p.tipo || "-",
+        estado: p.estado || "-",
+        observacion: p.observacion || "-",
+        movimientos,
+        totalMovimientos,
+      };
+    });
+
     /** -------- TOTALES GENERALES -------- */
     const totales = {
       Compras: {
@@ -235,6 +283,7 @@ export async function GET(req) {
           Compras: detallesCompras,
           Contratos: detallesContratos,
           Depositos: detallesDepositos,
+          Prestamos: detallesPrestamos,
         },
         totales,
       }),

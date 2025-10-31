@@ -142,6 +142,34 @@ export default function DrawerPrestamo({
         />
       </Form.Item>
     ),
+    ABONO_ANTICIPO: (
+      <Form.Item
+        label="Monto del abono al anticipo"
+        name="monto"
+        rules={[{ required: true, message: "Ingrese el monto del abono" }]}
+      >
+        <InputNumber
+          {...moneyFormatter}
+          min={0}
+          step={100}
+          style={inputStyle}
+        />
+      </Form.Item>
+    ),
+    INTERES_ANTICIPO: (
+      <Form.Item
+        label="Monto del pago de anticipo"
+        name="monto"
+        rules={[{ required: true, message: "Ingrese el monto del pago" }]}
+      >
+        <InputNumber
+          {...moneyFormatter}
+          min={0}
+          step={100}
+          style={inputStyle}
+        />
+      </Form.Item>
+    ),
   };
 
   return (
@@ -183,6 +211,12 @@ export default function DrawerPrestamo({
             <Select.Option value="ANTICIPO">Anticipo</Select.Option>
             <Select.Option value="ABONO">Abono a Capital</Select.Option>
             <Select.Option value="PAGO_INTERES">Pago de Interés</Select.Option>
+            <Select.Option value="ABONO_ANTICIPO">
+              Abono a Anticipo
+            </Select.Option>
+            <Select.Option value="INTERES_ANTICIPO">
+              Interes de Anticipo
+            </Select.Option>
           </Select>
         </Form.Item>
 

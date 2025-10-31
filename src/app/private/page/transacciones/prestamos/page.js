@@ -43,6 +43,8 @@ export default function PrestamosGeneral() {
   const [messageApi, contextHolder] = message.useMessage();
   const messageApiRef = useRef(messageApi);
   const drawerFormRef = useRef(null);
+  const [dataPrestamos, setDataPrestamos] = useState([]);
+  const [dataAnticipos, setDataAnticipos] = useState([]);
 
   useEffect(() => {
     const cargarClientes = async () => {
@@ -66,19 +68,21 @@ export default function PrestamosGeneral() {
 
     try {
       const res = await fetch(`/api/prestamos/${clienteId}`);
-      if (!res.ok) throw new Error("Error al cargar préstamos");
+      if (!res.ok) throw new Error("Error al cargar préstamos y anticipos");
+
       const data = await res.json();
       setClienteSeleccionado(data);
 
-      if (data?.prestamos?.length > 0) {
-        const filas = [];
+      const filasPrestamos = [];
+      const filasAnticipos = [];
 
+      // === 🔹 PRÉSTAMOS ===
+      if (data?.prestamos?.length > 0) {
         data.prestamos.forEach((prestamo, idxPrestamo) => {
           const prestamoKey = `prestamo-${prestamo.prestamo_id || idxPrestamo}`;
 
-          // Solo agregar fila de "préstamo inicial" si NO está anulado
           if (!["ANULADO", "ABSORBIDO", "INICIAL"].includes(prestamo.estado)) {
-            filas.push({
+            filasPrestamos.push({
               key: prestamoKey,
               prestamoId: prestamo.prestamoId,
               fecha: prestamo.fecha
@@ -90,19 +94,15 @@ export default function PrestamosGeneral() {
               prestamo: Number(prestamo.monto || 0),
               intCargo: null,
               intAbono: null,
-              anticipo: null,
               tipo: "PRESTAMO_INICIAL",
               totalGeneral: Number(prestamo.monto || 0),
               estado: prestamo.estado,
             });
           }
 
-          // Mostrar movimientos activos incluso si el préstamo está anulado
-          const movimientosActivos = (
-            prestamo.movimientos_prestamo || []
-          ).filter((mov) => mov.tipo_movimiento !== "ANULADO");
+          prestamo.movimientos_prestamo?.forEach((mov, idxMov) => {
+            if (mov.tipo_movimiento === "ANULADO") return;
 
-          movimientosActivos.forEach((mov, idxMov) => {
             const descripcion = [
               mov.descripcion || mov.tipo_movimiento,
               mov.observacion ? `(${mov.observacion})` : "",
@@ -110,13 +110,14 @@ export default function PrestamosGeneral() {
               .filter(Boolean)
               .join(" ");
 
-            filas.push({
+            filasPrestamos.push({
               key: `mov-${prestamo.prestamo_id || idxPrestamo}-${idxMov}`,
               MovimientoId: mov.MovimientoId,
+              prestamoId: prestamo.prestamoId,
               fecha: mov.fecha
                 ? new Date(mov.fecha).toLocaleDateString("es-HN")
                 : "",
-              descripcion: descripcion || "-",
+              descripcion,
               interes: mov.interes ? `${mov.interes}%` : "",
               dias: mov.tipo_movimiento === "Int-Cargo" ? mov.dias || "" : "",
               abono:
@@ -136,12 +137,8 @@ export default function PrestamosGeneral() {
               )
                 ? -Number(mov.monto || 0)
                 : null,
-              anticipo:
-                mov.tipo_movimiento === "ANTICIPO"
-                  ? Number(mov.monto || 0)
-                  : null,
               tipo: mov.tipo_movimiento,
-              totalGeneral: ["PRESTAMO", "Int-Cargo","ANTICIPO"].includes(
+              totalGeneral: ["PRESTAMO", "Int-Cargo"].includes(
                 mov.tipo_movimiento
               )
                 ? Number(mov.monto || 0)
@@ -149,34 +146,106 @@ export default function PrestamosGeneral() {
             });
           });
         });
+      }
 
-        // Totales
-        const totales = {
+      // === 🔹 ANTICIPOS ===
+      if (data?.anticipo?.length > 0) {
+        data.anticipo.forEach((ant, idxAnt) => {
+          const antKey = `anticipo-${ant.anticipoId || idxAnt}`;
+          if (!["ANULADO", "ABSORBIDO", "INICIAL"].includes(ant.estado)) {
+            filasAnticipos.push({
+              key: antKey,
+              anticipoId: ant.anticipoId,
+              fecha: ant.fecha
+                ? new Date(ant.fecha).toLocaleDateString("es-HN")
+                : "",
+              interes: ant.tasa_interes ? `${ant.tasa_interes}%` : "",
+              descripcion: ant.observacion || "Anticipo inicial",
+              abono: null,
+              anticipo: Number(ant.monto || 0),
+              intCargo: null,
+              intAbono: null,
+              tipo: "ANTICIPO_INICIAL",
+              totalGeneral: Number(ant.monto || 0),
+              estado: ant.estado,
+            });
+          }
+
+          // 🔹 Aquí se cambió de movimientos_prestamo a movimientos_anticipos
+          // Movimientos del anticipo
+          ant.movimientos_anticipos?.forEach((mov, idxMov) => {
+            if (!mov || mov.tipo_movimiento === "ANULADO") return;
+
+            const descripcion = [
+              mov.descripcion || mov.tipo_movimiento,
+              mov.observacion ? `(${mov.observacion})` : "",
+            ]
+              .filter(Boolean)
+              .join(" ");
+
+            filasAnticipos.push({
+              key: `movAnt-${ant.anticipoId}-${idxMov}`,
+              MovimientoId: mov.MovimientoId,
+              anticipoId: ant.anticipoId,
+              fecha: mov.fecha
+                ? new Date(mov.fecha).toLocaleDateString("es-HN")
+                : "",
+              descripcion,
+              interes: mov.interes ? `${mov.interes}%` : "",
+              dias:
+                mov.tipo_movimiento === "CARGO_ANTICIPO" ? mov.dias || "" : "",
+              abono:
+                mov.tipo_movimiento === "ABONO_ANTICIPO"
+                  ? -Number(mov.monto || 0)
+                  : null,
+              anticipo: ["ANTICIPO"].includes(mov.tipo_movimiento)
+                ? Number(mov.monto || 0)
+                : null,
+              intCargo: ["CARGO_ANTICIPO"].includes(mov.tipo_movimiento)
+                ? Number(mov.monto || 0)
+                : null,
+              intAbono:
+                mov.tipo_movimiento === "INTERES_ANTICIPO"
+                  ? -Number(mov.monto || 0)
+                  : null,
+              tipo: mov.tipo_movimiento,
+              totalGeneral: ["ANTICIPO", "CARGO_ANTICIPO"].includes(
+                mov.tipo_movimiento
+              )
+                ? Number(mov.monto || 0)
+                : -Number(mov.monto || 0),
+            });
+          });
+        });
+      }
+
+      // === 🔹 TOTALES ===
+      const calcularTotales = (filas, tipo = "prestamo") => {
+        if (filas.length === 0) return [];
+        const t = {
           key: "total",
           descripcion: "Total general",
           abono: filas.reduce((acc, f) => acc + (f.abono || 0), 0),
-          prestamo: filas.reduce((acc, f) => acc + (f.prestamo || 0), 0),
           intCargo: filas.reduce((acc, f) => acc + (f.intCargo || 0), 0),
           intAbono: filas.reduce((acc, f) => acc + (f.intAbono || 0), 0),
-          anticipo: filas.reduce((acc, f) => acc + (f.anticipo || 0), 0),
-          tipo: "TOTAL",
         };
 
-        totales.totalGeneral =
-          totales.prestamo +
-          totales.intCargo +
-          totales.abono +
-          totales.intAbono +
-          totales.anticipo;
+        if (tipo === "prestamo") {
+          t.prestamo = filas.reduce((acc, f) => acc + (f.prestamo || 0), 0);
+          t.totalGeneral = t.prestamo + t.intCargo + t.abono + t.intAbono;
+        } else {
+          t.anticipo = filas.reduce((acc, f) => acc + (f.anticipo || 0), 0);
+          t.totalGeneral = t.anticipo + t.intCargo + t.abono + t.intAbono;
+        }
 
-        filas.push(totales);
+        filas.push({ ...t, tipo: "TOTAL" });
+        return filas;
+      };
 
-        setDataTabla(filas);
-      } else {
-        setDataTabla([]);
-      }
+      setDataPrestamos(calcularTotales(filasPrestamos, "prestamo"));
+      setDataAnticipos(calcularTotales(filasAnticipos, "anticipo"));
     } catch (err) {
-      setError("Error al cargar los préstamos del cliente");
+      setError("Error al cargar los préstamos y anticipos del cliente");
       console.error(err);
     } finally {
       setLoading(false);
@@ -261,6 +330,32 @@ export default function PrestamosGeneral() {
             ""
           ),
       },
+      {
+        title: "Préstamo",
+        dataIndex: "prestamo",
+        align: "right",
+        width: 120,
+        render: (val, record) =>
+          val ? (
+            record.tipo === "TOTAL" ? (
+              <Text strong style={{ color: "#52c41a" }}>
+                {val.toLocaleString("es-HN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </Text>
+            ) : (
+              <Text style={{ color: "#52c41a" }}>
+                {val.toLocaleString("es-HN", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </Text>
+            )
+          ) : (
+            ""
+          ),
+      },
 
       {
         title: "Abono",
@@ -288,32 +383,7 @@ export default function PrestamosGeneral() {
             ""
           ),
       },
-      {
-        title: "Préstamo",
-        dataIndex: "prestamo",
-        align: "right",
-        width: 120,
-        render: (val, record) =>
-          val ? (
-            record.tipo === "TOTAL" ? (
-              <Text strong style={{ color: "#52c41a" }}>
-                {val.toLocaleString("es-HN", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </Text>
-            ) : (
-              <Text style={{ color: "#52c41a" }}>
-                {val.toLocaleString("es-HN", {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
-              </Text>
-            )
-          ) : (
-            ""
-          ),
-      },
+
       {
         title: "Int-Cargo",
         dataIndex: "intCargo",
@@ -390,10 +460,10 @@ export default function PrestamosGeneral() {
         title: "Acciones",
         key: "acciones",
         fixed: isDesktop ? "right" : false,
-        width: 100,
+        width: 120,
         align: "center",
         render: (_, record) => {
-          // No mostrar para totales, préstamo inicial o ya anulados
+          // No mostrar botones para totales o ya anulados
           if (
             record.tipo === "TOTAL" ||
             record.tipo === "ANULADO" ||
@@ -401,18 +471,79 @@ export default function PrestamosGeneral() {
           )
             return null;
 
-          const tipo = record.MovimientoId ? "MOVIMIENTO" : "PRESTAMO";
-          const id = record.MovimientoId || record.prestamoId;
+          let tipo = null;
+          let id = null;
+          let endpointTipo = null;
+
+          switch (true) {
+            case !!(record.MovimientoId && record.prestamoId):
+              tipo = "MOVIMIENTO_PRESTAMO";
+              id = record.MovimientoId;
+              endpointTipo = "PRESTAMO";
+              break;
+
+            case !!(record.MovimientoId && record.anticipoId):
+              tipo = "MOVIMIENTO_ANTICIPO";
+              id = record.MovimientoId;
+              endpointTipo = "ANTICIPO";
+              break;
+
+            case !!record.MovimientoId:
+              tipo = "MOVIMIENTO";
+              id = record.MovimientoId;
+              endpointTipo = null; // genérico
+              break;
+
+            case !!record.prestamoId:
+              tipo = "PRESTAMO";
+              id = record.prestamoId;
+              endpointTipo = "PRESTAMO";
+              break;
+
+            case !!record.anticipoId:
+              tipo = "ANTICIPO";
+              id = record.anticipoId;
+              endpointTipo = "ANTICIPO";
+              break;
+
+            default:
+              console.warn("Registro no reconocido:", record);
+              break;
+          }
+
+          if (!tipo || !id) return null;
+
+          // 🔹 Función de anular con endpoint dinámico
+          const handleConfirmAnular = () => {
+            let endpoint = "";
+            if (tipo.includes("MOVIMIENTO")) {
+              endpoint =
+                endpointTipo === "PRESTAMO"
+                  ? `/api/prestamos/movimiento/${id}`
+                  : `/api/anticipos/movimiento/${id}`;
+            } else {
+              endpoint =
+                tipo === "PRESTAMO"
+                  ? `/api/prestamos/${id}`
+                  : `/api/anticipos/${id}`;
+            }
+
+            handleAnular(id, tipo, endpoint);
+          };
 
           return (
             <Popconfirm
               title={`¿Anular ${
-                tipo === "MOVIMIENTO" ? "movimiento" : "préstamo"
+                tipo.includes("MOVIMIENTO")
+                  ? "movimiento"
+                  : tipo === "PRESTAMO"
+                  ? "préstamo"
+                  : "anticipo"
               }? Esta acción no se puede deshacer.`}
               okText="Sí, anular"
               cancelText="Cancelar"
               okType="danger"
-              onConfirm={() => handleAnular(id, tipo)}
+              onConfirm={handleConfirmAnular}
             >
               <Button size="small" danger icon={<DeleteFilled />} />
             </Popconfirm>
@@ -423,46 +554,44 @@ export default function PrestamosGeneral() {
     [isDesktop]
   );
 
-  const handleAnular = async (id, tipo) => {
+  const columnasPrestamos = useMemo(() => {
+    // ✅ Tabla de préstamos no debe mostrar la columna de "anticipo"
+    return columnas.filter((col) => col.dataIndex !== "anticipo");
+  }, [columnas]);
+
+  const columnasAnticipos = useMemo(() => {
+    // ✅ Tabla de anticipos no debe mostrar la columna de "prestamo"
+    return columnas.filter((col) => col.dataIndex !== "prestamo");
+  }, [columnas]);
+
+  const handleAnular = async (id, tipo, endpoint) => {
     try {
-      console.log(`Anulando ${tipo} ID:`, id);
-
-      let endpoint = "";
-      if (tipo === "MOVIMIENTO") {
-        endpoint = `/api/prestamos/movimiento/${id}`;
-      } else if (tipo === "PRESTAMO") {
-        // ⚠️ Aquí usamos el mismo id que viene de la tabla, en la ruta
-        endpoint = `/api/prestamos/${id}`;
-      } else {
-        throw new Error("Tipo inválido");
-      }
-
       const res = await fetch(endpoint, {
-        method: "DELETE", // DELETE seguirá usándose pero la API solo actualiza el estado
+        method: "DELETE",
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({})); // evita crash si no hay JSON
-        throw new Error(
-          data?.error || `No se pudo anular el ${tipo.toLowerCase()}`
-        );
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || `No se pudo anular el ${tipo}`);
       }
 
       messageApiRef.current.success(
         `${
-          tipo === "MOVIMIENTO" ? "Movimiento" : "Préstamo"
+          tipo.includes("MOVIMIENTO")
+            ? "Movimiento"
+            : tipo === "PRESTAMO"
+            ? "Préstamo"
+            : "Anticipo"
         } anulado correctamente`
       );
 
-      // Recarga los movimientos/préstamos del cliente
+      // 🔹 Recargar la tabla del cliente
       if (clienteSeleccionado?.clienteID) {
         await cargarPrestamos(clienteSeleccionado.clienteID);
       }
     } catch (err) {
       console.error(err);
-      messageApiRef.current.error(
-        err.message || `Error al anular ${tipo.toLowerCase()}`
-      );
+      messageApiRef.current.error(err.message || `Error al anular ${tipo}`);
     }
   };
 
@@ -470,40 +599,54 @@ export default function PrestamosGeneral() {
     try {
       setLoading(true);
 
-      let res;
+      let url = "";
+      let body = {
+        clienteID: nuevoRegistro.clienteID,
+        monto: nuevoRegistro.monto,
+        fecha: nuevoRegistro.fecha,
+        interes: nuevoRegistro.interes || 0,
+        dias: nuevoRegistro.dias || 0,
+        observacion: nuevoRegistro.observacion,
+      };
 
       if (nuevoRegistro.tipo === "PRESTAMO") {
-        // 1️⃣ Registrar un préstamo nuevo
-        res = await fetch("/api/prestamos", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            clienteID: nuevoRegistro.clienteID,
-            monto: nuevoRegistro.monto,
-            tasa_interes: nuevoRegistro.tasa_interes,
-            fecha: nuevoRegistro.fecha,
-            observacion: nuevoRegistro.observacion,
-            estado: "ACTIVO",
-          }),
-        });
+        url = "/api/prestamos";
+        body = {
+          ...body,
+          tasa_interes: nuevoRegistro.tasa_interes,
+          estado: "ACTIVO",
+        };
+      } else if (nuevoRegistro.tipo === "ANTICIPO") {
+        url = "/api/anticipos";
+        body = {
+          ...body,
+          tasa_interes: nuevoRegistro.tasa_interes,
+          estado: "ACTIVO",
+        };
+      } else if (
+        ["ABONO_ANTICIPO", "INTERES_ANTICIPO", "CARGO_ANTICIPO"].includes(
+          nuevoRegistro.tipo
+        )
+      ) {
+        url = "/api/anticipos/movimiento";
+        body = { ...body, tipo_movimiento: nuevoRegistro.tipo };
+      } else if (
+        ["ABONO", "PAGO_INTERES", "Int-Cargo"].includes(nuevoRegistro.tipo)
+      ) {
+        url = "/api/prestamos/movimiento";
+        body = { ...body, tipo_movimiento: nuevoRegistro.tipo };
       } else {
-        // 2️⃣ Registrar un movimiento (anticipo, abono, pago de interés)
-        res = await fetch("/api/prestamos/movimiento", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            clienteID: nuevoRegistro.clienteID,
-            tipo_movimiento: nuevoRegistro.tipo,
-            monto: nuevoRegistro.monto,
-            fecha: nuevoRegistro.fecha,
-            interes: nuevoRegistro.interes || 0,
-            dias: nuevoRegistro.dias || 0,
-            observacion: nuevoRegistro.observacion,
-          }),
-        });
+        throw new Error("Tipo de movimiento no reconocido");
       }
 
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
       const data = await res.json();
+      console.log(data);
 
       if (res.ok) {
         messageApiRef.current.destroy();
@@ -513,22 +656,18 @@ export default function PrestamosGeneral() {
 
         await cargarPrestamos(clienteSeleccionado.clienteID);
 
-        // 🔹 Resetear el formulario usando la ref
         drawerFormRef.current?.resetFields();
-
-        // 🔹 Cerrar Drawer
         setOpenDrawer(false);
         return;
       }
 
-      // Si hubo error, solo mostrar mensaje
       messageApiRef.current.destroy();
       messageApiRef.current.error(data.error || "Error al guardar registro");
     } catch (error) {
       messageApiRef.current.destroy();
       messageApiRef.current.error({
-        content: data.error || "Error al guardar",
-        duration: 8, // 8 segundos
+        content: error.message || "Error al guardar",
+        duration: 8,
       });
     } finally {
       setLoading(false);
@@ -664,27 +803,52 @@ export default function PrestamosGeneral() {
               <div style={{ textAlign: "center", padding: 40 }}>
                 <Spin size="large" />
               </div>
-            ) : dataTabla.length > 0 ? (
-              <Table
-                dataSource={dataTabla}
-                columns={columnas}
-                pagination={false}
-                size="small"
-                bordered
-                scroll={{ x: 800 }} // 🔹 Activa scroll horizontal
-                style={{
-                  overflowX: "auto",
-                  fontSize: "12px", // 🔹 Letras más pequeñas
-                }}
-                rowClassName={(record) =>
-                  record.tipo === "TOTAL" ? "total-row" : ""
-                }
-              />
             ) : clienteSeleccionado ? (
-              <Empty description="No hay movimientos registrados para este cliente" />
+              <>
+                {/* 🔹 Tabla de Préstamos */}
+                <Title level={4} style={{ marginTop: 16 }}>
+                  Préstamos
+                </Title>
+                {dataPrestamos.length > 0 ? (
+                  <Table
+                    dataSource={dataPrestamos}
+                    columns={columnasPrestamos} // ✅ usar columnas sin "Anticipo"
+                    pagination={false}
+                    size="small"
+                    bordered
+                    scroll={{ x: 800 }}
+                    rowClassName={(record) =>
+                      record.tipo === "TOTAL" ? "total-row" : ""
+                    }
+                  />
+                ) : (
+                  <Empty description="Sin préstamos registrados" />
+                )}
+
+                {/* 🔹 Tabla de Anticipos */}
+                <Title level={4} style={{ marginTop: 40 }}>
+                  Anticipos
+                </Title>
+                {dataAnticipos.length > 0 ? (
+                  <Table
+                    dataSource={dataAnticipos}
+                    columns={columnasAnticipos} // ✅ usar columnas sin "Préstamo"
+                    pagination={false}
+                    size="small"
+                    bordered
+                    scroll={{ x: 800 }}
+                    rowClassName={(record) =>
+                      record.tipo === "TOTAL" ? "total-row" : ""
+                    }
+                  />
+                ) : (
+                  <Empty description="Sin anticipos registrados" />
+                )}
+              </>
             ) : (
               <Empty description="Seleccione un cliente para ver sus préstamos" />
             )}
+
             <DrawerPrestamo
               open={openDrawer}
               onClose={() => setOpenDrawer(false)}

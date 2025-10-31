@@ -6,6 +6,7 @@ import {
   Form,
   InputNumber,
   Input,
+  Select,
   DatePicker,
   Button,
   Space,
@@ -64,7 +65,7 @@ export default function DrawerInteres({ open, onClose, onSubmit, cliente }) {
     setLoading(true);
     try {
       await onSubmit({
-        tipo: "Int-Cargo",
+        tipo: values.tipoMovimiento,
         clienteID: cliente?.clienteID,
         tipo_movimiento: "Int-Cargo",
         monto: values.totalInteres,
@@ -108,6 +109,16 @@ export default function DrawerInteres({ open, onClose, onSubmit, cliente }) {
           calcularInteres();
         }}
       >
+        <Form.Item
+          label="Tipo de movimiento"
+          name="tipoMovimiento"
+          rules={[{ required: true, message: "Seleccione un tipo" }]}
+        >
+          <Select placeholder="Seleccione tipo de movimiento">
+            <Select.Option value="Int-Cargo">Int-Cargo</Select.Option>
+            <Select.Option value="CARGO_ANTICIPO">CARGO_ANTICIPO</Select.Option>
+          </Select>
+        </Form.Item>
         <Form.Item
           label="Fecha Inicio"
           name="fechaInicio"

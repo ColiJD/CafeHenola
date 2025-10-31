@@ -49,13 +49,19 @@ export const menuItems = [
         id: 402,
         name: "Registro de Entradas",
         href: Ruta + "/informe/reporteCliente",
-        image: deposito,
+        image: Reportes,
       },
-       {
+      {
         id: 403,
         name: "Registro de Salidas",
         href: Ruta + "/informe/reporteSalidas",
-        image: deposito,
+        image: prestamo,
+      },
+      {
+        id: 404,
+        name: "Por Cliente",
+        href: Ruta + "/informe/porCliente",
+        image: cliente,
       },
     ],
   },

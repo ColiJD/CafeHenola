@@ -14,7 +14,6 @@ export async function POST(req) {
       dias,
     } = body;
 
-    // 1️⃣ Validaciones básicas
     if (!clienteID || !tipo_movimiento || monto == null || isNaN(monto)) {
       return NextResponse.json(
         { error: "Datos incompletos o monto inválido" },
@@ -24,145 +23,163 @@ export async function POST(req) {
 
     const montoIngresado = parseFloat(monto);
 
-    // 2️⃣ Buscar préstamos activos del cliente
-    const prestamosActivos = await prisma.prestamos.findMany({
-      where: { clienteId: clienteID, estado: { in: ["ACTIVO", "INICIAL"] } },
-      include: { movimientos_prestamo: true },
-      orderBy: { fecha: "asc" },
-    });
-
-    // Si no hay préstamo activo, crear temporal
-    let prestamoActivo =
-      prestamosActivos.find((p) => p.estado === "ACTIVO") ||
-      prestamosActivos.find((p) => p.estado === "INICIAL");
-
-    if (!prestamoActivo) {
-      prestamoActivo = await prisma.prestamos.create({
-        data: {
-          clienteId: clienteID,
-          monto: 0,
-          estado: "INICIAL",
-          fecha: new Date(),
-          observacion: "Préstamo temporal para movimientos sueltos",
-        },
+    await prisma.$transaction(async (tx) => {
+      const prestamos = await tx.prestamos.findMany({
+        where: { clienteId: clienteID, estado: { not: "ANULADO" } },
+        include: { movimientos_prestamo: true },
+        orderBy: { fecha: "asc" },
       });
-    }
 
-    const prestamoId = prestamoActivo.prestamoId;
-
-    // 3️⃣ Calcular deuda total e intereses pendientes
-    const deudaTotal = prestamosActivos.reduce((acc, p) => {
-      const cargos = p.movimientos_prestamo
-        .filter((m) => ["Int-Cargo", "ANTICIPO"].includes(m.tipo_movimiento))
-        .reduce((a, m) => a + Number(m.monto), 0);
-
-      const pagos = p.movimientos_prestamo
-        .filter((m) => ["ABONO", "PAGO_INTERES"].includes(m.tipo_movimiento))
-        .reduce((a, m) => a + Number(m.monto), 0);
-
-      return acc + (Number(p.monto) + cargos - pagos);
-    }, 0);
-
-    const interesesPendientes = prestamosActivos.reduce((acc, p) => {
-      const cargos = p.movimientos_prestamo
-        .filter((m) => ["Int-Cargo"].includes(m.tipo_movimiento))
-        .reduce((a, m) => a + Number(m.monto), 0);
-
-      const pagos = p.movimientos_prestamo
-        .filter((m) => m.tipo_movimiento === "PAGO_INTERES")
-        .reduce((a, m) => a + Number(m.monto), 0);
-
-      return acc + (cargos - pagos);
-    }, 0);
-
-    // 4️⃣ Validaciones según tipo de movimiento
-    if (tipo_movimiento === "ABONO") {
-      if (montoIngresado > deudaTotal) {
-        return NextResponse.json(
-          {
-            error: `El abono (L. ${montoIngresado.toFixed(
-              2
-            )}) excede la deuda pendiente (L. ${deudaTotal.toFixed(2)}).`,
-          },
-          { status: 400 }
-        );
+      if (prestamos.length === 0) {
+        throw new Error("No existen préstamos registrados para este cliente.");
       }
-    }
-    if (tipo_movimiento === "PAGO_INTERES") {
-      if (interesesPendientes <= 0) {
-        return NextResponse.json(
-          { error: "No existen intereses pendientes para este cliente." },
-          { status: 400 }
-        );
-      }
-      if (montoIngresado > interesesPendientes) {
-        return NextResponse.json(
-          {
-            error: `El pago de intereses (L. ${montoIngresado.toFixed(
+
+      // === 🔹 ABONO AL CAPITAL ===
+      if (tipo_movimiento === "ABONO") {
+        let deudaTotalCapital = 0;
+
+        // Filtrar préstamos con capital pendiente
+        const prestamosPendientes = prestamos
+          .map((p) => {
+            const capitalPagado = p.movimientos_prestamo
+              .filter((m) => ["ABONO"].includes(m.tipo_movimiento))
+              .reduce((sum, m) => sum + Number(m.monto), 0);
+            const deudaCapital = Number(p.monto) - capitalPagado;
+            deudaTotalCapital += deudaCapital;
+            return { prestamo: p, deudaCapital };
+          })
+          .filter((p) => p.deudaCapital > 0);
+
+        if (prestamosPendientes.length === 0) {
+          throw new Error("No hay capital pendiente para este cliente.");
+        }
+
+        if (montoIngresado > deudaTotalCapital) {
+          throw new Error(
+            `El abono (L. ${montoIngresado.toFixed(
               2
-            )}) excede los intereses pendientes (L. ${interesesPendientes.toFixed(
+            )}) excede el capital pendiente (L. ${deudaTotalCapital.toFixed(
               2
-            )}).`,
-          },
-          { status: 400 }
-        );
-      }
-    }
+            )}).`
+          );
+        }
 
-    // 🔸 Int-Cargo siempre permitido
+        // Aplicar ABONO FIFO
+        let montoRestante = montoIngresado;
+        for (const p of prestamosPendientes) {
+          if (montoRestante <= 0) break;
 
-    // 5️⃣ Registrar movimiento
-    await prisma.movimientos_prestamo.create({
-      data: {
-        prestamo_id: prestamoId,
-        fecha: fecha ? new Date(fecha) : new Date(),
-        tipo_movimiento,
-        monto: montoIngresado,
-        interes: interes ? parseFloat(interes) : null,
-        dias: dias ? parseInt(dias) : null,
-        descripcion: observacion || tipo_movimiento,
-      },
-    });
+          const montoAplicar = Math.min(montoRestante, p.deudaCapital);
 
-    // 6️⃣ Si es un ABONO, distribuir FIFO y marcar préstamos completados
-    if (tipo_movimiento === "ABONO") {
-      let totalAbono = montoIngresado;
-
-      for (const prestamo of prestamosActivos) {
-        const totalCapital = Number(prestamo.monto || 0);
-        const totalIntereses = prestamo.movimientos_prestamo
-          .filter((m) => ["Int-Cargo", "ANTICIPO"].includes(m.tipo_movimiento))
-          .reduce((acc, m) => acc + Number(m.monto), 0);
-
-        const totalPagos = prestamo.movimientos_prestamo
-          .filter((m) => ["ABONO", "PAGO_INTERES"].includes(m.tipo_movimiento))
-          .reduce((acc, m) => acc + Number(m.monto), 0);
-
-        const deudaPendiente = totalCapital + totalIntereses - totalPagos;
-
-        if (deudaPendiente <= 0) continue;
-
-        if (totalAbono >= deudaPendiente) {
-          await prisma.prestamos.update({
-            where: { prestamoId: prestamo.prestamoId },
-            data: { estado: "COMPLETADO" },
+          await tx.movimientos_prestamo.create({
+            data: {
+              prestamo_id: p.prestamo.prestamoId,
+              fecha: fecha ? new Date(fecha) : new Date(),
+              tipo_movimiento,
+              monto: montoAplicar,
+              interes: null,
+              dias: dias ? parseInt(dias) : null,
+              descripcion: observacion || tipo_movimiento,
+            },
           });
-          totalAbono -= deudaPendiente;
-        } else {
-          totalAbono = 0;
-          break;
+
+          montoRestante -= montoAplicar;
         }
       }
-    }
+
+      // === 🔹 PAGO DE INTERESES ===
+      if (tipo_movimiento === "PAGO_INTERES") {
+        let interesesTotales = 0;
+
+        // Filtrar préstamos con intereses pendientes
+        const prestamosConIntereses = prestamos
+          .map((p) => {
+            const cargos = p.movimientos_prestamo
+              .filter((m) => m.tipo_movimiento === "Int-Cargo")
+              .reduce((sum, m) => sum + Number(m.monto), 0);
+            const pagosInteres = p.movimientos_prestamo
+              .filter((m) => m.tipo_movimiento === "PAGO_INTERES")
+              .reduce((sum, m) => sum + Number(m.monto), 0);
+            const interesPendiente = cargos - pagosInteres;
+            interesesTotales += interesPendiente;
+            return { prestamo: p, interesPendiente };
+          })
+          .filter((p) => p.interesPendiente > 0);
+
+        if (prestamosConIntereses.length === 0) {
+          throw new Error("No hay intereses pendientes para este cliente.");
+        }
+
+        if (montoIngresado > interesesTotales) {
+          throw new Error(
+            `El pago de intereses (L. ${montoIngresado.toFixed(
+              2
+            )}) excede los intereses pendientes (L. ${interesesTotales.toFixed(
+              2
+            )}).`
+          );
+        }
+
+        // Aplicar PAGO_INTERES FIFO
+        let montoRestante = montoIngresado;
+        for (const p of prestamosConIntereses) {
+          if (montoRestante <= 0) break;
+
+          const montoAplicar = Math.min(montoRestante, p.interesPendiente);
+
+          await tx.movimientos_prestamo.create({
+            data: {
+              prestamo_id: p.prestamo.prestamoId,
+              fecha: fecha ? new Date(fecha) : new Date(),
+              tipo_movimiento,
+              monto: montoAplicar,
+              interes: null,
+              dias: dias ? parseInt(dias) : null,
+              descripcion: observacion || tipo_movimiento,
+            },
+          });
+
+          montoRestante -= montoAplicar;
+        }
+      }
+
+      // === 🔹 INT-CARGO ===
+      if (tipo_movimiento === "Int-Cargo") {
+        const prestamosActivos = prestamos
+          .filter((p) => !["ANULADO"].includes(p.estado))
+          .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
+        if (prestamosActivos.length === 0) {
+          throw new Error(
+            "No hay préstamos activos para aplicar el interés cargado."
+          );
+        }
+
+        // Aplica todo el Int-Cargo al primer préstamo activo
+        const p = prestamosActivos[0];
+
+        await tx.movimientos_prestamo.create({
+          data: {
+            prestamo_id: p.prestamoId,
+            fecha: fecha ? new Date(fecha) : new Date(),
+            tipo_movimiento: "Int-Cargo",
+            monto: montoIngresado,
+            interes: interes ? parseFloat(interes) : null,
+            dias: dias ? parseInt(dias) : null,
+            descripcion: observacion || "Interés cargado",
+          },
+        });
+      }
+    });
 
     return NextResponse.json({
       ok: true,
-      message: "Movimiento registrado correctamente.",
+      message: "Movimiento registrado correctamente siguiendo FIFO.",
     });
   } catch (error) {
     console.error("Error al registrar movimiento:", error);
     return NextResponse.json(
-      { error: "Error interno al registrar movimiento." },
+      { error: error.message || "Error interno al registrar movimiento." },
       { status: 500 }
     );
   }

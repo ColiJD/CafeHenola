@@ -73,6 +73,7 @@ model cliente {
   claveIHCAFE        String?             @db.VarChar(30)
   clienteTelefono    String?             @db.VarChar(30)
   clienteRTN         String?             @db.VarChar(17)
+  anticipo           anticipo[]
   compra             compra[]
   contrato           contrato[]
   deposito           deposito[]
@@ -268,4 +269,33 @@ model prestamos {
   cliente              cliente?               @relation(fields: [clienteId], references: [clienteID], onDelete: NoAction, onUpdate: NoAction, map: "prestamos_ibfk_1")
 
   @@index([clienteId], map: "clienteId")
+}
+
+model anticipo {
+  anticipoId            Int                     @id @default(autoincrement())
+  clienteId             Int?
+  fecha                 DateTime?               @db.DateTime(0)
+  monto                 Decimal?                @db.Decimal(12, 2)
+  tasa_interes          Decimal?                @db.Decimal(5, 2)
+  tipo                  String?                 @default("ANTICIPO") @db.VarChar(25)
+  estado                String?                 @default("ACTIVO") @db.VarChar(25)
+  observacion           String?                 @db.Text
+  cliente               cliente?                @relation(fields: [clienteId], references: [clienteID], onDelete: NoAction, onUpdate: NoAction, map: "anticipo_ibfk_1")
+  movimientos_anticipos movimientos_anticipos[]
+
+  @@index([clienteId], map: "clienteId")
+}
+
+model movimientos_anticipos {
+  MovimientoId    Int       @id @default(autoincrement())
+  anticipoId      Int?
+  fecha           DateTime? @db.DateTime(0)
+  tipo_movimiento String?   @db.VarChar(25)
+  monto           Decimal?  @db.Decimal(12, 2)
+  descripcion     String?   @db.Text
+  interes         Decimal?  @db.Decimal(5, 2)
+  dias            Int?
+  anticipo        anticipo? @relation(fields: [anticipoId], references: [anticipoId], onDelete: NoAction, onUpdate: NoAction, map: "movimientos_anticipos_ibfk_1")
+
+  @@index([anticipoId], map: "anticipoId")
 }

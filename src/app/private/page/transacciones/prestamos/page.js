@@ -120,10 +120,9 @@ export default function PrestamosGeneral() {
               descripcion,
               interes: mov.interes ? `${mov.interes}%` : "",
               dias: mov.tipo_movimiento === "Int-Cargo" ? mov.dias || "" : "",
+              // 🔹 CAMBIO: abonos ahora positivos
               abono:
-                mov.tipo_movimiento === "ABONO"
-                  ? -Number(mov.monto || 0)
-                  : null,
+                mov.tipo_movimiento === "ABONO" ? Number(mov.monto || 0) : null,
               prestamo:
                 mov.tipo_movimiento === "PRESTAMO"
                   ? Number(mov.monto || 0)
@@ -135,14 +134,19 @@ export default function PrestamosGeneral() {
               intAbono: ["ABONO_INTERES", "PAGO_INTERES"].includes(
                 mov.tipo_movimiento
               )
-                ? -Number(mov.monto || 0)
+                ? Number(mov.monto || 0)
                 : null,
               tipo: mov.tipo_movimiento,
-              totalGeneral: ["PRESTAMO", "Int-Cargo"].includes(
-                mov.tipo_movimiento
-              )
-                ? Number(mov.monto || 0)
-                : -Number(mov.monto || 0),
+              // 🔹 CAMBIO: totalGeneral se calcula como cargos - abonos
+              totalGeneral:
+                (["PRESTAMO", "Int-Cargo"].includes(mov.tipo_movimiento)
+                  ? Number(mov.monto || 0)
+                  : 0) -
+                (["ABONO", "ABONO_INTERES", "PAGO_INTERES"].includes(
+                  mov.tipo_movimiento
+                )
+                  ? Number(mov.monto || 0)
+                  : 0),
             });
           });
         });
@@ -171,8 +175,6 @@ export default function PrestamosGeneral() {
             });
           }
 
-          // 🔹 Aquí se cambió de movimientos_prestamo a movimientos_anticipos
-          // Movimientos del anticipo
           ant.movimientos_anticipos?.forEach((mov, idxMov) => {
             if (!mov || mov.tipo_movimiento === "ANULADO") return;
 
@@ -194,9 +196,10 @@ export default function PrestamosGeneral() {
               interes: mov.interes ? `${mov.interes}%` : "",
               dias:
                 mov.tipo_movimiento === "CARGO_ANTICIPO" ? mov.dias || "" : "",
+              // 🔹 CAMBIO: abonos positivos
               abono:
                 mov.tipo_movimiento === "ABONO_ANTICIPO"
-                  ? -Number(mov.monto || 0)
+                  ? Number(mov.monto || 0)
                   : null,
               anticipo: ["ANTICIPO"].includes(mov.tipo_movimiento)
                 ? Number(mov.monto || 0)
@@ -206,14 +209,19 @@ export default function PrestamosGeneral() {
                 : null,
               intAbono:
                 mov.tipo_movimiento === "INTERES_ANTICIPO"
-                  ? -Number(mov.monto || 0)
+                  ? Number(mov.monto || 0)
                   : null,
               tipo: mov.tipo_movimiento,
-              totalGeneral: ["ANTICIPO", "CARGO_ANTICIPO"].includes(
-                mov.tipo_movimiento
-              )
-                ? Number(mov.monto || 0)
-                : -Number(mov.monto || 0),
+              // 🔹 CAMBIO: totalGeneral = cargos - abonos
+              totalGeneral:
+                (["ANTICIPO", "CARGO_ANTICIPO"].includes(mov.tipo_movimiento)
+                  ? Number(mov.monto || 0)
+                  : 0) -
+                (["ABONO_ANTICIPO", "INTERES_ANTICIPO"].includes(
+                  mov.tipo_movimiento
+                )
+                  ? Number(mov.monto || 0)
+                  : 0),
             });
           });
         });
@@ -222,20 +230,38 @@ export default function PrestamosGeneral() {
       // === 🔹 TOTALES ===
       const calcularTotales = (filas, tipo = "prestamo") => {
         if (filas.length === 0) return [];
+
         const t = {
           key: "total",
           descripcion: "Total general",
+          // 🔹 CAMBIO: usamos solo positivos y restamos explícitamente
           abono: filas.reduce((acc, f) => acc + (f.abono || 0), 0),
           intCargo: filas.reduce((acc, f) => acc + (f.intCargo || 0), 0),
           intAbono: filas.reduce((acc, f) => acc + (f.intAbono || 0), 0),
         };
 
         if (tipo === "prestamo") {
+          const totalPrestamo = filas.reduce(
+            (acc, f) => acc + (f.prestamo || 0) + (f.intCargo || 0),
+            0
+          );
+          const totalAbonos = filas.reduce(
+            (acc, f) => acc + (f.abono || 0) + (f.intAbono || 0),
+            0
+          );
           t.prestamo = filas.reduce((acc, f) => acc + (f.prestamo || 0), 0);
-          t.totalGeneral = t.prestamo + t.intCargo + t.abono + t.intAbono;
+          t.totalGeneral = totalPrestamo - totalAbonos; // 🔹 CAMBIO: saldo real
         } else {
+          const totalAnticipo = filas.reduce(
+            (acc, f) => acc + (f.anticipo || 0) + (f.intCargo || 0),
+            0
+          );
+          const totalAbonos = filas.reduce(
+            (acc, f) => acc + (f.abono || 0) + (f.intAbono || 0),
+            0
+          );
           t.anticipo = filas.reduce((acc, f) => acc + (f.anticipo || 0), 0);
-          t.totalGeneral = t.anticipo + t.intCargo + t.abono + t.intAbono;
+          t.totalGeneral = totalAnticipo - totalAbonos; // 🔹 CAMBIO: saldo real
         }
 
         filas.push({ ...t, tipo: "TOTAL" });

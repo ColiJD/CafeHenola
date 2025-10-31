@@ -203,7 +203,7 @@ export async function GET(req) {
       where: {
         clienteId: Number(clienteID),
         estado: {
-          not: "ABSORBIDO", // excluir préstamos borrados
+          not: "ANULADO", // excluir préstamos borrados
         },
         monto: {
           gt: 0, // solo préstamos con monto mayor a 0

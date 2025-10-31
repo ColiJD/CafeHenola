@@ -4,9 +4,16 @@ import prisma from "@/lib/prisma";
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { clienteID, tipo_movimiento, monto, fecha, observacion, interes, dias } = body;
+    const {
+      clienteID,
+      tipo_movimiento,
+      monto,
+      fecha,
+      observacion,
+      interes,
+      dias,
+    } = body;
 
-    // Validación básica
     if (!clienteID || !tipo_movimiento || monto == null || isNaN(monto)) {
       return NextResponse.json(
         { error: "Datos incompletos o monto inválido." },
@@ -14,85 +21,152 @@ export async function POST(req) {
       );
     }
 
-    const montoIngresado = parseFloat(monto);
+    let montoIngresado = parseFloat(monto);
 
     await prisma.$transaction(async (tx) => {
-      // 1️⃣ Obtener todos los anticipos del cliente
       const anticipos = await tx.anticipo.findMany({
-        where: { clienteId: clienteID },
+        where: { clienteId: clienteID, estado: { not: "ANULADO" } },
         include: { movimientos_anticipos: true },
         orderBy: { fecha: "asc" },
       });
 
       if (!anticipos.length) {
-        throw new Error("No existen anticipos registrados para este cliente.");
+        throw new Error("No existen anticipos válidos para este cliente.");
       }
 
-      // 2️⃣ Seleccionar el primer anticipo válido con deuda pendiente
-      const anticipoAsignado = anticipos.find((anticipo) => {
-        if (anticipo.estado === "ANULADO") return false;
-
-        const totalCargos = anticipo.movimientos_anticipos
-          .filter(m => m.tipo_movimiento === "CARGO_ANTICIPO")
+      // Preparar anticipos con deuda e intereses
+      const anticiposPendientes = anticipos.map((a) => {
+        const cargos = a.movimientos_anticipos
+          .filter((m) => m.tipo_movimiento === "CARGO_ANTICIPO")
           .reduce((sum, m) => sum + Number(m.monto || 0), 0);
 
-        const totalPagos = anticipo.movimientos_anticipos
-          .filter(m => ["ABONO_ANTICIPO", "INTERES_ANTICIPO"].includes(m.tipo_movimiento))
+        const abonos = a.movimientos_anticipos
+          .filter((m) => m.tipo_movimiento === "ABONO_ANTICIPO")
           .reduce((sum, m) => sum + Number(m.monto || 0), 0);
 
-        return Number(anticipo.monto || 0) + totalCargos - totalPagos > 0;
+        const pagosInteres = a.movimientos_anticipos
+          .filter((m) => m.tipo_movimiento === "INTERES_ANTICIPO")
+          .reduce((sum, m) => sum + Number(m.monto || 0), 0);
+
+        return {
+          anticipo: a,
+          deudaCapital: parseFloat((Number(a.monto || 0) - abonos).toFixed(2)),
+          interesPendiente: parseFloat((cargos - pagosInteres).toFixed(2)),
+          totalCargos: cargos,
+        };
       });
 
-      if (!anticipoAsignado) {
-        throw new Error("No se puede registrar el movimiento: todos los anticipos están anulados o sin deuda pendiente.");
-      }
+      // === ABONO AL CAPITAL ===
+      if (tipo_movimiento === "ABONO_ANTICIPO") {
+        const totalDeudaCapital = anticiposPendientes.reduce(
+          (sum, a) => sum + a.deudaCapital,
+          0
+        );
+        if (montoIngresado > totalDeudaCapital) {
+          throw new Error(
+            `El abono (L. ${montoIngresado.toFixed(
+              2
+            )}) excede la deuda de capital pendiente (L. ${totalDeudaCapital.toFixed(
+              2
+            )}).`
+          );
+        }
 
-      // 3️⃣ Calcular deuda e intereses pendientes
-      const cargosPendientes = anticipoAsignado.movimientos_anticipos
-        .filter(m => m.tipo_movimiento === "CARGO_ANTICIPO")
-        .reduce((sum, m) => sum + Number(m.monto || 0), 0);
+        let restante = montoIngresado;
+        for (const a of anticiposPendientes) {
+          if (restante <= 0 || a.deudaCapital <= 0) continue;
 
-      const pagosRealizados = anticipoAsignado.movimientos_anticipos
-        .filter(m => ["ABONO_ANTICIPO", "INTERES_ANTICIPO"].includes(m.tipo_movimiento))
-        .reduce((sum, m) => sum + Number(m.monto || 0), 0);
+          const aplicar = Math.min(restante, a.deudaCapital);
 
-      const deudaPendiente = Number(anticipoAsignado.monto || 0) + cargosPendientes - pagosRealizados;
+          await tx.movimientos_anticipos.create({
+            data: {
+              anticipoId: a.anticipo.anticipoId,
+              fecha: fecha ? new Date(fecha) : new Date(),
+              tipo_movimiento,
+              monto: aplicar,
+              interes: interes ? parseFloat(interes) : null,
+              dias: dias ? parseInt(dias) : null,
+              descripcion: observacion || tipo_movimiento,
+            },
+          });
 
-      const interesesPendientes = cargosPendientes - anticipoAsignado.movimientos_anticipos
-        .filter(m => m.tipo_movimiento === "INTERES_ANTICIPO")
-        .reduce((sum, m) => sum + Number(m.monto || 0), 0);
-
-      // 4️⃣ Validaciones según tipo de movimiento
-      if (["ABONO_ANTICIPO", "INTERES_ANTICIPO"].includes(tipo_movimiento) && deudaPendiente <= 0) {
-        throw new Error("No hay deuda pendiente en este anticipo.");
-      }
-
-      if (tipo_movimiento === "ABONO_ANTICIPO" && montoIngresado > deudaPendiente) {
-        throw new Error(`El abono (L. ${montoIngresado.toFixed(2)}) excede la deuda pendiente (L. ${deudaPendiente.toFixed(2)}).`);
-      }
-
-      if (tipo_movimiento === "INTERES_ANTICIPO") {
-        if (interesesPendientes <= 0) throw new Error("No existen intereses pendientes en este anticipo.");
-        if (montoIngresado > interesesPendientes) {
-          throw new Error(`El pago de intereses (L. ${montoIngresado.toFixed(2)}) excede los intereses pendientes (L. ${interesesPendientes.toFixed(2)}).`);
+          restante = parseFloat((restante - aplicar).toFixed(2));
         }
       }
 
-      // 5️⃣ Registrar movimiento
-      await tx.movimientos_anticipos.create({
-        data: {
-          anticipoId: anticipoAsignado.anticipoId,
-          fecha: fecha ? new Date(fecha) : new Date(),
-          tipo_movimiento,
-          monto: montoIngresado,
-          interes: interes ? parseFloat(interes) : null,
-          dias: dias ? parseInt(dias) : null,
-          descripcion: observacion || tipo_movimiento,
-        },
-      });
+      // === PAGO DE INTERESES ===
+      if (tipo_movimiento === "INTERES_ANTICIPO") {
+        const totalIntereses = anticiposPendientes.reduce(
+          (sum, a) => sum + a.interesPendiente,
+          0
+        );
+
+        if (totalIntereses <= 0) {
+          throw new Error("No hay intereses pendientes en los anticipos.");
+        }
+
+        if (montoIngresado > totalIntereses) {
+          throw new Error(
+            `El pago de intereses (L. ${montoIngresado.toFixed(
+              2
+            )}) excede los intereses pendientes (L. ${totalIntereses.toFixed(
+              2
+            )}).`
+          );
+        }
+
+        let restante = montoIngresado;
+        for (const a of anticiposPendientes) {
+          if (restante <= 0 || a.interesPendiente <= 0) continue;
+
+          const aplicar = Math.min(restante, a.interesPendiente);
+
+          await tx.movimientos_anticipos.create({
+            data: {
+              anticipoId: a.anticipo.anticipoId,
+              fecha: fecha ? new Date(fecha) : new Date(),
+              tipo_movimiento,
+              monto: aplicar,
+              interes: interes ? parseFloat(interes) : null,
+              dias: dias ? parseInt(dias) : null,
+              descripcion: observacion || tipo_movimiento,
+            },
+          });
+
+          restante = parseFloat((restante - aplicar).toFixed(2));
+        }
+      }
+
+      // === CARGO DE INTERESES ===
+      if (tipo_movimiento === "CARGO_ANTICIPO") {
+        const activos = anticipos
+          .filter((a) => !["ANULADO"].includes(a.estado))
+          .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
+        if (!activos.length) {
+          throw new Error("No hay anticipos activos para aplicar el cargo.");
+        }
+
+        const a = activos[0]; // Aplicar al primero por FIFO
+
+        await tx.movimientos_anticipos.create({
+          data: {
+            anticipoId: a.anticipoId,
+            fecha: fecha ? new Date(fecha) : new Date(),
+            tipo_movimiento: "CARGO_ANTICIPO",
+            monto: montoIngresado,
+            interes: interes ? parseFloat(interes) : null,
+            dias: dias ? parseInt(dias) : null,
+            descripcion: observacion || "Cargo de anticipo",
+          },
+        });
+      }
     });
 
-    return NextResponse.json({ ok: true, message: "Movimiento registrado correctamente." });
+    return NextResponse.json({
+      ok: true,
+      message: "Movimiento registrado correctamente siguiendo FIFO.",
+    });
   } catch (error) {
     console.error("Error al registrar movimiento:", error);
     return NextResponse.json(

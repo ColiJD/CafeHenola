@@ -20,6 +20,7 @@ import { formatNumber } from "@/components/Formulario";
 import ProtectedPage from "@/components/ProtectedPage";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
 import SectionHeader from "@/components/ReportesElement/AccionesResporte";
+
 import {
   CalendarOutlined,
   AppstoreOutlined,
@@ -32,7 +33,7 @@ import {
   columnsDetalleInterno,
   columns,
   columnsPrestamos,
-  prestamosMovi,
+  getPrestamosMoviColumns,
 } from "./columnas";
 
 const { Title, Text } = Typography;
@@ -152,6 +153,7 @@ export default function MovimientosComprasPage() {
             descripcion: contrato.descripcion,
             cantidadContrato: contrato.cantidadContrato || 0,
             producto: contrato.producto?.productName || "-",
+            fecha: contrato.fecha,
             totalQQ,
             totalLps,
             promedioPrecio,
@@ -189,6 +191,7 @@ export default function MovimientosComprasPage() {
         (dep) => {
           const detallesLiq = (dep.liqDeposito || []).map((l) => ({
             ...l,
+            fecha: l.fecha || dep.fecha || null,
             cantidadQQ: Number(l.cantidadQQ) || 0,
             precioQQ: Number(l.precioQQ) || 0,
             totalLps: (Number(l.cantidadQQ) || 0) * (Number(l.precioQQ) || 0),
@@ -219,7 +222,7 @@ export default function MovimientosComprasPage() {
           };
         }
       );
-
+      console.log(detallesDepositos);
       // Totales generales de depósitos
       const filaDepositos = {
         tipo: "Depósito",
@@ -267,11 +270,7 @@ export default function MovimientosComprasPage() {
         // Totales por préstamo
         // Monto = préstamo base + ANTICIPO + Int-Cargo (solo monto)
         const monto = movimientos
-          .filter((m) =>
-            ["PRÉSTAMO", "ANTICIPO", "CARGO_INTERES", "Int-Cargo"].includes(
-              m.tipo
-            )
-          )
+          .filter((m) => ["PRÉSTAMO", "Int-Cargo"].includes(m.tipo))
           .reduce((sum, m) => sum + m.monto, 0);
 
         const abonado = movimientos
@@ -296,18 +295,68 @@ export default function MovimientosComprasPage() {
         };
       });
 
-      setPrestamos(detallesPrestamos);
+      // 🔹 Anticipos
+      const detallesAnticipos = (json.movimientos.Anticipos || []).map((a) => {
+        const movimientos = (a.movimientos || []).map((m) => ({
+          movimientoId: m.movimientoId,
+          fecha: m.fecha,
+          tipo: m.tipo,
+          monto: Number(m.monto) || 0,
+          interes: Number(m.interes) || 0,
+          descripcion: m.descripcion || "-",
+        }));
 
-      // 🔹 Calcular totales de préstamos
-      const totalPrestamosMonto = detallesPrestamos.reduce(
+        // 🔹 Agregar el anticipo base como un movimiento principal
+        movimientos.unshift({
+          movimientoId: `anticipo-${a.anticipoId}`,
+          fecha: a.fecha,
+          tipo: "ANTICIPO",
+          monto: Number(a.monto) || 0,
+          interes: 0,
+          descripcion: "Monto del anticipo",
+        });
+
+        const monto = movimientos
+          .filter((m) => ["ANTICIPO", "CARGO_ANTICIPO"].includes(m.tipo))
+          .reduce((sum, m) => sum + m.monto, 0);
+
+        const abonado = movimientos
+          .filter((m) =>
+            ["ABONO_ANTICIPO", "INTERES_ANTICIPO"].includes(m.tipo)
+          )
+          .reduce((sum, m) => sum + m.monto, 0);
+
+        const total = monto - abonado;
+        const estado = abonado >= monto ? "COMPLETADO" : "PENDIENTE";
+
+        return {
+          anticipoId: a.anticipoId,
+          fecha: a.fecha,
+          monto,
+          abonado,
+          total,
+          tipo: "ANTICIPO",
+          estado,
+          tasaInteres: Number(a.tasaInteres) || 0,
+          observacion: a.observacion || "-",
+          movimientos,
+        };
+      });
+
+      // 🔹 Unir ambos en una sola tabla
+      const prestamosYAnticipos = [...detallesPrestamos, ...detallesAnticipos];
+      setPrestamos(prestamosYAnticipos);
+
+      // 🔹 Calcular totales combinados
+      const totalPrestamosMonto = prestamosYAnticipos.reduce(
         (sum, p) => sum + p.monto,
         0
       );
-      const totalPrestamosAbonado = detallesPrestamos.reduce(
+      const totalPrestamosAbonado = prestamosYAnticipos.reduce(
         (sum, p) => sum + p.abonado,
         0
       );
-      const totalPrestamosRestante = detallesPrestamos.reduce(
+      const totalPrestamosRestante = prestamosYAnticipos.reduce(
         (sum, p) => sum + p.total,
         0
       );
@@ -535,19 +584,23 @@ export default function MovimientosComprasPage() {
             <Table
               columns={columnsPrestamos}
               dataSource={prestamos}
-              rowKey="prestamoId"
+              rowKey={(r) => r.prestamoId || r.anticipoId}
               scroll={{ x: "max-content" }}
               expandable={{
-                expandedRowRender: (record) => (
-                  <Table
-                    size="small"
-                    columns={prestamosMovi}
-                    dataSource={record.movimientos}
-                    pagination={false}
-                    rowKey="movimientoId"
-                    scroll={{ x: "max-content" }}
-                  />
-                ),
+                expandedRowRender: (record) => {
+                  const tipo =
+                    record.tipo === "ANTICIPO" ? "ANTICIPO" : "PRESTAMO";
+                  return (
+                    <Table
+                      size="small"
+                      columns={getPrestamosMoviColumns(tipo)}
+                      dataSource={record.movimientos}
+                      pagination={false}
+                      rowKey="movimientoId"
+                      scroll={{ x: "max-content" }}
+                    />
+                  );
+                },
               }}
               pagination={false}
             />

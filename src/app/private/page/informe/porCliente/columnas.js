@@ -11,6 +11,12 @@ const renderTag = (v) => <Tag color={v === "Sí" ? "green" : "red"}>{v}</Tag>;
 export const columnasPorTipo = {
   Contrato: [
     { title: "ID", dataIndex: "contratoID", fixed: "left" },
+    {
+      title: "Fecha",
+      sorter: (a, b) => dayjs(a.fecha).unix() - dayjs(b.fecha).unix(),
+      dataIndex: "fecha",
+      render: renderDate,
+    },
     { title: "Producto", dataIndex: "producto" },
     { title: "Descripción", dataIndex: "descripcion", width: 120 },
     {
@@ -45,12 +51,23 @@ export const columnasPorTipo = {
       align: "center",
       render: renderTag,
       width: 120,
+      filters: [
+        { text: "Sí", value: "Sí" },
+        { text: "No", value: "No" },
+      ],
+      onFilter: (value, record) => record.liquidado === value,
     },
   ],
   Depósito: [
     { title: "Depósito ID", dataIndex: "depositoID" },
+    {
+      title: "Fecha",
+      sorter: (a, b) => dayjs(a.fecha).unix() - dayjs(b.fecha).unix(),
+      dataIndex: "fecha",
+      render: renderDate,
+    },
     { title: "Producto", dataIndex: "producto" },
-    { title: "Fecha", dataIndex: "fecha", render: renderDate },
+
     {
       title: "Cantidad QQ",
       dataIndex: "cantidadQQ",
@@ -80,11 +97,22 @@ export const columnasPorTipo = {
       dataIndex: "liquidado",
       align: "center",
       render: renderTag,
+      width: 120,
+      filters: [
+        { text: "Sí", value: "Sí" },
+        { text: "No", value: "No" },
+      ],
+      onFilter: (value, record) => record.liquidado === value,
     },
   ],
   Compra: [
     { title: "ID", dataIndex: "compraId" },
-    { title: "Fecha", dataIndex: "fecha", render: renderDate },
+    {
+      title: "Fecha",
+      sorter: (a, b) => dayjs(a.fecha).unix() - dayjs(b.fecha).unix(),
+      dataIndex: "fecha",
+      render: renderDate,
+    },
     { title: "Producto", dataIndex: "producto" },
     {
       title: "Cantidad QQ",
@@ -110,7 +138,12 @@ export const columnasPorTipo = {
 // ----- Subtabla genérica para detalles internos -----
 export const columnsDetalleInterno = [
   { title: "ID", dataIndex: "detalleID" },
-  { title: "Fecha", dataIndex: "fecha", render: renderDate },
+  {
+    title: "Fecha",
+    sorter: (a, b) => dayjs(a.fecha).unix() - dayjs(b.fecha).unix(),
+    dataIndex: "fecha",
+    render: renderDate,
+  },
   {
     title: "Cantidad QQ",
     dataIndex: "cantidadQQ",
@@ -163,10 +196,15 @@ export const columns = [
 
 // 🔸 Columnas de préstamos
 export const columnsPrestamos = [
-  { title: "Préstamo ID", dataIndex: "prestamoId" },
+  {
+    title: "ID",
+    render: (r) => r.prestamoId || r.anticipoId || "-",
+  },
+
   {
     title: "Fecha",
     dataIndex: "fecha",
+    sorter: (a, b) => dayjs(a.fecha).unix() - dayjs(b.fecha).unix(),
     render: (v) => dayjs(v).format("DD/MM/YYYY"),
   },
   {
@@ -187,34 +225,72 @@ export const columnsPrestamos = [
     align: "center",
     render: (v) => "L. " + formatNumber(v, 2),
   },
-  { title: "Tipo", dataIndex: "tipo" },
+  {
+    title: "Tipo Movimiento",
+    dataIndex: "tipo",
+    filters: [
+      { text: "PRÉSTAMO", value: "PRESTAMO" },
+      { text: "ANTICIPO", value: "ANTICIPO" },
+    ],
+    onFilter: (value, record) => record.tipo === value,
+  },
+
   {
     title: "Estado",
     dataIndex: "estado",
+    filters: [
+      { text: "PENDIENTE", value: "PENDIENTE" },
+      { text: "COMPLETADO", value: "COMPLETADO" },
+    ],
+    onFilter: (value, record) => record.estado === value,
     render: (v) => (
       <Tag color={v === "PENDIENTE" ? "orange" : "green"}>{v}</Tag>
     ),
   },
 ];
 
-export const prestamosMovi = [
-  {
-    title: "Fecha",
-    dataIndex: "fecha",
-    render: (v) => dayjs(v).format("DD/MM/YYYY"),
-  },
-  { title: "Tipo Movimiento", dataIndex: "tipo" },
-  {
-    title: "Monto",
-    dataIndex: "monto",
-    align: "center",
-    render: (v) => "L. " + formatNumber(v, 2),
-  },
-  //   {
-  //     title: "Interés",
-  //     dataIndex: "interes",
-  //     align: "center",
-  //     render: (v) => "L. " + formatNumber(v, 2),
-  //   },
-  { title: "Descripción", dataIndex: "descripcion" },
-];
+export const getPrestamosMoviColumns = (tipoRegistro) => {
+  let filtros = [];
+
+  if (tipoRegistro === "PRESTAMO") {
+    filtros = [
+      { text: "PRÉSTAMO", value: "PRÉSTAMO" },
+      { text: "ABONO", value: "ABONO" },
+      { text: "Int-Cargo", value: "Int-Cargo" },
+      { text: "PAGO_INTERES", value: "PAGO_INTERES" },
+    ];
+  } else if (tipoRegistro === "ANTICIPO") {
+    filtros = [
+      { text: "ANTICIPO", value: "ANTICIPO" },
+      { text: "ABONO_ANTICIPO", value: "ABONO_ANTICIPO" },
+      { text: "INTERES_ANTICIPO", value: "INTERES_ANTICIPO" },
+      { text: "CARGO_ANTICIPO", value: "CARGO_ANTICIPO" },
+    ];
+  }
+
+  return [
+    {
+      title: "Fecha",
+      dataIndex: "fecha",
+      sorter: (a, b) => dayjs(a.fecha).unix() - dayjs(b.fecha).unix(),
+      render: (v) => dayjs(v).format("DD/MM/YYYY"),
+    },
+    {
+      title: "Tipo Movimiento",
+      dataIndex: "tipo",
+      filters: filtros,
+      onFilter: (value, record) => record.tipo === value,
+    },
+    {
+      title: "Monto",
+      dataIndex: "monto",
+      align: "center",
+      render: (v) => "L. " + formatNumber(v, 2),
+      sorter: (a, b) => a.monto - b.monto,
+    },
+    {
+      title: "Descripción",
+      dataIndex: "descripcion", // solo mostrar, sin filtros ni cambios
+    },
+  ];
+};

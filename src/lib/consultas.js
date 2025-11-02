@@ -145,18 +145,37 @@ export async function obtenerSelectData({
 // consultas.js
 export async function verificarClientesPendientesContratos(clienteID) {
   if (!clienteID) return [];
+
   try {
     const res = await fetch(
       `/api/contratos/disponibles?clienteID=${clienteID}`
     );
     if (!res.ok) throw new Error("Error en la respuesta del servidor");
+
     const data = await res.json();
-    if (Array.isArray(data) && data.length > 0) {
-      return [
-        `Tiene ${data.length} contrato(s) pendiente(s).`,
-      ];
-    }
-    return [];
+    if (!Array.isArray(data) || data.length === 0) return [];
+
+    // Creamos mensajes por cada contrato
+    const mensajes = data.map((c) => {
+      const estado = c.completado ? "Completado" : "Pendiente";
+
+      // Formateo de valores
+      const monto = c.saldoInicial.toLocaleString("es-HN", {
+        style: "currency",
+        currency: "HNL",
+      });
+      const restante = c.faltante.toLocaleString("es-HN", {
+        style: "currency",
+        currency: "HNL",
+      });
+      const cantidadInicial = Number(c.cantidadInicial || 0);
+      const cantidadEntregada = Number(c.cantidadEntregada || 0);
+      const cantidadFaltante = Number(c.cantidadFaltante || 0);
+
+      return `Contrato #${c.contratoID}: Estado: ${estado}, Monto: ${monto}, Restante: ${restante}, Cantidad Inicial: ${cantidadInicial}, Entregada: ${cantidadEntregada}, Faltante: ${cantidadFaltante}`;
+    });
+
+    return mensajes;
   } catch (err) {
     console.error(err);
     return ["No se pudieron verificar los contratos pendientes."];
@@ -170,9 +189,7 @@ export async function verificarDepositosPendientes(clienteID) {
     if (!res.ok) throw new Error("Error en la respuesta del servidor");
     const data = await res.json();
     if (Array.isArray(data) && data.length > 0) {
-      return [
-        ` Tiene ${data.length} depósito(s) pendiente(s).`,
-      ];
+      return [` Tiene ${data.length} depósito(s) pendiente(s).`];
     }
     return [];
   } catch (err) {

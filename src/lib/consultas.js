@@ -172,7 +172,13 @@ export async function verificarClientesPendientesContratos(clienteID) {
       const cantidadEntregada = Number(c.cantidadEntregada || 0);
       const cantidadFaltante = Number(c.cantidadFaltante || 0);
 
-      return `Contrato #${c.contratoID}: Estado: ${estado}, Monto: ${monto}, Restante: ${restante}, Cantidad Inicial: ${cantidadInicial}, Entregada: ${cantidadEntregada}, Faltante: ${cantidadFaltante}`;
+      return `Contrato #${
+        c.contratoID
+      }: Estado: ${estado}, Monto: ${monto}, Restante: ${restante}, Cantidad Inicial: ${cantidadInicial.toFixed(
+        2
+      )}, Entregada: ${cantidadEntregada.toFixed(
+        2
+      )}, Faltante: ${cantidadFaltante.toFixed(2)}`;
     });
 
     return mensajes;
@@ -181,17 +187,25 @@ export async function verificarClientesPendientesContratos(clienteID) {
     return ["No se pudieron verificar los contratos pendientes."];
   }
 }
-
 export async function verificarDepositosPendientes(clienteID) {
   try {
     const url = `/api/liqDeposito/clienteConDeposito?clienteID=${clienteID}`;
     const res = await fetch(url);
     if (!res.ok) throw new Error("Error en la respuesta del servidor");
+
     const data = await res.json();
-    if (Array.isArray(data) && data.length > 0) {
-      return [` Tiene ${data.length} depósito(s) pendiente(s).`];
-    }
-    return [];
+    if (!Array.isArray(data) || data.length === 0) return [];
+
+    // Generamos mensajes detallados por depósito pendiente
+    const mensajes = data.map((d) => {
+      const cantidadTotal = Number(d.cantidadTotal || 0).toFixed(2);
+      const cantidadEntregada = Number(d.cantidadEntregada || 0).toFixed(2);
+      const cantidadFaltante = Number(d.cantidadFaltante || 0).toFixed(2);
+
+      return `Depósito #${d.depositoID}:  Cantidad Total: ${cantidadTotal}, Entregada: ${cantidadEntregada}, Faltante: ${cantidadFaltante}`;
+    });
+
+    return mensajes;
   } catch (err) {
     console.error(err);
     return ["No se pudieron verificar los depósitos pendientes."];

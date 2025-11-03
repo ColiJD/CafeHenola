@@ -3,7 +3,13 @@ import { useEffect, useState, useRef } from "react";
 import { message } from "antd";
 import Formulario from "@/components/Formulario";
 import PreviewModal from "@/components/Modal";
-import { obtenerProductosSelect, obtenerSelectData } from "@/lib/consultas";
+import {
+  obtenerProductosSelect,
+  obtenerSelectData,
+  verificarAnticiposPendientes,
+  verificarClientesPendientesContratos,
+  verificarPrestamosPendientes,
+} from "@/lib/consultas";
 import ProtectedPage from "@/components/ProtectedPage";
 import {
   limpiarFormulario,
@@ -12,8 +18,10 @@ import {
 import { validarDatos } from "@/lib/validacionesForm";
 import { exportLiquidacionDeposito } from "@/Doc/Documentos/liqDepositp";
 import { FloatingButton } from "@/components/Button";
-import { UnorderedListOutlined } from "@ant-design/icons";
-
+import { UnorderedListOutlined, SolutionOutlined } from "@ant-design/icons";
+import { useRouter } from "next/navigation";
+import NotificationDrawer from "@/components/NotificationDrawer";
+import FloatingNotificationButton from "@/components/FloatingNotificationButton";
 export default function DepositoForm() {
   const [clientes, setClientes] = useState([]);
   const [productos, setProductos] = useState([]);
@@ -27,6 +35,9 @@ export default function DepositoForm() {
     depositoDescripcion: "",
     saldoPendiente: 0,
   });
+  const [drawerVisible, setDrawerVisible] = useState(false); // control de drawer
+  const [notifications, setNotifications] = useState([]); // notificaciones
+  const router = useRouter();
 
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -42,6 +53,33 @@ export default function DepositoForm() {
     parseFloat(formState.depositoCantidadQQ || 0) *
     parseFloat(formState.depositoPrecioQQ || 0)
   ).toFixed(2);
+  useEffect(() => {
+    async function cargarNotificaciones() {
+      setNotifications([]); // limpiar notificaciones si cambia el cliente
+
+      if (!formState.cliente || !formState.cliente.value) return;
+
+      const mensajesContratos = await verificarClientesPendientesContratos(
+        formState.cliente.value
+      );
+
+      const mensajesPrestamos = await verificarPrestamosPendientes(
+        formState.cliente.value
+      );
+      const mensajesAnticipos = await verificarAnticiposPendientes(
+        formState.cliente.value
+      );
+
+      setNotifications([
+        ...mensajesContratos,
+
+        ...mensajesPrestamos,
+        ...mensajesAnticipos,
+      ]);
+    }
+
+    cargarNotificaciones();
+  }, [formState.cliente]);
 
   // ------------------------------
   // Cargar clientes
@@ -336,15 +374,30 @@ export default function DepositoForm() {
   // ------------------------------
   return (
     <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
-      <FloatingButton
-        title="Ir al registro"
-        icon={<UnorderedListOutlined />}
-        top={20}
-        right={30}
-        route="/private/page/transacciones/deposito/lipdedeposito"
-      />
       <>
         {contextHolder}
+        <FloatingNotificationButton
+          notifications={notifications}
+          onClick={() => setDrawerVisible(true)}
+        />
+        <NotificationDrawer
+          visible={drawerVisible}
+          onClose={() => setDrawerVisible(false)}
+          title="Notificaciones"
+          subtitle={formState.cliente?.label}
+          notifications={notifications}
+          actions={[
+            {
+              tooltip: "Ir a Registro de Contratos",
+              icon: <SolutionOutlined />,
+              onClick: () =>
+                router.push(
+                  "/private/page/transacciones/deposito/lipdedeposito"
+                ),
+            },
+          ]}
+        />
+
         <Formulario
           key={cliente?.value || "empty"}
           title="Liquidar Depósito"

@@ -145,18 +145,52 @@ export async function POST(req) {
 
       // === 🔹 INT-CARGO ===
       if (tipo_movimiento === "Int-Cargo") {
-        const prestamosActivos = prestamos
+        const prestamosValidos = prestamos
           .filter((p) => !["ANULADO"].includes(p.estado))
           .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
 
-        if (prestamosActivos.length === 0) {
+        if (prestamosValidos.length === 0) {
           throw new Error(
             "No hay préstamos activos para aplicar el interés cargado."
           );
         }
 
-        // Aplica todo el Int-Cargo al primer préstamo activo
-        const p = prestamosActivos[0];
+        // Filtrar préstamos con deuda real (capital + intereses + cargos)
+        const prestamosConDeuda = prestamosValidos
+          .map((p) => {
+            // Capital pendiente
+            const totalAbonos = p.movimientos_prestamo
+              .filter((m) => m.tipo_movimiento === "ABONO")
+              .reduce((sum, m) => sum + Number(m.monto), 0);
+            const capitalPendiente = Number(p.monto) - totalAbonos;
+
+            // Intereses pendientes
+            const totalCargosInt = p.movimientos_prestamo
+              .filter((m) => m.tipo_movimiento === "Int-Cargo")
+              .reduce((sum, m) => sum + Number(m.monto), 0);
+            const totalPagosInteres = p.movimientos_prestamo
+              .filter((m) => m.tipo_movimiento === "PAGO_INTERES")
+              .reduce((sum, m) => sum + Number(m.monto), 0);
+            const interesPendiente = totalCargosInt - totalPagosInteres;
+
+            return {
+              ...p,
+              capitalPendiente,
+              interesPendiente,
+              totalCargosInt,
+            };
+          })
+          // Solo préstamos que aún tengan capital o intereses pendientes
+          .filter((p) => p.capitalPendiente > 0 || p.interesPendiente > 0);
+
+        if (prestamosConDeuda.length === 0) {
+          throw new Error(
+            "Todos los préstamos de este cliente están completamente pagados. No se pueden agregar más cargos de interés."
+          );
+        }
+
+        // Tomar el primer préstamo con deuda real (FIFO)
+        const p = prestamosConDeuda[0];
 
         await tx.movimientos_prestamo.create({
           data: {

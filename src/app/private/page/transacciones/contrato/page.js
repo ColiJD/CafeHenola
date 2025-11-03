@@ -1,7 +1,7 @@
 "use client"; // Indica que este archivo se ejecuta en el cliente (Next.js)
 
 import { useEffect, useState } from "react"; // Hooks de React
-import { message, Button } from "antd"; // Componente de mensajes de Ant Design
+import { message } from "antd"; // Componente de mensajes de Ant Design
 import Formulario from "@/components/Formulario"; // Componente genérico de formulario
 import PreviewModal from "@/components/Modal"; // Modal para previsualización
 import { obtenerClientesSelect, obtenerProductosSelect } from "@/lib/consultas"; // Funciones para traer clientes/productos
@@ -10,15 +10,27 @@ import {
   validarFloatPositivo,
 } from "@/config/validacionesForm"; // Utilidades de validación
 import { validarDatos } from "@/lib/validacionesForm"; // Validación general del formulario
-import { FloatingButton } from "@/components/Button";
-import { UnorderedListOutlined } from "@ant-design/icons";
+
+import { SolutionOutlined } from "@ant-design/icons";
 import { exportContratoCafe } from "@/Doc/Documentos/contrato";
 import ProtectedPage from "@/components/ProtectedPage";
+import NotificationDrawer from "@/components/NotificationDrawer";
+import FloatingNotificationButton from "@/components/FloatingNotificationButton";
+import {
+  verificarClientesPendientesContratos,
+  verificarDepositosPendientes,
+  verificarPrestamosPendientes,
+  verificarAnticiposPendientes,
+} from "@/lib/consultas";
+import { useRouter } from "next/navigation";
 
 export default function ContratoForm() {
   // 🔹 Estados de datos seleccionables
   const [clientes, setClientes] = useState([]); // Lista de clientes para el select
   const [productos, setProductos] = useState([]); // Lista de productos para el select
+  const [drawerVisible, setDrawerVisible] = useState(false); // control de drawer
+  const [notifications, setNotifications] = useState([]); // notificaciones
+  const router = useRouter();
 
   // 🔹 Estado centralizado del formulario
   const [formState, setFormState] = useState({
@@ -42,6 +54,36 @@ export default function ContratoForm() {
 
   // 🔹 API de mensajes de Ant Design
   const [messageApi, contextHolder] = message.useMessage();
+
+  useEffect(() => {
+    async function cargarNotificaciones() {
+      setNotifications([]); // limpiar notificaciones si cambia el cliente
+
+      if (!formState.cliente || !formState.cliente.value) return;
+
+      const mensajesContratos = await verificarClientesPendientesContratos(
+        formState.cliente.value
+      );
+      const mensajesDepositos = await verificarDepositosPendientes(
+        formState.cliente.value
+      );
+      const mensajesPrestamos = await verificarPrestamosPendientes(
+        formState.cliente.value
+      );
+      const mensajesAnticipos = await verificarAnticiposPendientes(
+        formState.cliente.value
+      );
+
+      setNotifications([
+        ...mensajesContratos,
+        ...mensajesDepositos,
+        ...mensajesPrestamos,
+        ...mensajesAnticipos,
+      ]);
+    }
+
+    cargarNotificaciones();
+  }, [formState.cliente]);
 
   // 🔹 useEffect para calcular automáticamente el total (precio x cantidad)
   useEffect(() => {
@@ -91,19 +133,20 @@ export default function ContratoForm() {
       validator: (v) => (!!v ? null : "Seleccione un café"),
     },
     {
-      key: "contratoPrecio",
-      label: "Precio (Lps)",
-      type: "Float",
-      required: true,
-      validator: validarFloatPositivo,
-    },
-    {
       key: "contratoCantidadQQ",
       label: "Cantidad (QOro)",
       type: "Float",
       required: true,
       validator: validarFloatPositivo,
     },
+    {
+      key: "contratoPrecio",
+      label: "Precio (Lps)",
+      type: "Float",
+      required: true,
+      validator: validarFloatPositivo,
+    },
+
     {
       key: "contratoTotalLps",
       label: "Total (Lps)",
@@ -223,15 +266,29 @@ export default function ContratoForm() {
 
   return (
     <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
-      <FloatingButton
-        title="Ir al registro"
-        icon={<UnorderedListOutlined />}
-        top={20}
-        right={30}
-        route="/private/page/transacciones/contrato/registrocontrato"
-      />
       <>
         {contextHolder} {/* Contenedor de mensajes Ant Design */}
+        <FloatingNotificationButton
+          notifications={notifications}
+          onClick={() => setDrawerVisible(true)}
+        />
+        <NotificationDrawer
+          visible={drawerVisible}
+          onClose={() => setDrawerVisible(false)}
+          title="Notificaciones"
+          subtitle={formState.cliente?.label}
+          notifications={notifications}
+          actions={[
+            {
+              tooltip: "Ir a Registro",
+              icon: <SolutionOutlined />,
+              onClick: () =>
+                router.push(
+                  "/private/page/transacciones/contrato/registrocontrato"
+                ),
+            },
+          ]}
+        />
         {/* Componente de formulario principal */}
         <Formulario
           key={formState.cliente?.value || "empty"}

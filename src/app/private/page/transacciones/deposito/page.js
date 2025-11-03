@@ -14,11 +14,21 @@ import {
 import { calcularCafeDesdeProducto } from "@/lib/calculoCafe";
 import { exportDeposito } from "@/Doc/Documentos/desposito";
 import { FloatingButton } from "@/components/Button";
-import { UnorderedListOutlined } from "@ant-design/icons";
-
+import { UnorderedListOutlined, SolutionOutlined } from "@ant-design/icons";
+import { useRouter } from "next/navigation";
+import {
+  verificarClientesPendientesContratos,
+  verificarDepositosPendientes,
+  verificarPrestamosPendientes,
+  verificarAnticiposPendientes,
+} from "@/lib/consultas";
+import NotificationDrawer from "@/components/NotificationDrawer";
+import FloatingNotificationButton from "@/components/FloatingNotificationButton";
 export default function FormDeposito() {
   const [clientes, setClientes] = useState([]);
   const [productos, setProductos] = useState([]);
+  
+  
 
   const [cliente, setCliente] = useState(null);
   const [producto, setProducto] = useState(null);
@@ -32,9 +42,42 @@ export default function FormDeposito() {
   const [errors, setErrors] = useState({});
   const [previewVisible, setPreviewVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [drawerVisible, setDrawerVisible] = useState(false); // control de drawer
+  const [notifications, setNotifications] = useState([]); // notificaciones
+  const router = useRouter();
 
   const [messageApi, contextHolder] = message.useMessage();
   const messageApiRef = useRef(messageApi);
+
+  useEffect(() => {
+    async function cargarNotificaciones() {
+      setNotifications([]); // limpiar notificaciones si cambia el cliente
+
+      if (!cliente || !cliente.value) return;
+
+      const mensajesContratos = await verificarClientesPendientesContratos(
+        cliente.value
+      );
+      const mensajesDepositos = await verificarDepositosPendientes(
+        cliente.value
+      );
+      const mensajesPrestamos = await verificarPrestamosPendientes(
+        cliente.value
+      );
+      const mensajesAnticipos = await verificarAnticiposPendientes(
+        cliente.value
+      );
+
+      setNotifications([
+        ...mensajesContratos,
+        ...mensajesDepositos,
+        ...mensajesPrestamos,
+        ...mensajesAnticipos,
+      ]);
+    }
+
+    cargarNotificaciones();
+  }, [cliente]);
 
   // Carga clientes y productos
   useEffect(() => {
@@ -252,15 +295,28 @@ export default function FormDeposito() {
 
   return (
     <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
-      <FloatingButton
-        title="Ir al registro"
-        icon={<UnorderedListOutlined />}
-        top={20}
-        right={30}
-        route="/private/page/informe/registrodeposito"
-      />
       <>
         {contextHolder}
+        <FloatingNotificationButton
+          notifications={notifications}
+          onClick={() => setDrawerVisible(true)}
+        />
+        <NotificationDrawer
+          visible={drawerVisible}
+          onClose={() => setDrawerVisible(false)}
+          title="Notificaciones"
+          subtitle={cliente?.label}
+          notifications={notifications}
+          actions={[
+            {
+              tooltip: "Ir a Registro",
+              icon: <SolutionOutlined />,
+              onClick: () =>
+                router.push("/private/page/informe/registrodeposito"),
+            },
+          ]}
+        />
+
         <Formulario
           title="Registrar Depósito"
           fields={fields}

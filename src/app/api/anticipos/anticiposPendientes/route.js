@@ -1,4 +1,4 @@
-// src/app/api/prestamos/pendientes/route.js
+// src/app/api/anticipo/pendientes/route.js
 import prisma from "@/lib/prisma";
 import { checkRole } from "@/lib/checkRole";
 
@@ -15,64 +15,65 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const clienteID = searchParams.get("clienteID");
     if (clienteID) {
-      // 🔹 Si se pasa clienteID: calcular préstamos pendientes por cliente
-      const prestamos = await prisma.prestamos.findMany({
+      // 🔹 Si se pasa clienteID: calcular anticipos pendientes por cliente
+      const anticipos = await prisma.anticipo.findMany({
         where: {
           clienteId: Number(clienteID),
-          estado: { not: "ANULADO" }, // ignorar préstamos anulados
-          monto: { gt: 0 }, // solo préstamos con monto mayor a 0
+          estado: { not: "ANULADO" }, // ignorar anticipos anulados
+          monto: { gt: 0 }, // solo anticipos con monto mayor a 0
         },
         include: {
           cliente: { select: { clienteNombre: true, clienteApellido: true } },
-          movimientos_prestamo: {
+          movimientos_anticipos: {
             where: { tipo_movimiento: { not: "ANULADO" } },
           },
         },
       });
 
-      if (prestamos.length === 0) {
+      if (anticipos.length === 0) {
         return new Response(JSON.stringify([]), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         });
       }
 
-      const resultado = prestamos.map((p) => {
+      const resultado = anticipos.map((a) => {
         let totalAbono = 0;
         let totalPagoInteres = 0;
         let totalIntCargo = 0;
 
-        for (const mov of p.movimientos_prestamo) {
+        for (const mov of a.movimientos_anticipos) {
           const monto = Number(mov.monto || 0);
-          if (mov.tipo_movimiento === "ABONO") totalAbono += monto;
-          else if (mov.tipo_movimiento === "PAGO_INTERES")
+          if (mov.tipo_movimiento === "ABONO_ANTICIPO") totalAbono += monto;
+          else if (mov.tipo_movimiento === "INTERES_ANTICIPO")
             totalPagoInteres += monto;
-          else if (mov.tipo_movimiento === "Int-Cargo") totalIntCargo += monto;
+          else if (mov.tipo_movimiento === "CARGO_ANTICIPO")
+            totalIntCargo += monto;
         }
 
-        const saldoInicial = Number(p.monto || 0);
-        const saldoActual =
+        const saldoInicial = Number(a.monto || 0);
+        const saldoPendiente =
           Math.round(
             (saldoInicial + totalIntCargo - totalAbono - totalPagoInteres) * 100
           ) / 100;
 
-        const completado = saldoActual <= 0;
+        const completado = saldoPendiente <= 0;
 
         return {
-          prestamoID: p.prestamoId,
-          clienteNombreCompleto: `${p.cliente?.clienteNombre || ""} ${
-            p.cliente?.clienteApellido || ""
+          anticipoID: a.anticipoId,
+          clienteNombreCompleto: `${a.cliente?.clienteNombre || ""} ${
+            a.cliente?.clienteApellido || ""
           }`.trim(),
           saldoInicial,
           totalAbono,
           totalPagoInteres,
           totalIntCargo,
-          saldoPendiente: saldoActual, // mantén valor real para filtrado
+          saldoPendiente, // mantener el valor real para filtrado
           completado,
         };
       });
 
-      const pendientes = resultado.filter((p) => p.saldoPendiente > 0);
+      const pendientes = resultado.filter((a) => a.saldoPendiente > 0);
 
       return new Response(JSON.stringify(pendientes), {
         status: 200,
@@ -80,9 +81,9 @@ export async function GET(req) {
       });
     }
   } catch (error) {
-    console.error("Error al obtener contratos pendientes:", error);
+    console.error("Error al obtener anticipos pendientes:", error);
     return new Response(
-      JSON.stringify({ error: "No se pudieron cargar los contratos." }),
+      JSON.stringify({ error: "No se pudieron cargar los anticipos." }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }

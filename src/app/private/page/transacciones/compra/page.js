@@ -18,6 +18,7 @@ import {
   verificarClientesPendientesContratos,
   verificarDepositosPendientes,
   verificarPrestamosPendientes,
+  verificarAnticiposPendientes,
 } from "@/lib/consultas";
 import { BellOutlined } from "@ant-design/icons";
 import NotificationDrawer from "@/components/NotificationDrawer";
@@ -75,12 +76,16 @@ export default function CompraForm({ compraId }) {
       const mensajesPrestamos = await verificarPrestamosPendientes(
         cliente.value
       );
+      const mensajesAnticipos = await verificarAnticiposPendientes(
+        cliente.value
+      );
 
       // Combinar todos los mensajes
       const todosMensajes = [
         ...mensajesContratos,
         ...mensajesDepositos,
         ...mensajesPrestamos,
+        ...mensajesAnticipos,
       ];
 
       setNotifications(todosMensajes);

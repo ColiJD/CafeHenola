@@ -253,3 +253,48 @@ export async function verificarPrestamosPendientes(clienteID) {
     return ["No se pudieron verificar los préstamos pendientes."];
   }
 }
+
+export async function verificarAnticiposPendientes(clienteID) {
+  try {
+    const url = `/api/anticipos/anticiposPendientes?clienteID=${clienteID}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Error en la respuesta del servidor");
+
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) return [];
+    const pendientes = data.filter((a) => Number(a.saldoPendiente || 0) > 0);
+
+    if (pendientes.length === 0) return [];
+
+    // Generamos mensajes detallados por anticipo pendiente
+    const mensajes = pendientes.map((a) => {
+      const saldoInicial = Number(a.saldoInicial || 0).toLocaleString("es-HN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+      const totalAbono = Number(a.totalAbono || 0).toLocaleString("es-HN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+      const totalPagoInteres = Number(a.totalPagoInteres || 0).toLocaleString(
+        "es-HN",
+        { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+      );
+      const totalIntCargo = Number(a.totalIntCargo || 0).toLocaleString(
+        "es-HN",
+        { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+      );
+      const saldoPendiente = Number(a.saldoPendiente || 0).toLocaleString(
+        "es-HN",
+        { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+      );
+
+      return `Anticipo #${a.anticipoID}: Monto Inicial: ${saldoInicial}, Abonos: ${totalAbono}, Pago Interés: ${totalPagoInteres}, Interés Cargado: ${totalIntCargo}, Saldo Pendiente: ${saldoPendiente}`;
+    });
+
+    return mensajes;
+  } catch (err) {
+    console.error(err);
+    return ["No se pudieron verificar los anticipos pendientes."];
+  }
+}

@@ -8,12 +8,17 @@ import { validarDatos } from "@/lib/validacionesForm";
 import { exportEntregaContrato } from "@/Doc/Documentos/entregaContrato";
 import ProtectedPage from "@/components/ProtectedPage";
 import { FloatingButton } from "@/components/Button";
-import { UnorderedListOutlined } from "@ant-design/icons";
+import { UnorderedListOutlined, SolutionOutlined } from "@ant-design/icons";
+import NotificationDrawer from "@/components/NotificationDrawer";
+import FloatingNotificationButton from "@/components/FloatingNotificationButton";
 import {
   obtenerClientesPendientesContratos,
   obtenerProductosSelect,
   obtenerSaldoContrato,
   obtenerContratosPendientes,
+  verificarAnticiposPendientes,
+  verificarPrestamosPendientes,
+  verificarDepositosPendientes,
 } from "@/lib/consultas";
 import { validarEnteroPositivo } from "@/config/validacionesForm";
 import {
@@ -21,11 +26,15 @@ import {
   calcularPesoBrutoDesdeOro,
 } from "@/lib/calculoCafe";
 import { truncarDosDecimalesSinRedondear } from "@/lib/calculoCafe";
+import { useRouter } from "next/navigation";
 
 export default function LiquidacionContratoForm() {
   const [clientes, setClientes] = useState([]);
   const [contratos, setContratos] = useState([]);
   const [productos, setProductos] = useState([]);
+  const [drawerVisible, setDrawerVisible] = useState(false); // control de drawer
+  const [notifications, setNotifications] = useState([]); // notificaciones
+  const router = useRouter();
 
   const [formState, setFormState] = useState({
     cliente: null,
@@ -50,6 +59,32 @@ export default function LiquidacionContratoForm() {
   const [messageApi, contextHolder] = message.useMessage();
   const messageRef = useRef(messageApi);
   const [previewVisible, setPreviewVisible] = useState(false);
+
+  useEffect(() => {
+    async function cargarNotificaciones() {
+      setNotifications([]); // limpiar notificaciones si cambia el cliente
+
+      if (!formState.cliente || !formState.cliente.value) return;
+
+      const mensajesDepositos = await verificarDepositosPendientes(
+        formState.cliente.value
+      );
+      const mensajesPrestamos = await verificarPrestamosPendientes(
+        formState.cliente.value
+      );
+      const mensajesAnticipos = await verificarAnticiposPendientes(
+        formState.cliente.value
+      );
+
+      setNotifications([
+        ...mensajesDepositos,
+        ...mensajesPrestamos,
+        ...mensajesAnticipos,
+      ]);
+    }
+
+    cargarNotificaciones();
+  }, [formState.cliente]);
 
   const handleChange = (key, value) =>
     setFormState((prev) => ({ ...prev, [key]: value }));
@@ -482,15 +517,30 @@ export default function LiquidacionContratoForm() {
 
   return (
     <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
-      <FloatingButton
-        title="Ir al registro"
-        icon={<UnorderedListOutlined />}
-        top={20}
-        right={30}
-        route="/private/page/transacciones/contrato/detallecontrato"
-      />
       <>
         {contextHolder}
+        <FloatingNotificationButton
+          notifications={notifications}
+          onClick={() => setDrawerVisible(true)}
+        />
+        <NotificationDrawer
+          visible={drawerVisible}
+          onClose={() => setDrawerVisible(false)}
+          title="Notificaciones"
+          subtitle={formState.cliente?.label}
+          notifications={notifications}
+          actions={[
+            {
+              tooltip: "Ir a Registro",
+              icon: <SolutionOutlined />,
+              onClick: () =>
+                router.push(
+                  "/private/page/transacciones/contrato/detallecontrato"
+                ),
+            },
+          ]}
+        />
+
         <Formulario
           key={formState.cliente?.value || "empty"}
           title="Entrega de Contrato"

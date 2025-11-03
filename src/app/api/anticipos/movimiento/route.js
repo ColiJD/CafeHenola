@@ -139,15 +139,50 @@ export async function POST(req) {
 
       // === CARGO DE INTERESES ===
       if (tipo_movimiento === "CARGO_ANTICIPO") {
-        const activos = anticipos
+        // Filtrar anticipos activos
+        const anticiposActivos = anticipos
           .filter((a) => !["ANULADO"].includes(a.estado))
           .sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
 
-        if (!activos.length) {
+        if (!anticiposActivos.length) {
           throw new Error("No hay anticipos activos para aplicar el cargo.");
         }
 
-        const a = activos[0]; // Aplicar al primero por FIFO
+        // Filtrar anticipos con deuda real
+        const anticiposConDeuda = anticiposActivos
+          .map((a) => {
+            const totalAbonos = a.movimientos_anticipos
+              .filter((m) => m.tipo_movimiento === "ABONO_ANTICIPO")
+              .reduce((sum, m) => sum + Number(m.monto || 0), 0);
+
+            const totalCargos = a.movimientos_anticipos
+              .filter((m) => m.tipo_movimiento === "CARGO_ANTICIPO")
+              .reduce((sum, m) => sum + Number(m.monto || 0), 0);
+
+            const totalPagosInteres = a.movimientos_anticipos
+              .filter((m) => m.tipo_movimiento === "INTERES_ANTICIPO")
+              .reduce((sum, m) => sum + Number(m.monto || 0), 0);
+
+            const deudaCapital = Number(a.monto || 0) - totalAbonos;
+            const interesPendiente = totalCargos - totalPagosInteres;
+
+            return {
+              ...a,
+              deudaCapital,
+              interesPendiente,
+              totalCargos,
+            };
+          })
+          .filter((a) => a.deudaCapital > 0 || a.interesPendiente > 0); // Solo los que tengan deuda
+
+        if (!anticiposConDeuda.length) {
+          throw new Error(
+            "Todos los anticipos de este cliente están completamente pagados. No se pueden agregar más cargos."
+          );
+        }
+
+        // Tomar el primer anticipo con deuda real (FIFO)
+        const a = anticiposConDeuda[0];
 
         await tx.movimientos_anticipos.create({
           data: {

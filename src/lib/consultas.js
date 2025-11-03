@@ -211,3 +211,45 @@ export async function verificarDepositosPendientes(clienteID) {
     return ["No se pudieron verificar los depósitos pendientes."];
   }
 }
+
+export async function verificarPrestamosPendientes(clienteID) {
+  try {
+    const url = `/api/prestamos/estadoPrestamo?clienteID=${clienteID}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Error en la respuesta del servidor");
+
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) return [];
+
+    // Generamos mensajes detallados por préstamo pendiente
+    const mensajes = data.map((p) => {
+      const saldoInicial = Number(p.saldoInicial || 0).toLocaleString("es-HN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+      const totalAbono = Number(p.totalAbono || 0).toLocaleString("es-HN", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+      const totalPagoInteres = Number(p.totalPagoInteres || 0).toLocaleString(
+        "es-HN",
+        { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+      );
+      const totalIntCargo = Number(p.totalIntCargo || 0).toLocaleString(
+        "es-HN",
+        { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+      );
+      const saldoPendiente = Number(p.saldoPendiente || 0).toLocaleString(
+        "es-HN",
+        { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+      );
+
+      return `Préstamo #${p.prestamoID}: Monto Inicial: ${saldoInicial}, Abonos: ${totalAbono}, Pago Interés: ${totalPagoInteres}, Interés Cargado: ${totalIntCargo}, Saldo Pendiente: ${saldoPendiente}`;
+    });
+
+    return mensajes;
+  } catch (err) {
+    console.error(err);
+    return ["No se pudieron verificar los préstamos pendientes."];
+  }
+}

@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import {
   verificarClientesPendientesContratos,
   verificarDepositosPendientes,
+  verificarPrestamosPendientes,
 } from "@/lib/consultas";
 import { BellOutlined } from "@ant-design/icons";
 import NotificationDrawer from "@/components/NotificationDrawer";
@@ -71,9 +72,16 @@ export default function CompraForm({ compraId }) {
       const mensajesDepositos = await verificarDepositosPendientes(
         cliente.value
       );
+      const mensajesPrestamos = await verificarPrestamosPendientes(
+        cliente.value
+      );
 
       // Combinar todos los mensajes
-      const todosMensajes = [...mensajesContratos, ...mensajesDepositos];
+      const todosMensajes = [
+        ...mensajesContratos,
+        ...mensajesDepositos,
+        ...mensajesPrestamos,
+      ];
 
       setNotifications(todosMensajes);
     }

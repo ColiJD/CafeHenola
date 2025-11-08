@@ -705,6 +705,12 @@ export default function PrestamosGeneral() {
       allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS", "AUDITORES"]}
     >
       <>
+        <style>{`
+        .total-row td {
+          background-color: #f2f2f2 !important;
+          font-weight: bold;
+        }
+      `}</style>
         {contextHolder}
         <div style={{ background: "#f0f2f5", minHeight: "100vh" }}>
           <Card

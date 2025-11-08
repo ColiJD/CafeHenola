@@ -89,7 +89,7 @@ export default function PrestamosGeneral() {
                 ? new Date(prestamo.fecha).toLocaleDateString("es-HN")
                 : "",
               interes: prestamo.tasa_interes ? `${prestamo.tasa_interes}%` : "",
-              descripcion: prestamo.observacion || "Préstamo inicial",
+              descripcion: prestamo.observacion || "Préstamo",
               abono: null,
               prestamo: Number(prestamo.monto || 0),
               intCargo: null,
@@ -164,7 +164,7 @@ export default function PrestamosGeneral() {
                 ? new Date(ant.fecha).toLocaleDateString("es-HN")
                 : "",
               interes: ant.tasa_interes ? `${ant.tasa_interes}%` : "",
-              descripcion: ant.observacion || "Anticipo inicial",
+              descripcion: ant.observacion || "Anticipo",
               abono: null,
               anticipo: Number(ant.monto || 0),
               intCargo: null,
@@ -295,7 +295,7 @@ export default function PrestamosGeneral() {
           return dateA - dateB;
         },
         sortDirections: ["ascend", "descend"], // solo estos dos, no hay opción de "none"
-        defaultSortOrder: "ascend",
+        defaultSortOrder: "descend",
       },
       {
         title: "Días",
@@ -338,14 +338,14 @@ export default function PrestamosGeneral() {
         render: (val, record) =>
           val ? (
             record.tipo === "TOTAL" ? (
-              <Text strong style={{ color: "#722ed1" }}>
+              <Text strong style={{ color: "#000" }}>
                 {val.toLocaleString("es-HN", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}
               </Text>
             ) : (
-              <Text style={{ color: "#722ed1" }}>
+              <Text style={{ color: "#000" }}>
                 {val.toLocaleString("es-HN", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
@@ -364,14 +364,14 @@ export default function PrestamosGeneral() {
         render: (val, record) =>
           val ? (
             record.tipo === "TOTAL" ? (
-              <Text strong style={{ color: "#52c41a" }}>
+              <Text strong>
                 {val.toLocaleString("es-HN", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}
               </Text>
             ) : (
-              <Text style={{ color: "#52c41a" }}>
+              <Text style={{ color: "#000" }}>
                 {val.toLocaleString("es-HN", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
@@ -391,14 +391,14 @@ export default function PrestamosGeneral() {
         render: (val, record) =>
           val ? (
             record.tipo === "TOTAL" ? (
-              <Text strong style={{ color: "#ff4d4f" }}>
+              <Text strong style={{ color: "#000" }}>
                 {val.toLocaleString("es-HN", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}
               </Text>
             ) : (
-              <Text style={{ color: "#ff4d4f" }}>
+              <Text style={{ color: "#090ceaff" }}>
                 {val.toLocaleString("es-HN", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
@@ -418,14 +418,14 @@ export default function PrestamosGeneral() {
         render: (val, record) =>
           val ? (
             record.tipo === "TOTAL" ? (
-              <Text strong style={{ color: "#52c41a" }}>
+              <Text strong style={{ color: "#000" }}>
                 {val.toLocaleString("es-HN", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}
               </Text>
             ) : (
-              <Text style={{ color: "#52c41a" }}>
+              <Text style={{ color: "#ff4d4f" }}>
                 {val.toLocaleString("es-HN", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
@@ -444,14 +444,14 @@ export default function PrestamosGeneral() {
         render: (val, record) =>
           val ? (
             record.tipo === "TOTAL" ? (
-              <Text strong style={{ color: "#ff4d4f" }}>
+              <Text strong style={{ color: "#000" }}>
                 {val.toLocaleString("es-HN", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })}
               </Text>
             ) : (
-              <Text style={{ color: "#ff4d4f" }}>
+              <Text style={{ color: "#000" }}>
                 {val.toLocaleString("es-HN", {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
@@ -474,7 +474,7 @@ export default function PrestamosGeneral() {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
           });
-          const color = val > 0 ? "#52c41a" : val < 0 ? "#ff4d4f" : "#000";
+          const color = val > 0 ? "#ff4d4f" : val < 0 ? "#000" : "#000";
           return (
             <Text strong style={{ fontSize: 16, color }}>
               {formatted}

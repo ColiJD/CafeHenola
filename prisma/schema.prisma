@@ -39,14 +39,16 @@ model password_resets {
 }
 
 model compradores {
-  compradorId        Int      @id @default(autoincrement())
-  compradorNombre    String   @db.VarChar(255)
-  compradorRTN       String?  @unique(map: "compradorRTN") @db.VarChar(50)
-  compradorDireccion String?  @db.VarChar(300)
-  compradorTelefono  String   @db.VarChar(50)
-  compradorEmail     String   @db.VarChar(255)
-  createdAt          DateTime @default(now()) @db.DateTime(0)
+  compradorId        Int         @id @default(autoincrement())
+  compradorNombre    String      @db.VarChar(255)
+  compradorRTN       String?     @unique(map: "compradorRTN") @db.VarChar(50)
+  compradorDireccion String?     @db.VarChar(300)
+  compradorTelefono  String      @db.VarChar(50)
+  compradorEmail     String      @db.VarChar(255)
+  createdAt          DateTime    @default(now()) @db.DateTime(0)
   compra             compra[]
+  liqsalida          liqsalida[]
+  salida             salida[]
 }
 
 model cierrecontrato {
@@ -298,4 +300,43 @@ model movimientos_anticipos {
   anticipo        anticipo? @relation(fields: [anticipoId], references: [anticipoId], onDelete: NoAction, onUpdate: NoAction, map: "movimientos_anticipos_ibfk_1")
 
   @@index([anticipoId], map: "anticipoId")
+}
+
+model detalleliqsalida {
+  id          Int        @id @default(autoincrement())
+  liqSalidaID Int?
+  salidaID    Int?
+  cantidadQQ  Decimal?   @db.Decimal(15, 2)
+  liqsalida   liqsalida? @relation(fields: [liqSalidaID], references: [liqSalidaID], onDelete: NoAction, onUpdate: NoAction, map: "detalleliqsalida_ibfk_1")
+  salida      salida?    @relation(fields: [salidaID], references: [salidaID], onDelete: NoAction, onUpdate: NoAction, map: "detalleliqsalida_ibfk_2")
+
+  @@index([liqSalidaID], map: "liqSalidaID")
+  @@index([salidaID], map: "salidaID")
+}
+
+model liqsalida {
+  liqSalidaID      Int                @id @default(autoincrement())
+  liqFecha         DateTime?          @db.DateTime(0)
+  compradorID      Int?
+  liqMovimiento    String?            @db.VarChar(20)
+  liqCantidadQQ    Decimal?           @db.Decimal(15, 2)
+  liqDescripcion   String?            @db.VarChar(200)
+  detalleliqsalida detalleliqsalida[]
+  compradores      compradores?       @relation(fields: [compradorID], references: [compradorId], onDelete: NoAction, onUpdate: NoAction, map: "liqsalida_ibfk_1")
+
+  @@index([compradorID], map: "compradorID")
+}
+
+model salida {
+  salidaID          Int                @id @default(autoincrement())
+  salidaFecha       DateTime?          @db.DateTime(0)
+  compradorID       Int
+  salidaMovimiento  String?            @db.VarChar(20)
+  salidaCantidadQQ  Decimal?           @db.Decimal(15, 2)
+  salidaPrecio      Decimal?           @db.Decimal(15, 2)
+  salidaDescripcion String?            @db.VarChar(200)
+  detalleliqsalida  detalleliqsalida[]
+  compradores       compradores        @relation(fields: [compradorID], references: [compradorId], onDelete: NoAction, onUpdate: NoAction, map: "salida_ibfk_1")
+
+  @@index([compradorID], map: "compradorID")
 }

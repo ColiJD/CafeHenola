@@ -113,6 +113,12 @@ export const menuItems = [
         href: RutaTransaccion + "/venta",
         image: Compras,
       },
+       {
+        id: 202,
+        name: "Compromisos",
+        href: RutaTransaccion + "/salidas",
+        image: deposito,
+      },
     ],
   },
 

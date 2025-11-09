@@ -18,7 +18,6 @@ export async function GET(req) {
     let desde, hasta;
 
     if (desdeParam && hastaParam) {
-      // Fechas con UTC incluyendo todo el día
       desde = new Date(new Date(desdeParam).setUTCHours(0, 0, 0, 0));
       hasta = new Date(new Date(hastaParam).setUTCHours(23, 59, 59, 999));
     } else {
@@ -39,13 +38,13 @@ export async function GET(req) {
       );
     }
 
-    // 🔹 Traer todos los compradores
+   
     const compradores = await prisma.compradores.findMany({
       select: { compradorId: true, compradorNombre: true },
     });
 
-    // 🔹 Para cada comprador, calcular agregados de compra
     const reportePromises = compradores.map(async (c) => {
+  
       const compraAgg = await prisma.compra.aggregate({
         _sum: { compraCantidadQQ: true, compraTotal: true },
         where: {
@@ -55,22 +54,54 @@ export async function GET(req) {
         },
       });
 
-      const totalQQ = Number(compraAgg._sum.compraCantidadQQ || 0);
-      const totalLps = Number(compraAgg._sum.compraTotal || 0);
+      const totalCompraQQ = Number(compraAgg._sum.compraCantidadQQ || 0);
+      const totalCompraLps = Number(compraAgg._sum.compraTotal || 0);
 
-      if (totalQQ === 0 && totalLps === 0) return null;
+      const salidas = await prisma.salida.findMany({
+        where: {
+          compradorID: c.compradorId,
+          salidaFecha: { gte: desde, lte: hasta },
+        },
+        select: {
+          salidaCantidadQQ: true,
+          salidaPrecio: true, // precio unitario
+        },
+      });
+
+   
+      let salidaCantidad = 0;
+      let salidaTotal = 0;
+
+      for (const s of salidas) {
+        const qq = Number(s.salidaCantidadQQ || 0);
+        const precio = Number(s.salidaPrecio || 0);
+        salidaCantidad += qq;
+        salidaTotal += qq * precio;
+      }
+
+ 
+      if (
+        totalCompraQQ === 0 &&
+        totalCompraLps === 0 &&
+        salidaCantidad === 0 &&
+        salidaTotal === 0
+      ) {
+        return null;
+      }
 
       return {
         compradorId: c.compradorId,
         nombre: c.compradorNombre.trim(),
-        compraCantidadQQ: totalQQ,
-        compraTotalLps: totalLps,
+
+        compraCantidadQQ: totalCompraQQ,
+        compraTotalLps: totalCompraLps,
+
+        salidaCantidadQQ: salidaCantidad,
+        salidaTotalLps: salidaTotal,
       };
     });
 
     let reporte = await Promise.all(reportePromises);
-
-    // 🔹 Filtrar compradores sin movimientos
     reporte = reporte.filter((r) => r !== null);
 
     return new Response(JSON.stringify(reporte), { status: 200 });

@@ -46,7 +46,7 @@ export async function POST(req) {
         data: {
           liqFecha: new Date(),
           compradorID: Number(compradorID),
-          liqMovimiento: "EntregaFisica",
+          liqMovimiento: "Salida",
           liqCantidadQQ: cantidadSolicitada,
           liqDescripcion: descripcion || "",
         },

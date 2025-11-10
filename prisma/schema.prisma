@@ -307,6 +307,7 @@ model detalleliqsalida {
   liqSalidaID Int?
   salidaID    Int?
   cantidadQQ  Decimal?   @db.Decimal(15, 2)
+  movimiento  String?    @db.VarChar(20)
   liqsalida   liqsalida? @relation(fields: [liqSalidaID], references: [liqSalidaID], onDelete: NoAction, onUpdate: NoAction, map: "detalleliqsalida_ibfk_1")
   salida      salida?    @relation(fields: [salidaID], references: [salidaID], onDelete: NoAction, onUpdate: NoAction, map: "detalleliqsalida_ibfk_2")
 

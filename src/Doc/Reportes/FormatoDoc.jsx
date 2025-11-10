@@ -13,7 +13,12 @@ import fondoImg from "@/img/frijoles.png";
  *      isTotal -> columna de monto (Lps)
  * @param {Object} options - Opciones (title, colores, orientación)
  */
-export const generarReportePDF = (data, filtros = {}, columnas = [], options = {}) => {
+export const generarReportePDF = (
+  data,
+  filtros = {},
+  columnas = [],
+  options = {}
+) => {
   const doc = new jsPDF({
     orientation: options.orientation || "landscape",
     unit: "mm",
@@ -32,26 +37,29 @@ export const generarReportePDF = (data, filtros = {}, columnas = [], options = {
   const formatNumber = (num) =>
     !num || isNaN(num)
       ? "0.00"
-      : Number(num).toLocaleString("es-HN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      : Number(num).toLocaleString("es-HN", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
 
   // -------------------------------
   // ENCABEZADO CON LOGO
   // -------------------------------
   const headerHeight = 32;
-  
+
   // Fondo del encabezado
   doc.setFillColor(...colorPrimario);
   doc.rect(0, 0, pageWidth, headerHeight, "F");
-  
+
   // Franja decorativa superior
   doc.setFillColor(colorAccento[0], colorAccento[1], colorAccento[2]);
   doc.rect(0, 0, pageWidth, 3, "F");
-  
+
   // Logo (izquierda con margen seguro)
   const logoSize = 18;
   const logoX = margin;
   const logoY = 7;
-  
+
   try {
     doc.addImage(fondoImg, "PNG", logoX, logoY, logoSize, logoSize);
   } catch (error) {
@@ -67,35 +75,53 @@ export const generarReportePDF = (data, filtros = {}, columnas = [], options = {
   doc.setFontSize(20);
   doc.setFont("helvetica", "bold");
   doc.text(options.title || "REPORTE", pageWidth / 2, 14, { align: "center" });
-  
+
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
-  doc.text(`Generado el: ${dayjs().format("DD/MM/YYYY [a las] HH:mm")}`, pageWidth / 2, 22, { align: "center" });
+  doc.text(
+    `Generado el: ${dayjs().format("DD/MM/YYYY [a las] HH:mm")}`,
+    pageWidth / 2,
+    22,
+    { align: "center" }
+  );
 
   // Línea decorativa inferior del encabezado
   doc.setDrawColor(255, 255, 255);
   doc.setLineWidth(0.5);
-  doc.line(margin + 30, headerHeight - 3, pageWidth - margin - 30, headerHeight - 3);
+  doc.line(
+    margin + 30,
+    headerHeight - 3,
+    pageWidth - margin - 30,
+    headerHeight - 3
+  );
 
   // -------------------------------
   // SECCIÓN DE FILTROS
   // -------------------------------
   let yPos = headerHeight + 8;
-  
+
   // Calcular altura necesaria para filtros
   let filtrosLines = 1; // Título
   if (filtros.fechaInicio && filtros.fechaFin) filtrosLines++;
   if (filtros.nombreFiltro) filtrosLines++;
   if (!filtros.fechaInicio && !filtros.nombreFiltro) filtrosLines++;
-  
+
   const lineHeight = 5.5;
   const filtrosHeight = filtrosLines * lineHeight + 8;
-  
+
   // Caja de filtros
   doc.setFillColor(250, 250, 252);
   doc.setDrawColor(...colorPrimario);
   doc.setLineWidth(0.3);
-  doc.roundedRect(margin, yPos, pageWidth - (margin * 2), filtrosHeight, 2, 2, "FD");
+  doc.roundedRect(
+    margin,
+    yPos,
+    pageWidth - margin * 2,
+    filtrosHeight,
+    2,
+    2,
+    "FD"
+  );
 
   // Contenido de filtros
   yPos += 6;
@@ -103,7 +129,7 @@ export const generarReportePDF = (data, filtros = {}, columnas = [], options = {
   doc.setFontSize(11);
   doc.setFont("helvetica", "bold");
   doc.text("FILTROS APLICADOS", margin + 5, yPos);
-  
+
   yPos += lineHeight + 1;
   doc.setTextColor(...colorTexto);
   doc.setFont("helvetica", "normal");
@@ -114,7 +140,9 @@ export const generarReportePDF = (data, filtros = {}, columnas = [], options = {
     doc.text("Período:", margin + 5, yPos);
     doc.setFont("helvetica", "normal");
     doc.text(
-      `${dayjs(filtros.fechaInicio).format("DD/MM/YYYY")} - ${dayjs(filtros.fechaFin).format("DD/MM/YYYY")}`,
+      `${dayjs(filtros.fechaInicio).format("DD/MM/YYYY")} - ${dayjs(
+        filtros.fechaFin
+      ).format("DD/MM/YYYY")}`,
       margin + 23,
       yPos
     );
@@ -125,7 +153,10 @@ export const generarReportePDF = (data, filtros = {}, columnas = [], options = {
     doc.text("Búsqueda:", margin + 5, yPos);
     doc.setFont("helvetica", "normal");
     const maxTextWidth = pageWidth - margin * 2 - 30;
-    const searchText = doc.splitTextToSize(`"${filtros.nombreFiltro}"`, maxTextWidth);
+    const searchText = doc.splitTextToSize(
+      `"${filtros.nombreFiltro}"`,
+      maxTextWidth
+    );
     doc.text(searchText, margin + 25, yPos);
     yPos += lineHeight * searchText.length;
   }
@@ -135,7 +166,7 @@ export const generarReportePDF = (data, filtros = {}, columnas = [], options = {
     doc.text("Sin filtros aplicados (todos los registros)", margin + 5, yPos);
     yPos += lineHeight;
   }
-  
+
   // Espacio después de filtros
   yPos = headerHeight + 8 + filtrosHeight + 8;
 
@@ -146,7 +177,7 @@ export const generarReportePDF = (data, filtros = {}, columnas = [], options = {
   let totalCantidad = 0;
   let totalMonto = 0;
 
-  columnas.forEach(col => {
+  columnas.forEach((col) => {
     if (col.isCantidad || col.isTotal) {
       const suma = data.reduce((acc, r) => acc + (Number(r[col.key]) || 0), 0);
       totales[col.key] = suma;
@@ -161,8 +192,8 @@ export const generarReportePDF = (data, filtros = {}, columnas = [], options = {
   // -------------------------------
   // TABLA DETALLE
   // -------------------------------
-  const tableBody = data.map(row =>
-    columnas.map(col => {
+  const tableBody = data.map((row) =>
+    columnas.map((col) => {
       if (col.format === "moneda") return `L. ${formatNumber(row[col.key])}`;
       if (col.format === "numero") return formatNumber(row[col.key]);
       return row[col.key] || "";
@@ -170,16 +201,17 @@ export const generarReportePDF = (data, filtros = {}, columnas = [], options = {
   );
 
   // Fila de totales
-  const totalRow = columnas.map(col => {
+  const totalRow = columnas.map((col) => {
     if (col.isCantidad) return formatNumber(totales[col.key] || 0);
     if (col.isTotal) return `L. ${formatNumber(totales[col.key] || 0)}`;
-    if (col.key.toLowerCase().includes("promedio")) return `L. ${formatNumber(promedioGeneral)}`;
+    if (col.key.toLowerCase().includes("promedio"))
+      return `L. ${formatNumber(promedioGeneral)}`;
     return "";
   });
 
   tableBody.push(totalRow);
 
-  const tableHead = columnas.map(col => col.header);
+  const tableHead = columnas.map((col) => col.header);
 
   // Calcular espacio disponible para la tabla
   const footerSpace = 20;
@@ -209,7 +241,12 @@ export const generarReportePDF = (data, filtros = {}, columnas = [], options = {
       fillColor: colorSecundario,
     },
     columnStyles: columnas.reduce((acc, col, idx) => {
-      if (col.format === "moneda" || col.format === "numero" || col.isCantidad || col.isTotal) {
+      if (
+        col.format === "moneda" ||
+        col.format === "numero" ||
+        col.isCantidad ||
+        col.isTotal
+      ) {
         acc[idx] = { halign: "right" };
       }
       return acc;
@@ -217,7 +254,7 @@ export const generarReportePDF = (data, filtros = {}, columnas = [], options = {
     margin: { left: margin, right: margin, bottom: footerSpace },
     didParseCell: (data) => {
       // Fila de totales con estilo especial
-      if (data.row.index === tableBody.length - 1 && data.section === 'body') {
+      if (data.row.index === tableBody.length - 1 && data.section === "body") {
         data.cell.styles.fillColor = [52, 73, 94];
         data.cell.styles.textColor = [255, 255, 255];
         data.cell.styles.fontStyle = "bold";
@@ -228,39 +265,18 @@ export const generarReportePDF = (data, filtros = {}, columnas = [], options = {
     didDrawPage: (dataArg) => {
       const pageCount = doc.internal.getNumberOfPages();
       const currentPage = dataArg.pageNumber;
-      
-      // Solo dibujar encabezado en la primera página
-      if (currentPage === 1) {
-        // Ya dibujado arriba
-      } else {
-        // Encabezado simplificado para páginas siguientes
-        doc.setFillColor(...colorPrimario);
-        doc.rect(0, 0, pageWidth, 20, "F");
-        
-        doc.setFillColor(colorAccento[0], colorAccento[1], colorAccento[2]);
-        doc.rect(0, 0, pageWidth, 2, "F");
-        
-        try {
-          doc.addImage(fondoImg, "PNG", margin, 4, 12, 12);
-        } catch (error) {
-          // Silencioso
-        }
-        
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "bold");
-        doc.text(options.title || "REPORTE", pageWidth / 2, 12, { align: "center" });
-      }
-      
-      // Pie de página
+
+      // ✅ Ya NO se dibuja encabezado en páginas siguientes
+      // Nada en esta sección excepto en página 1, pero en página 1 ya lo dibujaste arriba
+      // Así que no ponemos nada para páginas siguientes
+
+      // ✅ Pie de página
       const footerY = pageHeight - 12;
-      
-      // Línea decorativa
+
       doc.setDrawColor(...colorPrimario);
       doc.setLineWidth(0.5);
       doc.line(margin, footerY, pageWidth - margin, footerY);
-      
-      // Número de página (derecha)
+
       doc.setFontSize(8);
       doc.setTextColor(100, 100, 100);
       doc.setFont("helvetica", "normal");
@@ -270,21 +286,28 @@ export const generarReportePDF = (data, filtros = {}, columnas = [], options = {
         footerY + 5,
         { align: "right" }
       );
-      
-      // Mini logo en el pie
+
       const miniLogoSize = 5;
       try {
-        doc.addImage(fondoImg, "PNG", margin, footerY + 1.5, miniLogoSize, miniLogoSize);
-      } catch (error) {
-        // Silencioso
-      }
+        doc.addImage(
+          fondoImg,
+          "PNG",
+          margin,
+          footerY + 1.5,
+          miniLogoSize,
+          miniLogoSize
+        );
+      } catch (error) {}
     },
   });
 
   // -------------------------------
   // Guardar PDF
   // -------------------------------
-  const filename = `${(options.title || "reporte").replace(/\s+/g, "_")}-${dayjs().format("YYYY-MM-DD-HHmm")}.pdf`;
+  const filename = `${(options.title || "reporte").replace(
+    /\s+/g,
+    "_"
+  )}-${dayjs().format("YYYY-MM-DD-HHmm")}.pdf`;
   doc.save(filename);
   return doc;
 };

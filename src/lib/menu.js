@@ -115,7 +115,7 @@ export const menuItems = [
       },
       {
         id: 202,
-        name: "Compromisos",
+        name: "Deposito",
         href: RutaTransaccion + "/salidas",
         image: deposito,
       },

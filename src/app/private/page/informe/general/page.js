@@ -52,12 +52,8 @@ export default function ResumenMovimientos() {
       tipo: "Salidas (Venta)",
       compraQQ: data?.compras?.salidas?._sum?.compraCantidadQQ ?? 0,
       compraLps: data?.compras?.salidas?._sum?.compraTotal ?? 0,
-      depositoQQ: data?.depositos?.salidas?._sum?.cantidadQQ ?? 0,
-      depositoLps: data?.depositos?.salidas?._sum?.totalLps ?? 0,
-      contratoQQ: data?.contratos?.salidas?._sum?.cantidadQQ ?? 0,
-      contratoLps:
-        (data?.contratos?.salidas?._sum?.cantidadQQ ?? 0) *
-        (data?.contratos?.salidas?._sum?.precioQQ ?? 0),
+      depositoQQ: data?.salidas?.cantidadQQ ?? 0, // 🔹 aquí usamos el objeto 'salidas' de la API
+      depositoLps: data?.salidas?.total ?? 0, // 🔹 aquí usamos el objeto 'salidas' de la API
     };
 
     // 🔹 Calcular totales combinados y promedio
@@ -241,6 +237,8 @@ export default function ResumenMovimientos() {
       row.depositoLps > 0
   );
 
+
+
   if (!mounted) return <div style={{ padding: 24 }}>Cargando...</div>;
 
   return (
@@ -375,6 +373,8 @@ export default function ResumenMovimientos() {
             />
           )}
         </Card>
+
+    
       </div>
     </ProtectedPage>
   );

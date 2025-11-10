@@ -56,27 +56,31 @@ export async function GET(req) {
     });
 
     // 🔹 Contratos (movimientos reales en CierreContrato)
-    const contratosEntradas = await prisma.detallecontrato.aggregate({
-      _sum: { cantidadQQ: true, precioQQ: true },
+    // Obtener los detalles del contrato dentro del rango
+    const contratosDetalles = await prisma.detallecontrato.findMany({
       where: {
         tipoMovimiento: "Entrada",
         fecha: { gte: desde, lte: hasta },
       },
-    });
-
-    const contratosSalidas = await prisma.detallecontrato.aggregate({
-      _sum: { cantidadQQ: true, precioQQ: true },
-      where: {
-        tipoMovimiento: "Salida",
-        fecha: { gte: desde, lte: hasta },
+      select: {
+        cantidadQQ: true,
+        precioQQ: true,
       },
     });
 
-    // 🔹 Retenciones = tabla Contrato
-    const contratosRetencion = await prisma.contrato.aggregate({
-      _sum: { contratoRetencionQQ: true },
-      where: { contratoFecha: { gte: desde, lte: hasta } },
+    // Calcular total real multiplicando cantidad * precio
+    let totalCantidad = 0;
+    let totalMonto = 0;
+
+    contratosDetalles.forEach((item) => {
+      totalCantidad += item.cantidadQQ;
+      totalMonto += item.cantidadQQ * item.precioQQ;
     });
+
+    const contratosEntradas = {
+      cantidadQQ: totalCantidad,
+      total: totalMonto,
+    };
 
     // 🔹 RESUMEN DE DEPÓSITOS
     // Movimientos reales = tabla DetalleLiqDeposito pero filtrando por Deposito.depositoMovimiento
@@ -93,42 +97,33 @@ export async function GET(req) {
       },
     });
 
-    const depositosSalidas = await prisma.detalleliqdeposito.aggregate({
-      _sum: {
-        cantidadQQ: true,
-        totalLps: true,
-      },
+    const salidasDetalles = await prisma.salida.findMany({
       where: {
-        liqdeposito: {
-          liqMovimiento: "Salida",
-          liqFecha: { gte: desde, lte: hasta },
-        },
+        salidaMovimiento: "Salida",
+        salidaFecha: { gte: desde, lte: hasta },
       },
+      select: { salidaCantidadQQ: true, salidaPrecio: true },
     });
 
-    // Retenciones si necesitas sumarlas desde deposito
-    const depositosRetencion = await prisma.deposito.aggregate({
-      _sum: {
-        depositoRetencionQQ: true,
-      },
-      where: {
-        depositoFecha: { gte: desde, lte: hasta },
-      },
+    let totalSalidaCantidad = 0;
+    let totalSalidaMonto = 0;
+    salidasDetalles.forEach((item) => {
+      totalSalidaCantidad += Number(item.salidaCantidadQQ || 0);
+      totalSalidaMonto +=
+        Number(item.salidaCantidadQQ || 0) * Number(item.salidaPrecio || 0);
     });
+
+    const salidas = {
+      cantidadQQ: totalSalidaCantidad,
+      total: totalSalidaMonto,
+    };
 
     return new Response(
       JSON.stringify({
         compras: { entradas: comprasEntradas, salidas: comprasSalidas },
-        contratos: {
-          entradas: contratosEntradas,
-          salidas: contratosSalidas,
-          retencion: contratosRetencion,
-        },
-        depositos: {
-          entradas: depositosEntradas,
-          salidas: depositosSalidas,
-          retencion: depositosRetencion,
-        },
+        contratos: { entradas: contratosEntradas },
+        depositos: { entradas: depositosEntradas },
+        salidas,
       }),
       { status: 200 }
     );
@@ -139,22 +134,3 @@ export async function GET(req) {
     });
   }
 }
-
-// // 👀 Debug opcional: muestra todos los registros para inspección
-// const debugCompras = await prisma.compra.findMany({
-//   where: {
-//     compraFecha: { gte: desde, lte: hasta },
-//   },
-//   select: {
-//     compraId: true,
-//     compraMovimiento: true,
-//     compraFecha: true,
-//     compraCantidadQQ: true,
-//     compraTotal: true,
-//     compraRetencio: true,
-//   },
-//   orderBy: { compraId: "asc" },
-// });
-// console.log("📌 Registros encontrados:", debugCompras);
-
-// 🔹 Totales agregados, ignorando mayúsculas/minúsculas

@@ -39,12 +39,12 @@ export const menuItems = [
         image: deposito,
       },
 
-      {
-        id: 401,
-        name: "Saldo Por Deposito",
-        href: RutaTransaccion + "/deposito/vista",
-        image: contrato,
-      },
+      // {
+      //   id: 401,
+      //   name: "Saldo Por Deposito",
+      //   href: RutaTransaccion + "/deposito/vista",
+      //   image: contrato,
+      // },
       {
         id: 402,
         name: "Registro de Entradas",
@@ -112,6 +112,12 @@ export const menuItems = [
         name: "Venta Directa",
         href: RutaTransaccion + "/venta",
         image: Compras,
+      },
+      {
+        id: 202,
+        name: "Deposito",
+        href: RutaTransaccion + "/salidas",
+        image: deposito,
       },
     ],
   },

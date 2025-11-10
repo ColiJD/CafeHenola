@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Table, Card, Typography, Divider } from "antd";
+import { Table, Card, Typography, Divider, message } from "antd";
 import EstadisticasCards from "@/components/ReportesElement/DatosEstadisticos";
 import dayjs from "dayjs";
 import TarjetaMobile from "@/components/TarjetaMobile";
@@ -17,19 +17,35 @@ import { generarReportePDF } from "@/Doc/Reportes/FormatoDoc";
 
 const { Title, Text } = Typography;
 
-// ---------------------------
-// Función universal para totales y promedio
-// ---------------------------
+// ---------------------------------------
+// Totales con COMPRAS + SALIDAS
+// ---------------------------------------
 export function calcularTotalesComprador(comprador = {}) {
-  const totalQQ = parseFloat(comprador.compraCantidadQQ) || 0;
-  const totalLps = parseFloat(comprador.compraTotalLps) || 0;
-  const promedio = totalQQ > 0 ? totalLps / totalQQ : 0; // promedio ponderado
-  return { totalQQ, totalLps, promedio };
+  const compraQQ = parseFloat(comprador.compraCantidadQQ) || 0;
+  const compraLps = parseFloat(comprador.compraTotalLps) || 0;
+
+  const salidaQQ = parseFloat(comprador.salidaCantidadQQ) || 0;
+  const salidaLps = parseFloat(comprador.salidaTotalLps) || 0;
+
+  const totalQQ = compraQQ + salidaQQ;
+  const totalLps = compraLps + salidaLps;
+
+  const promedio = totalQQ > 0 ? totalLps / totalQQ : 0;
+
+  return {
+    compraQQ,
+    compraLps,
+    salidaQQ,
+    salidaLps,
+    totalQQ,
+    totalLps,
+    promedio,
+  };
 }
 
-// ---------------------------
+// ---------------------------------------
 // Componente principal
-// ---------------------------
+// ---------------------------------------
 export default function ReporteCompradoresSalidas() {
   const hoy = [dayjs().startOf("day"), dayjs().endOf("day")];
   const { mounted, isDesktop } = useClientAndDesktop();
@@ -44,9 +60,9 @@ export default function ReporteCompradoresSalidas() {
     fetchData,
   } = useFetchReport("/api/reportes/reporteSalidas", hoy);
 
-  // ---------------------------
-  // Filtrado y cálculo de totales por comprador
-  // ---------------------------
+  // ---------------------------------------
+  // Filtrado + Totales
+  // ---------------------------------------
   const datosFiltrados = useMemo(() => {
     return data
       .filter((item) =>
@@ -55,38 +71,36 @@ export default function ReporteCompradoresSalidas() {
           : item.nombre?.toLowerCase().includes(nombreFiltro.toLowerCase())
       )
       .map((item) => {
-        const { totalQQ, totalLps, promedio } = calcularTotalesComprador(item);
-        return { ...item, totalQQ, totalLps, promedio };
+        const totales = calcularTotalesComprador(item);
+        return { ...item, ...totales };
       });
   }, [data, nombreFiltro]);
 
-  // ---------------------------
-  // Totales generales
-  // ---------------------------
+  // ---------------------------------------
+  // Estadísticas globales
+  // ---------------------------------------
   const estadisticas = useMemo(() => {
     if (!datosFiltrados.length) return null;
 
     const resultado = datosFiltrados.reduce(
-      (acc, comprador) => {
-        const { totalQQ, totalLps } = calcularTotalesComprador(comprador);
+      (acc, r) => {
         acc.totalCompradores += 1;
-        acc.totalQQ += totalQQ;
-        acc.totalLps += totalLps;
+        acc.totalQQ += r.totalQQ;
+        acc.totalLps += r.totalLps;
         return acc;
       },
       { totalCompradores: 0, totalQQ: 0, totalLps: 0 }
     );
 
-    // Promedio general ponderado
     resultado.promedioGeneral =
       resultado.totalQQ > 0 ? resultado.totalLps / resultado.totalQQ : 0;
 
     return resultado;
   }, [datosFiltrados]);
 
-  // ---------------------------
-  // Columnas configurables (reutilizable)
-  // ---------------------------
+  // ---------------------------------------
+  // Columnas Desktop
+  // ---------------------------------------
   const columnasDesktop = [
     {
       title: "ID Comprador",
@@ -102,95 +116,113 @@ export default function ReporteCompradoresSalidas() {
       width: 200,
       render: (text) => <Text style={{ color: "#1890ff" }}>{text}</Text>,
     },
+
+    // ✅ Compras
     {
-      title: "Salidas",
+      title: "Venta Directa",
       children: [
         {
           title: "QQ",
           dataIndex: "compraCantidadQQ",
           align: "right",
-          render: (_, r) => (
-            <Text type={r.compraCantidadQQ > 0 ? "success" : "secondary"}>
-              {formatNumber(r.compraCantidadQQ)}
-            </Text>
-          ),
+          render: (_, r) => formatNumber(r.compraQQ),
         },
         {
           title: "Total Lps",
           dataIndex: "compraTotalLps",
           align: "right",
-          render: (_, r) => (
-            <Text strong type={r.compraTotalLps > 0 ? "success" : "secondary"}>
-              L. {formatNumber(r.compraTotalLps)}
-            </Text>
-          ),
+          render: (_, r) => "L. " + formatNumber(r.compraLps),
         },
       ],
     },
+
+    // ✅ Salidas / Compromisos
     {
-      title: "Totales",
-      align: "center",
+      title: "Compromisos",
       children: [
         {
           title: "QQ",
-          key: "totalQQ",
-          dataIndex: "totalQQ",
+          dataIndex: "salidaCantidadQQ",
           align: "right",
-          render: (_, r) => (
-            <Text strong type={r.totalQQ > 0 ? "success" : "secondary"}>
-              {formatNumber(r.totalQQ)}
-            </Text>
-          ),
+          render: (_, r) => formatNumber(r.salidaQQ),
         },
         {
           title: "Lps",
-          key: "totalLps",
+          dataIndex: "salidaTotalLps",
+          align: "right",
+          render: (_, r) => "L. " + formatNumber(r.salidaLps),
+        },
+      ],
+    },
+
+    // ✅ Totales globales
+    {
+      title: "Totales",
+      children: [
+        {
+          title: "QQ",
+          dataIndex: "totalQQ",
+          align: "right",
+          render: (_, r) => formatNumber(r.totalQQ),
+        },
+        {
+          title: "Lps",
           dataIndex: "totalLps",
           align: "right",
-          render: (_, r) => (
-            <Text strong type={r.totalLps > 0 ? "success" : "secondary"}>
-              L. {formatNumber(r.totalLps)}
-            </Text>
-          ),
+          render: (_, r) => "L. " + formatNumber(r.totalLps),
         },
         {
           title: "Promedio",
-          key: "promedio",
-          align: "right",
           dataIndex: "promedio",
-          render: (_, r) => (
-            <Text strong type={r.promedio > 0 ? "success" : "secondary"}>
-              L. {formatNumber(r.promedio)}
-            </Text>
-          ),
+          align: "right",
+          render: (_, r) => "L. " + formatNumber(r.promedio),
         },
       ],
     },
   ];
 
+  // ---------------------------------------
+  // Columnas Mobile
+  // ---------------------------------------
   const columnasMobile = [
     { label: "ID Comprador", key: "compradorId" },
     { label: "Nombre", key: "nombre" },
-    { label: "QQ", key: "compraCantidadQQ", render: (v) => formatNumber(v) },
-    { label: "Lps", key: "compraTotalLps", render: (v) => formatNumber(v) },
+
+    // Compras
+    { label: "Venta QQ", key: "compraQQ", render: (v) => formatNumber(v) },
+    { label: "Venta Lps", key: "compraLps", render: (v) => formatNumber(v) },
+
+    // Salidas
+    { label: "Compromiso QQ", key: "salidaQQ", render: (v) => formatNumber(v) },
+    {
+      label: "Compromiso Lps",
+      key: "salidaLps",
+      render: (v) => formatNumber(v),
+    },
+
+    // Totales
+    { label: "Total QQ", key: "totalQQ", render: (v) => formatNumber(v) },
+    { label: "Total Lps", key: "totalLps", render: (v) => formatNumber(v) },
     { label: "Promedio", key: "promedio", render: (v) => formatNumber(v) },
   ];
 
+  // ---------------------------------------
+  // Columnas PDF
+  // ---------------------------------------
   const columnasPDF = [
-    { header: "ID Comprador", key: "compradorId" },
-    { header: "Nombre Comprador", key: "nombre" },
-    {
-      header: "QQ",
-      key: "compraCantidadQQ",
-      format: "numero",
-      isCantidad: true,
-    },
-    {
-      header: "Total Lps",
-      key: "compraTotalLps",
-      format: "moneda",
-      isTotal: true,
-    },
+    { header: "ID", key: "compradorId" },
+    { header: "Nombre", key: "nombre" },
+
+    { header: "Venta QQ", key: "compraQQ", format: "numero" },
+    { header: "Venta Lps", key: "compraLps", format: "moneda" },
+
+    { header: "Compromiso QQ", key: "salidaQQ", format: "numero" },
+    { header: "Compromiso Lps", key: "salidaLps", format: "moneda" },
+
+    // ✅ SOLO AQUÍ VAN LOS INDICADORES
+    { header: "Total QQ", key: "totalQQ", format: "numero", isCantidad: true },
+    { header: "Total Lps", key: "totalLps", format: "moneda", isTotal: true },
+
     { header: "Promedio", key: "promedio", format: "moneda" },
   ];
 
@@ -215,23 +247,19 @@ export default function ReporteCompradoresSalidas() {
             loading={loading}
             icon={<CalendarOutlined />}
             titulo="Reporte de Salidas"
-            subtitulo="Resumen de compras realizadas a compradores"
+            subtitulo="Resumen de ventas directas y compromisos por comprador"
             onRefresh={() => {
-              if (rangoFechas && rangoFechas[0] && rangoFechas[1]) {
-                fetchData(
-                  rangoFechas[0].startOf("day").toISOString(),
-                  rangoFechas[1].endOf("day").toISOString()
-                );
-              } else fetchData();
+              fetchData(
+                rangoFechas?.[0]?.startOf("day").toISOString(),
+                rangoFechas?.[1]?.endOf("day").toISOString()
+              );
             }}
             onExportPDF={() => {
-              if (!datosFiltrados.length) {
-                // Mensaje opcional
-                message.warning("No hay datos para exportar");
-                return;
-              }
+              if (!datosFiltrados.length)
+                return message.warning("No hay datos para exportar");
+
               generarReportePDF(
-                datosFiltrados, // datos filtrados de la tabla
+                datosFiltrados,
                 {
                   fechaInicio: rangoFechas?.[0]?.toISOString(),
                   fechaFin: rangoFechas?.[1]?.toISOString(),
@@ -249,7 +277,7 @@ export default function ReporteCompradoresSalidas() {
             fields={[
               {
                 type: "input",
-                placeholder: "Buscar por nombre de comprador",
+                placeholder: "Buscar por nombre",
                 value: nombreFiltro,
                 setter: setNombreFiltro,
                 allowClear: true,
@@ -258,7 +286,6 @@ export default function ReporteCompradoresSalidas() {
                 type: "date",
                 value: rangoFechas,
                 setter: onFechasChange,
-                placeholder: "Seleccionar rango de fechas",
               },
             ]}
           />
@@ -301,19 +328,9 @@ export default function ReporteCompradoresSalidas() {
 
         <Card style={{ borderRadius: 6 }}>
           <div style={{ marginBottom: isDesktop ? 16 : 12 }}>
-            <Title
-              level={4}
-              style={{ margin: 0, fontSize: isDesktop ? 16 : 14 }}
-            >
-              Detalle por Comprador ({datosFiltrados.length} registros)
+            <Title level={4} style={{ margin: 0 }}>
+              Detalle por Comprador ({datosFiltrados.length})
             </Title>
-            <Text type="secondary" style={{ fontSize: isDesktop ? 14 : 12 }}>
-              {rangoFechas?.[0] &&
-                rangoFechas?.[1] &&
-                `Período: ${rangoFechas[0].format(
-                  "DD/MM/YYYY"
-                )} - ${rangoFechas[1].format("DD/MM/YYYY")}`}
-            </Text>
           </div>
 
           {isDesktop ? (
@@ -330,7 +347,7 @@ export default function ReporteCompradoresSalidas() {
                 <TablaTotales
                   columns={columnasDesktop}
                   data={datosFiltrados}
-                  offset={2} // ID y nombre no cuentan
+                  offset={2}
                   formatNumber={formatNumber}
                 />
               )}

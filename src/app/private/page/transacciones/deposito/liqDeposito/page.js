@@ -388,7 +388,7 @@ export default function DepositoForm() {
           notifications={notifications}
           actions={[
             {
-              tooltip: "Ir a Registro de Contratos",
+              tooltip: "Ir a Registro",
               icon: <SolutionOutlined />,
               onClick: () =>
                 router.push(

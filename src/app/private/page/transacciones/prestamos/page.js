@@ -27,7 +27,8 @@ import DrawerPrestamo from "@/components/Prestamos/DrawerPrestamo.jsx";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
 import DrawerCalculoInteres from "@/components/Prestamos/calculoInteres";
 import ProtectedPage from "@/components/ProtectedPage";
-import { DeleteFilled } from "@ant-design/icons";
+import { DeleteFilled, FilePdfOutlined } from "@ant-design/icons";
+import { generarReportePDF } from "@/Doc/Reportes/FormatoDoc";
 
 const { Title, Text } = Typography;
 
@@ -700,6 +701,71 @@ export default function PrestamosGeneral() {
     }
   };
 
+  const columnasPDFPrestamos = [
+    { header: "Fecha", key: "fecha" },
+    { header: "Días", key: "dias" },
+    { header: "% Interés", key: "interes" },
+    { header: "Descripción", key: "descripcion" },
+    { header: "Préstamo", key: "prestamo", format: "numero", isTotal: true },
+    { header: "Abono", key: "abono", format: "numero", isTotal: true },
+    { header: "Int-Cargo", key: "intCargo", format: "numero", isTotal: true },
+    { header: "Int-Abono", key: "intAbono", format: "numero", isTotal: true },
+    {
+      header: "Saldo Total",
+      key: "totalGeneral",
+      format: "numero",
+      isTotal: true,
+    },
+  ];
+
+  const columnasPDAnticipos = [
+    { header: "Fecha", key: "fecha" },
+    { header: "Días", key: "dias" },
+    { header: "% Interés", key: "interes" },
+    { header: "Descripción", key: "descripcion" },
+    { header: "Anticipo", key: "anticipo", format: "numero", isTotal: true },
+    { header: "Abono", key: "abono", format: "numero", isTotal: true },
+    { header: "Int-Cargo", key: "intCargo", format: "numero", isTotal: true },
+    { header: "Int-Abono", key: "intAbono", format: "numero", isTotal: true },
+    {
+      header: "Saldo Total",
+      key: "totalGeneral",
+      format: "numero",
+      isTotal: true,
+    },
+  ];
+
+  const handleImprimir = (tipo) => {
+    const esPrestamo = tipo === "prestamos";
+
+    const data = esPrestamo ? dataPrestamos : dataAnticipos;
+    const columnas = esPrestamo ? columnasPDFPrestamos : columnasPDAnticipos;
+    const nombre = esPrestamo ? "Préstamos" : "Anticipos";
+
+    if (!data.length) {
+      messageApiRef.current.error(
+        `No hay ${nombre.toLowerCase()} para imprimir`
+      );
+      return;
+    }
+
+    const dataPDF = data
+      .filter((f) => f.tipo !== "TOTAL") // ✅ remover fila total
+      .map((f) => ({ ...f }));
+
+    generarReportePDF(
+      dataPDF,
+      {
+        nombreFiltro: `${clienteSeleccionado.clienteNombre} ${clienteSeleccionado.clienteApellido}`,
+      },
+      columnas,
+      {
+        title: `${nombre} - ${clienteSeleccionado.clienteNombre} ${clienteSeleccionado.clienteApellido}`,
+        orientation: "landscape",
+      }
+    );
+  };
+
   return (
     <ProtectedPage
       allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS", "AUDITORES"]}
@@ -782,6 +848,20 @@ export default function PrestamosGeneral() {
                       icon={<ReloadOutlined />}
                     >
                       Recargar
+                    </Button>
+                    <Button
+                      onClick={() => handleImprimir("prestamos")}
+                      icon={<FilePdfOutlined />}
+                    >
+                      {" "}
+                      Exportar Préstamos
+                    </Button>
+
+                    <Button
+                      onClick={() => handleImprimir("anticipos")}
+                      icon={<FilePdfOutlined />}
+                    >
+                      Exportar Anticipos
                     </Button>
                   </Space>
                 </Col>

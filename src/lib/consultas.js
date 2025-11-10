@@ -298,3 +298,20 @@ export async function verificarAnticiposPendientes(clienteID) {
     return ["No se pudieron verificar los anticipos pendientes."];
   }
 }
+
+// lib/consultas.js
+export async function obtenerSalidasPendientes(compradorID) {
+  if (!compradorID)
+    return { cantidadPendiente: 0, precioPendiente: 0, detalles: [] };
+
+  try {
+    const res = await fetch(`/api/salidas/pendientes/${compradorID}`);
+    if (!res.ok) throw new Error("Error al obtener salidas pendientes");
+
+    const data = await res.json();
+    return data; // { cantidadPendiente, precioPendiente, detalles }
+  } catch (err) {
+    console.error(err);
+    return { cantidadPendiente: 0, precioPendiente: 0, detalles: [] };
+  }
+}

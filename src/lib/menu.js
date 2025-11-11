@@ -32,19 +32,13 @@ export const menuItems = [
     name: "Informe",
     image: eventos,
     subItems: [
-      {
-        id: 400,
-        name: "General",
-        href: Ruta + "/informe/general",
-        image: deposito,
-      },
-
       // {
-      //   id: 401,
-      //   name: "Saldo Por Deposito",
-      //   href: RutaTransaccion + "/deposito/vista",
-      //   image: contrato,
+      //   id: 400,
+      //   name: "General",
+      //   href: Ruta + "/informe/general",
+      //   image: deposito,
       // },
+
       {
         id: 402,
         name: "Registro de Entradas",
@@ -62,6 +56,13 @@ export const menuItems = [
         name: "Por Cliente",
         href: Ruta + "/informe/porCliente",
         image: cliente,
+      },
+
+      {
+        id: 401,
+        name: "Saldo Por Deposito",
+        href: RutaTransaccion + "/deposito/vista",
+        image: contrato,
       },
     ],
   },

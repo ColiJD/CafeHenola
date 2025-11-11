@@ -426,7 +426,7 @@ export default function MovimientosComprasPage() {
                 style={{ width: "100%" }}
                 placeholder="Seleccione un cliente"
                 showSearch
-                optionFilterProp="children"
+               optionFilterProp="label"
                 value={clienteID}
                 onChange={setClienteID}
                 options={clientes.map((c) => ({

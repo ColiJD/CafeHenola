@@ -229,10 +229,16 @@ export default function FormSalida() {
           notifications={notifications}
           actions={[
             {
-              tooltip: "Ir a Registro",
+              tooltip: "Ir a Registro de Deposito",
               icon: <SolutionOutlined />,
               onClick: () =>
-                router.push("/private/page/informe/registrosalida"),
+                router.push("/private/page/transacciones/salidas/registro"),
+            },
+            {
+              tooltip: "Ir a Registro de Liquidacion",
+              icon: <SolutionOutlined />,
+              onClick: () =>
+                router.push("/private/page/transacciones/salidas/registroliq"),
             },
             {
               tooltip: "Liquidar Salida",

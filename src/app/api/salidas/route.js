@@ -74,8 +74,10 @@ export async function POST(request, req) {
   }
 }
 
-// Obtener todas las salidas (ventas/compromisos)
+
+
 export async function GET(req) {
+  // Validar roles
   const sessionOrResponse = await checkRole(req, [
     "ADMIN",
     "GERENCIA",
@@ -85,21 +87,44 @@ export async function GET(req) {
   if (sessionOrResponse instanceof Response) return sessionOrResponse;
 
   try {
-    // Puedes usar una vista o traer directamente de la tabla
+    const { searchParams } = new URL(req.url);
+    const fechaInicio =
+      searchParams.get("desde") || searchParams.get("fechaInicio");
+    const fechaFin = searchParams.get("hasta") || searchParams.get("fechaFin");
+
+    const inicio = fechaInicio ? new Date(fechaInicio) : new Date();
+    const fin = fechaFin ? new Date(fechaFin) : new Date();
+
+    // Consultar solo los registros
     const salidas = await prisma.salida.findMany({
-      include: {
-        comprador: true,
-        contrato: true,
+      where: {
+        salidaFecha: { gte: inicio, lte: fin },
+        NOT: { salidaMovimiento: "Anulado" },
       },
-      orderBy: {
-        salidaFecha: "desc",
+      select: {
+        salidaID: true,
+        salidaFecha: true,
+        salidaMovimiento: true,
+        salidaCantidadQQ: true,
+        salidaPrecio: true,
+        salidaDescripcion: true,
+        compradores: {
+          select: {
+            compradorId: true,
+            compradorNombre: true,
+          },
+        },
       },
+      orderBy: { salidaFecha: "desc" },
     });
 
-    return new Response(JSON.stringify(salidas), { status: 200 });
+    return new Response(JSON.stringify(salidas), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (error) {
     console.error("Error al obtener salidas:", error);
-    return new Response(JSON.stringify({ error: "Error interno" }), {
+    return new Response(JSON.stringify({ error: "Error al obtener salidas" }), {
       status: 500,
     });
   }

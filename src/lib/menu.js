@@ -32,12 +32,12 @@ export const menuItems = [
     name: "Informe",
     image: eventos,
     subItems: [
-      // {
-      //   id: 400,
-      //   name: "General",
-      //   href: Ruta + "/informe/general",
-      //   image: deposito,
-      // },
+      {
+        id: 400,
+        name: "General",
+        href: Ruta + "/informe/general",
+        image: deposito,
+      },
 
       {
         id: 402,

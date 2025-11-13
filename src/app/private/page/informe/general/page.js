@@ -9,7 +9,7 @@ import useClientAndDesktop from "@/hook/useClientAndDesktop";
 import Filtros from "@/components/Filtros";
 import SectionHeader from "@/components/ReportesElement/AccionesResporte";
 import { useFetchReport } from "@/hook/useFetchReport";
-import { generarPDFMultiplesSecciones } from "@/Doc/Reportes/multiples";
+import { exportPDFGeneralConPrestamos } from "@/Doc/Reportes/General";
 import ProtectedPage from "@/components/ProtectedPage";
 
 const { Title, Text } = Typography;
@@ -347,23 +347,11 @@ export default function ResumenMovimientos() {
                 duration: 0,
               });
               try {
-                generarPDFMultiplesSecciones(
-                  [
-                    {
-                      titulo: "Entradas y Salidas",
-                      datos: datosTabla,
-                      columnas: flattenColumns(columnas),
-                    },
-                    {
-                      titulo: "Préstamos y Anticipos",
-                      datos: datosPrestamosYAnticipos,
-                      columnas: flattenColumns(columnasPrestamos),
-                    },
-                  ],
+                exportPDFGeneralConPrestamos(
+                  [...datosTabla, ...datosPrestamosYAnticipos],
                   { fechaInicio: rangoFechas?.[0], fechaFin: rangoFechas?.[1] },
                   { title: "Reporte Completo" }
                 );
-
                 messageApi.success({
                   content: "Reporte generado correctamente",
                   key,
@@ -433,7 +421,7 @@ export default function ResumenMovimientos() {
               level={4}
               style={{ margin: 0, fontSize: isDesktop ? 16 : 14 }}
             >
-              Resumen de Préstamos y Anticipos 
+              Resumen de Préstamos y Anticipos
             </Title>
             <Text type="secondary" style={{ fontSize: isDesktop ? 14 : 12 }}>
               {rangoFechas?.[0] &&

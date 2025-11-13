@@ -9,6 +9,7 @@ export async function GET(req) {
     "AUDITORES",
   ]);
   if (sessionOrResponse instanceof Response) return sessionOrResponse;
+
   try {
     const { searchParams } = new URL(req.url);
     const desdeParam = searchParams.get("desde");
@@ -17,7 +18,7 @@ export async function GET(req) {
     let desde, hasta;
 
     if (desdeParam && hastaParam) {
-      // Usar UTC y asegurar que incluya todo el día
+      // UTC para todo el día
       desde = new Date(new Date(desdeParam).setUTCHours(0, 0, 0, 0));
       hasta = new Date(new Date(hastaParam).setUTCHours(23, 59, 59, 999));
     } else {
@@ -55,40 +56,24 @@ export async function GET(req) {
       },
     });
 
-    // 🔹 Contratos (movimientos reales en CierreContrato)
-    // Obtener los detalles del contrato dentro del rango
+    // 🔹 Contratos
     const contratosDetalles = await prisma.detallecontrato.findMany({
-      where: {
-        tipoMovimiento: "Entrada",
-        fecha: { gte: desde, lte: hasta },
-      },
-      select: {
-        cantidadQQ: true,
-        precioQQ: true,
-      },
+      where: { tipoMovimiento: "Entrada", fecha: { gte: desde, lte: hasta } },
+      select: { cantidadQQ: true, precioQQ: true },
     });
 
-    // Calcular total real multiplicando cantidad * precio
-    let totalCantidad = 0;
-    let totalMonto = 0;
+    const contratosEntradas = contratosDetalles.reduce(
+      (acc, item) => {
+        acc.cantidadQQ += Number(item.cantidadQQ || 0);
+        acc.total += Number(item.cantidadQQ || 0) * Number(item.precioQQ || 0);
+        return acc;
+      },
+      { cantidadQQ: 0, total: 0 }
+    );
 
-    contratosDetalles.forEach((item) => {
-      totalCantidad += item.cantidadQQ;
-      totalMonto += item.cantidadQQ * item.precioQQ;
-    });
-
-    const contratosEntradas = {
-      cantidadQQ: totalCantidad,
-      total: totalMonto,
-    };
-
-    // 🔹 RESUMEN DE DEPÓSITOS
-    // Movimientos reales = tabla DetalleLiqDeposito pero filtrando por Deposito.depositoMovimiento
+    // 🔹 Depósitos
     const depositosEntradas = await prisma.detalleliqdeposito.aggregate({
-      _sum: {
-        cantidadQQ: true,
-        totalLps: true,
-      },
+      _sum: { cantidadQQ: true, totalLps: true },
       where: {
         liqdeposito: {
           liqMovimiento: "Entrada",
@@ -97,6 +82,7 @@ export async function GET(req) {
       },
     });
 
+    // 🔹 Salidas
     const salidasDetalles = await prisma.salida.findMany({
       where: {
         salidaMovimiento: "Salida",
@@ -105,17 +91,93 @@ export async function GET(req) {
       select: { salidaCantidadQQ: true, salidaPrecio: true },
     });
 
-    let totalSalidaCantidad = 0;
-    let totalSalidaMonto = 0;
-    salidasDetalles.forEach((item) => {
-      totalSalidaCantidad += Number(item.salidaCantidadQQ || 0);
-      totalSalidaMonto +=
-        Number(item.salidaCantidadQQ || 0) * Number(item.salidaPrecio || 0);
+    const salidas = salidasDetalles.reduce(
+      (acc, item) => {
+        const cantidad = Number(item.salidaCantidadQQ || 0);
+        const precio = Number(item.salidaPrecio || 0);
+        acc.cantidadQQ += cantidad;
+        acc.total += cantidad * precio;
+        return acc;
+      },
+      { cantidadQQ: 0, total: 0 }
+    );
+
+    // 🔹 Préstamos
+    const prestamosActivos = await prisma.prestamos.aggregate({
+      _sum: { monto: true },
+      where: { estado: "ACTIVO" },
     });
 
-    const salidas = {
-      cantidadQQ: totalSalidaCantidad,
-      total: totalSalidaMonto,
+    // 🔹 Movimientos de préstamo filtrando los tres tipos
+    const movimientosPrestamo = await prisma.movimientos_prestamo.groupBy({
+      by: ["tipo_movimiento"],
+      _sum: { monto: true },
+      where: {
+        tipo_movimiento: { in: ["ABONO", "PAGO_INTERES", "Int-Cargo"] },
+        fecha: { gte: desde, lte: hasta }, // usa el rango de fechas definido arriba
+      },
+    });
+
+    // Inicializamos los valores por tipo
+    const resumenMovimientos = {
+      ABONO: 0,
+      PAGO_INTERES: 0,
+      "Int-Cargo": 0,
+    };
+
+    movimientosPrestamo.forEach((mov) => {
+      if (
+        mov.tipo_movimiento &&
+        resumenMovimientos.hasOwnProperty(mov.tipo_movimiento)
+      ) {
+        resumenMovimientos[mov.tipo_movimiento] = Number(mov._sum.monto ?? 0);
+      }
+    });
+
+    // Resultado final de préstamos
+    const prestamos = {
+      totalPrestamosActivos: Number(prestamosActivos._sum.monto ?? 0),
+      movimientos: resumenMovimientos,
+    };
+
+    // 🔹 Anticipos
+    const anticiposActivos = await prisma.anticipo.aggregate({
+      _sum: { monto: true },
+      where: { estado: "ACTIVO" },
+    });
+
+    // 🔹 Movimientos de anticipo filtrando los dos tipos
+    const movimientosAnticipo = await prisma.movimientos_anticipos.groupBy({
+      by: ["tipo_movimiento"],
+      _sum: { monto: true },
+      where: {
+        tipo_movimiento: { in: ["CARGO_ANTICIPO", "INTERES_ANTICIPO", "ABONO_ANTICIPO"] },
+        fecha: { gte: desde, lte: hasta }, // usa el mismo rango de fechas
+      },
+    });
+
+    // Inicializamos los valores por tipo
+    const resumenMovimientosAnticipo = {
+      CARGO_ANTICIPO: 0,
+      INTERES_ANTICIPO: 0,
+      ABONO_ANTICIPO: 0,
+    };
+
+    movimientosAnticipo.forEach((mov) => {
+      if (
+        mov.tipo_movimiento &&
+        resumenMovimientosAnticipo.hasOwnProperty(mov.tipo_movimiento)
+      ) {
+        resumenMovimientosAnticipo[mov.tipo_movimiento] = Number(
+          mov._sum.monto ?? 0
+        );
+      }
+    });
+
+    // Resultado final de anticipos
+    const anticipos = {
+      totalAnticiposActivos: Number(anticiposActivos._sum.monto ?? 0),
+      movimientos: resumenMovimientosAnticipo,
     };
 
     return new Response(
@@ -124,6 +186,8 @@ export async function GET(req) {
         contratos: { entradas: contratosEntradas },
         depositos: { entradas: depositosEntradas },
         salidas,
+        prestamos,
+        anticipos,
       }),
       { status: 200 }
     );

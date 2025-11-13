@@ -6,12 +6,10 @@ import dayjs from "dayjs";
 import { formatNumber } from "@/components/Formulario";
 import { FileFilled } from "@ant-design/icons";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
-
 import Filtros from "@/components/Filtros";
 import SectionHeader from "@/components/ReportesElement/AccionesResporte";
 import { useFetchReport } from "@/hook/useFetchReport";
-import { exportPDFGeneral } from "@/Doc/Reportes/General";
-import TarjetaMobile from "@/components/TarjetaMobile";
+import { generarPDFMultiplesSecciones } from "@/Doc/Reportes/multiples";
 import ProtectedPage from "@/components/ProtectedPage";
 
 const { Title, Text } = Typography;
@@ -30,59 +28,44 @@ export default function ResumenMovimientos() {
 
   const { mounted, isDesktop } = useClientAndDesktop();
 
-  // 🔹 Normalizamos la data y agregamos totales
+  // 🔹 Normalizar y calcular totales
   const datosTabla = useMemo(() => {
     if (!data) return [];
 
-    const entradas = {
-      key: "entradas",
-      tipo: "Entradas",
-      compraQQ: data?.compras?.entradas?._sum?.compraCantidadQQ ?? 0,
-      compraLps: data?.compras?.entradas?._sum?.compraTotal ?? 0,
-      depositoQQ: data?.depositos?.entradas?._sum?.cantidadQQ ?? 0,
-      depositoLps: data?.depositos?.entradas?._sum?.totalLps ?? 0,
-      contratoQQ: data?.contratos?.entradas?._sum?.cantidadQQ ?? 0,
-      contratoLps:
-        (data?.contratos?.entradas?._sum?.cantidadQQ ?? 0) *
-        (data?.contratos?.entradas?._sum?.precioQQ ?? 0),
-    };
+    const filas = [
+      {
+        key: "entradas",
+        tipo: "Entradas",
+        compraQQ: Number(data?.compras?.entradas?._sum?.compraCantidadQQ ?? 0),
+        compraLps: Number(data?.compras?.entradas?._sum?.compraTotal ?? 0),
+        depositoQQ: Number(data?.depositos?.entradas?._sum?.cantidadQQ ?? 0),
+        depositoLps: Number(data?.depositos?.entradas?._sum?.totalLps ?? 0),
+        contratoQQ: Number(data?.contratos?.entradas?.cantidadQQ ?? 0),
+        contratoLps: Number(data?.contratos?.entradas?.total ?? 0),
+      },
+      {
+        key: "salidas",
+        tipo: "Salidas",
+        compraQQ: Number(data?.compras?.salidas?._sum?.compraCantidadQQ ?? 0),
+        compraLps: Number(data?.compras?.salidas?._sum?.compraTotal ?? 0),
+        depositoQQ: 0,
+        depositoLps: 0,
+        contratoQQ: Number(data?.salidas?.cantidadQQ ?? 0),
+        contratoLps: Number(data?.salidas?.total ?? 0),
+      },
+    ];
 
-    const salidas = {
-      key: "salidas",
-      tipo: "Salidas (Venta)",
-      compraQQ: data?.compras?.salidas?._sum?.compraCantidadQQ ?? 0,
-      compraLps: data?.compras?.salidas?._sum?.compraTotal ?? 0,
-      depositoQQ: data?.salidas?.cantidadQQ ?? 0, // 🔹 aquí usamos el objeto 'salidas' de la API
-      depositoLps: data?.salidas?.total ?? 0, // 🔹 aquí usamos el objeto 'salidas' de la API
-    };
-
-    // 🔹 Calcular totales combinados y promedio
-    const calcularTotales = (row) => {
-      const compraQQ = Number(row.compraQQ) || 0;
-      const compraLps = Number(row.compraLps) || 0;
-      const depositoQQ = Number(row.depositoQQ) || 0;
-      const depositoLps = Number(row.depositoLps) || 0;
-      const contratoQQ = Number(row.contratoQQ) || 0;
-      const contratoLps = Number(row.contratoLps) || 0;
-
-      const totalQQ = compraQQ + depositoQQ + contratoQQ;
-      const totalLps = compraLps + depositoLps + contratoLps;
+    return filas.map((row) => {
+      const totalQQ = row.compraQQ + row.depositoQQ + row.contratoQQ;
+      const totalLps = row.compraLps + row.depositoLps + row.contratoLps;
       const promedio = totalQQ > 0 ? totalLps / totalQQ : 0;
-
       return { ...row, totalQQ, totalLps, promedio };
-    };
-
-    return [calcularTotales(entradas), calcularTotales(salidas)];
+    });
   }, [data]);
 
-  // 🔹 Columnas de la tabla con subcolumnas
+  // 🔹 Columnas de la tabla
   const columnas = [
-    {
-      title: "",
-      dataIndex: "tipo",
-      key: "tipo",
-      fixed: "left",
-    },
+    { title: "", dataIndex: "tipo", key: "tipo", fixed: "left" },
     {
       title: "Compra / Venta",
       children: [
@@ -168,65 +151,6 @@ export default function ResumenMovimientos() {
     },
   ];
 
-  const columnasMobile = [
-    // Compra / Venta
-    {
-      label: "Tipo",
-      key: "compraLps",
-
-      render: (v, row) => {
-        const prefix = row.key === "salidas" ? "Venta QQ" : "Compra QQ";
-        return `${prefix}: ${formatNumber(row.compraQQ)} / L. ${formatNumber(
-          row.compraLps
-        )}`;
-      },
-    },
-
-    // Depósito
-    {
-      label: "Depósito QQ",
-      key: "depositoQQ",
-
-      render: (v) => formatNumber(v),
-    },
-    {
-      label: "Depósito Lps",
-      key: "depositoLps",
-
-      render: (v) => `L. ${formatNumber(v)}`,
-    },
-
-    // Contrato
-    {
-      label: "Contrato QQ",
-      key: "contratoQQ",
-
-      render: (v) => formatNumber(v),
-    },
-    {
-      label: "Contrato Lps",
-      key: "contratoLps",
-
-      render: (v) => `L. ${formatNumber(v)}`,
-    },
-    // 🔹 Totales (nuevo bloque agregado)
-    {
-      label: "QQ Total",
-      key: "totalQQ",
-      render: (v) => formatNumber(v),
-    },
-    {
-      label: "Total Lps",
-      key: "totalLps",
-      render: (v) => `L. ${formatNumber(v)}`,
-    },
-    {
-      label: "Promedio",
-      key: "promedio",
-      render: (v) => `L. ${formatNumber(v)}`,
-    },
-  ];
-
   const hayDatos = datosTabla.some(
     (row) =>
       row.compraQQ > 0 ||
@@ -237,7 +161,148 @@ export default function ResumenMovimientos() {
       row.depositoLps > 0
   );
 
+  // 🔹 Normalizar y calcular totales de préstamos
+  // 🔹 Normalizar y calcular totales de préstamos
+  const datosPrestamosYAnticipos = useMemo(() => {
+    const filas = [];
 
+    // 🔹 Préstamos
+    if (data?.prestamos) {
+      const movimientos = data.prestamos.movimientos || {};
+
+      const filaPrestamos = {
+        key: "prestamos",
+        tipo: "Préstamos Activos",
+        totalPrestamos: Number(data.prestamos.totalPrestamosActivos ?? 0),
+        abono: Number(movimientos.ABONO ?? 0),
+        pagoInteres: Number(movimientos.PAGO_INTERES ?? 0),
+        intCargo: Number(movimientos["Int-Cargo"] ?? 0),
+      };
+
+      const totalCreditos =
+        filaPrestamos.totalPrestamos + filaPrestamos.intCargo;
+      const totalAbonos = filaPrestamos.abono + filaPrestamos.pagoInteres;
+      const saldo = totalCreditos - totalAbonos;
+
+      filas.push({
+        ...filaPrestamos,
+        totalCreditos,
+        totalAbonos,
+        saldo,
+      });
+    }
+
+    // 🔹 Anticipos
+    if (data?.anticipos) {
+      const movimientos = data.anticipos.movimientos || {};
+
+      const filaAnticipos = {
+        key: "anticipos",
+        tipo: "Anticipos Activos",
+        totalPrestamos: Number(data.anticipos.totalAnticiposActivos ?? 0),
+        abono: Number(movimientos.ABONO_ANTICIPO ?? 0), // se mantiene como pagoInteres
+        pagoInteres: Number(movimientos.INTERES_ANTICIPO ?? 0),
+        intCargo: Number(movimientos.CARGO_ANTICIPO ?? 0), // ahora mapeado igual que intCargo
+      };
+
+      const totalCreditos =
+        filaAnticipos.totalPrestamos + filaAnticipos.intCargo;
+      const totalAbonos = filaAnticipos.abono + filaAnticipos.pagoInteres;
+      const saldo = totalCreditos - totalAbonos;
+
+      filas.push({
+        ...filaAnticipos,
+        totalCreditos,
+        totalAbonos,
+        saldo,
+      });
+    }
+
+    return filas;
+  }, [data]);
+
+  // 🔹 Columnas de la tabla de préstamos
+  const columnasPrestamos = [
+    { title: "", dataIndex: "tipo", key: "tipo", fixed: "left" },
+    {
+      title: "Total Préstamos",
+      dataIndex: "totalPrestamos",
+      key: "totalPrestamos",
+      align: "right",
+      render: (v) => `L. ${formatNumber(v)}`,
+    },
+    {
+      title: "ABONO",
+      dataIndex: "abono",
+      key: "abono",
+      align: "right",
+      render: (v) => `L. ${formatNumber(v)}`,
+    },
+    {
+      title: "PAGO_INTERES",
+      dataIndex: "pagoInteres",
+      key: "pagoInteres",
+      align: "right",
+      render: (v) => `L. ${formatNumber(v)}`,
+    },
+    {
+      title: "Int-Cargo",
+      dataIndex: "intCargo",
+      key: "intCargo",
+      align: "right",
+      render: (v) => `L. ${formatNumber(v)}`,
+    },
+    {
+      title: "Total Créditos",
+      dataIndex: "totalCreditos",
+      key: "totalCreditos",
+      align: "right",
+      render: (v) => `L. ${formatNumber(v)}`,
+    },
+    {
+      title: "Total Abonos",
+      dataIndex: "totalAbonos",
+      key: "totalAbonos",
+      align: "right",
+      render: (v) => `L. ${formatNumber(v)}`,
+    },
+    {
+      title: "Saldo",
+      dataIndex: "saldo",
+      key: "saldo",
+      align: "right",
+      render: (v) => `L. ${formatNumber(v)}`,
+    },
+  ];
+
+  const flattenColumns = (cols, parentTitle = "") => {
+    return cols.flatMap((col) => {
+      if (col.children) {
+        return flattenColumns(
+          col.children,
+          parentTitle ? `${parentTitle} ${col.title}` : col.title
+        );
+      }
+      return {
+        header: parentTitle ? `${parentTitle} ${col.title}` : col.title,
+        key: col.dataIndex || col.key,
+        format: col.format, // toma directamente el valor definido en la columna
+        isCantidad: [
+          "compraQQ",
+          "depositoQQ",
+          "contratoQQ",
+          "totalQQ",
+        ].includes(col.dataIndex),
+        isTotal: [
+          "compraLps",
+          "depositoLps",
+          "contratoLps",
+          "totalLps",
+          "promedio",
+        ].includes(col.dataIndex),
+      };
+    });
+  };
 
   if (!mounted) return <div style={{ padding: 24 }}>Cargando...</div>;
 
@@ -247,7 +312,7 @@ export default function ResumenMovimientos() {
     >
       <div
         style={{
-          padding: isDesktop ? "24px" : "12px",
+          padding: isDesktop ? 24 : 12,
           background: "#f5f5f5",
           minHeight: "100vh",
         }}
@@ -261,24 +326,19 @@ export default function ResumenMovimientos() {
             icon={<FileFilled />}
             titulo="Totales Generales"
             subtitulo="Totales generales de entradas y salidas"
-            onRefresh={() => {
-              if (rangoFechas?.[0] && rangoFechas?.[1]) {
-                fetchData(
-                  rangoFechas[0].startOf("day").toISOString(),
-                  rangoFechas[1].endOf("day").toISOString()
-                );
-              } else {
-                fetchData();
-              }
-            }}
-            onExportPDF={async () => {
+            onRefresh={() =>
+              fetchData(
+                rangoFechas?.[0]?.startOf("day").toISOString(),
+                rangoFechas?.[1]?.endOf("day").toISOString()
+              )
+            }
+            onExportPDF={() => {
               if (!hayDatos) {
                 messageApi.warning(
                   "No hay datos válidos para generar el reporte."
                 );
                 return;
               }
-
               const key = "generandoPDF";
               messageApi.open({
                 key,
@@ -286,17 +346,24 @@ export default function ResumenMovimientos() {
                 content: "Generando reporte...",
                 duration: 0,
               });
-
               try {
-                await exportPDFGeneral(
-                  datosTabla,
-                  {
-                    fechaInicio: rangoFechas?.[0]?.toISOString(),
-                    fechaFin: rangoFechas?.[1]?.toISOString(),
-                  },
-                  columnas,
-                  { title: "Reporte de Entradas y Salidas" }
+                generarPDFMultiplesSecciones(
+                  [
+                    {
+                      titulo: "Entradas y Salidas",
+                      datos: datosTabla,
+                      columnas: flattenColumns(columnas),
+                    },
+                    {
+                      titulo: "Préstamos y Anticipos",
+                      datos: datosPrestamosYAnticipos,
+                      columnas: flattenColumns(columnasPrestamos),
+                    },
+                  ],
+                  { fechaInicio: rangoFechas?.[0], fechaFin: rangoFechas?.[1] },
+                  { title: "Reporte Completo" }
                 );
+
                 messageApi.success({
                   content: "Reporte generado correctamente",
                   key,
@@ -312,9 +379,7 @@ export default function ResumenMovimientos() {
             }}
             disableExport={!hayDatos}
           />
-
           <Divider />
-
           <Filtros
             fields={[
               {
@@ -344,37 +409,55 @@ export default function ResumenMovimientos() {
             </Text>
           </div>
 
-          {isDesktop ? (
-            <Table
-              columns={columnas}
-              dataSource={datosTabla}
-              rowKey="key"
-              loading={loading}
-              pagination={false}
-              bordered
-              size="small"
-              scroll={{ x: "max-content" }}
-              onRow={(record) => {
-                const backgroundColor =
-                  record.key === "entradas"
-                    ? "#e6f7ff"
-                    : record.key === "salidas"
-                    ? "#fff1f0"
-                    : "transparent";
-
-                return { style: { backgroundColor } };
-              }}
-            />
-          ) : (
-            <TarjetaMobile
-              data={datosTabla}
-              columns={columnasMobile}
-              loading={loading}
-            />
-          )}
+          <Table
+            columns={columnas}
+            dataSource={datosTabla}
+            rowKey="key"
+            loading={loading}
+            pagination={false}
+            bordered
+            size="small"
+            scroll={{ x: "max-content" }}
+            onRow={(record) => ({
+              style: {
+                backgroundColor:
+                  record.key === "entradas" ? "#e6f7ff" : "#fff1f0",
+              },
+            })}
+          />
         </Card>
 
-    
+        <Card style={{ borderRadius: 6, marginTop: 16 }}>
+          <div style={{ marginBottom: isDesktop ? 16 : 12 }}>
+            <Title
+              level={4}
+              style={{ margin: 0, fontSize: isDesktop ? 16 : 14 }}
+            >
+              Resumen de Préstamos y Anticipos 
+            </Title>
+            <Text type="secondary" style={{ fontSize: isDesktop ? 14 : 12 }}>
+              {rangoFechas?.[0] &&
+                rangoFechas?.[1] &&
+                `Período: ${rangoFechas[0].format(
+                  "DD/MM/YYYY"
+                )} - ${rangoFechas[1].format("DD/MM/YYYY")}`}
+            </Text>
+          </div>
+
+          <Table
+            columns={columnasPrestamos}
+            dataSource={datosPrestamosYAnticipos}
+            rowKey="key"
+            loading={loading}
+            pagination={false}
+            bordered
+            size="small"
+            scroll={{ x: "max-content" }}
+            onRow={(record) => ({
+              style: { backgroundColor: "#fffbe6" },
+            })}
+          />
+        </Card>
       </div>
     </ProtectedPage>
   );

@@ -1,16 +1,31 @@
 "use client";
 
 import { useState, useMemo, useRef } from "react";
-import { Table, Card, Typography, Divider, message } from "antd";
+import {
+  Table,
+  Card,
+  Typography,
+  Divider,
+  message,
+  Popconfirm,
+  Button,
+} from "antd";
 import dayjs from "dayjs";
 import TarjetaMobile from "@/components/TarjetaMobile";
 import Filtros from "@/components/Filtros";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
-import { CalendarOutlined, UserOutlined } from "@ant-design/icons";
+import { eliminarRecurso } from "../registro/page";
+import {
+  CalendarOutlined,
+  UserOutlined,
+  FilePdfOutlined,
+  DeleteFilled,
+} from "@ant-design/icons";
 import SectionHeader from "@/components/ReportesElement/AccionesResporte";
 import { useFetchReport } from "@/hook/useFetchReport";
 import ProtectedPage from "@/components/ProtectedPage";
 import EstadisticasCards from "@/components/ReportesElement/DatosEstadisticos";
+import ProtectedButton from "@/components/ProtectedButton";
 
 const { Title, Text } = Typography;
 
@@ -28,14 +43,51 @@ export default function ReporteLiqSalida() {
 
   const datosFiltrados = useMemo(() => {
     const lista = Array.isArray(data) ? data : [];
-    return lista.filter((item) =>
-      nombreFiltro
-        ? item.compradores?.compradorNombre
-            ?.toLowerCase()
-            .includes(nombreFiltro.toLowerCase())
-        : true
-    );
-  }, [data, nombreFiltro]);
+
+    return lista
+      .map((item) => ({
+        ...item,
+        compradorNombre: item.compradores?.compradorNombre || "—",
+        acciones: (
+          <div style={{ display: "flex", gap: 5 }}>
+            <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
+              <Popconfirm
+                title="¿Seguro que deseas eliminar este contrato?"
+                onConfirm={() =>
+                  eliminarRecurso({
+                    direccion: `/api/salidas/liquidarSalida/${item.liqSalidaID}`,
+                    mensajeExito: "Registro anulado correctamente",
+                    mensajeError: "Error al anular el registro",
+                    messageApi,
+                    onRefresh: async () => {
+                      if (rangoFechas?.[0] && rangoFechas?.[1]) {
+                        await fetchData(
+                          rangoFechas[0].startOf("day").toISOString(),
+                          rangoFechas[1].endOf("day").toISOString()
+                        );
+                      } else {
+                        await fetchData();
+                      }
+                    },
+                  })
+                }
+                okText="Sí"
+                cancelText="No"
+              >
+                <Button size="small" danger icon={<DeleteFilled />} />
+              </Popconfirm>
+            </ProtectedButton>
+          </div>
+        ),
+      }))
+      .filter((item) =>
+        nombreFiltro
+          ? item.compradorNombre
+              .toLowerCase()
+              .includes(nombreFiltro.toLowerCase())
+          : true
+      );
+  }, [data, nombreFiltro, messageApi, rangoFechas, fetchData]);
 
   const estadisticas = useMemo(() => {
     if (!datosFiltrados.length) return null;
@@ -84,6 +136,51 @@ export default function ReporteLiqSalida() {
       width: 200,
       render: (text) => text || "—",
     },
+    {
+      title: "Acciones",
+      key: "acciones",
+      fixed: "right",
+      align: "center",
+      width: 160,
+      render: (text, record) => (
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 5,
+          }}
+        >
+          <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
+            <Popconfirm
+              title="¿Seguro que deseas eliminar este contrato?"
+              onConfirm={() =>
+                eliminarRecurso({
+                  direccion: `/api/salidas/liquidarSalida/${record.liqSalidaID}`,
+                  mensajeExito: "Registro anulado correctamente",
+                  mensajeError: "Error al anular el registro",
+                  messageApi,
+                  onRefresh: async () => {
+                    if (rangoFechas?.[0] && rangoFechas?.[1]) {
+                      await fetchData(
+                        rangoFechas[0].startOf("day").toISOString(),
+                        rangoFechas[1].endOf("day").toISOString()
+                      );
+                    } else {
+                      await fetchData();
+                    }
+                  },
+                })
+              }
+              okText="Sí"
+              cancelText="No"
+            >
+              <Button size="small" danger icon={<DeleteFilled />} />
+            </Popconfirm>
+          </ProtectedButton>
+        </div>
+      ),
+    },
   ];
 
   const columnasMobile = [
@@ -93,12 +190,15 @@ export default function ReporteLiqSalida() {
     { label: "Movimiento", key: "liqMovimiento" },
     { label: "Cantidad QQ", key: "liqCantidadQQ" },
     { label: "Descripción", key: "liqDescripcion" },
+    { label: "Acciones", key: "acciones" },
   ];
 
   if (!mounted) return null;
 
   return (
-    <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS", "AUDITORES"]}>
+    <ProtectedPage
+      allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS", "AUDITORES"]}
+    >
       <div
         style={{
           padding: isDesktop ? "24px" : "12px",

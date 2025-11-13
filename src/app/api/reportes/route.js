@@ -114,7 +114,7 @@ export async function GET(req) {
       _sum: { monto: true },
       where: {
         tipo_movimiento: { in: ["ABONO", "PAGO_INTERES", "Int-Cargo"] },
-        fecha: { gte: desde, lte: hasta }, // usa el rango de fechas definido arriba
+        // usa el rango de fechas definido arriba
       },
     });
 
@@ -151,8 +151,10 @@ export async function GET(req) {
       by: ["tipo_movimiento"],
       _sum: { monto: true },
       where: {
-        tipo_movimiento: { in: ["CARGO_ANTICIPO", "INTERES_ANTICIPO", "ABONO_ANTICIPO"] },
-        fecha: { gte: desde, lte: hasta }, // usa el mismo rango de fechas
+        tipo_movimiento: {
+          in: ["CARGO_ANTICIPO", "INTERES_ANTICIPO", "ABONO_ANTICIPO"],
+        },
+        // usa el mismo rango de fechas
       },
     });
 

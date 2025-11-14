@@ -221,28 +221,31 @@ export default function LiquidacionContratoForm() {
   // ------------------------------
   // Recalcular valores cuando cambia cantidad/precio
   // ------------------------------
-  useEffect(() => {
-    if (!formState.producto) return;
+useEffect(() => {
+  if (!formState.producto) return;
 
-    const resultado = calcularCafeDesdeProducto(
-      formState.cantidadLiquidar,
-      formState.totalSacos,
-      formState.producto,
-      formState.precioQQ
-    );
-
-    setFormState((prev) => ({
-      ...prev,
-      oro: truncarDosDecimalesSinRedondear(resultado.oro),
-      retencion: truncarDosDecimalesSinRedondear(resultado.retencion),
-      totalLiquidacion: truncarDosDecimalesSinRedondear(resultado.total),
-    }));
-  }, [
-    formState.cantidadLiquidar,
-    formState.precioQQ,
+  const { oro } = calcularCafeDesdeProducto(
+    formState.cantidadLiquidar,   // peso bruto → oro
     formState.totalSacos,
-    formState.producto,
-  ]);
+    formState.producto
+  );
+
+  const oroFix = truncarDosDecimalesSinRedondear(oro);
+
+  const total = oroFix * parseFloat(formState.precioQQ || 0);
+
+  setFormState((prev) => ({
+    ...prev,
+    oro: oroFix,
+    totalLiquidacion: truncarDosDecimalesSinRedondear(total),
+  }));
+}, [
+  formState.cantidadLiquidar,
+  formState.precioQQ,
+  formState.totalSacos,
+  formState.producto,
+]);
+
 
   // ------------------------------
   // Abrir modal de previsualización

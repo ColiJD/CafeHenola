@@ -225,28 +225,28 @@ export default function ResumenMovimientos() {
   const columnasPrestamos = [
     { title: "", dataIndex: "tipo", key: "tipo", fixed: "left" },
     {
-      title: "Total Préstamos",
+      title: "Monto Inicial",
       dataIndex: "totalPrestamos",
       key: "totalPrestamos",
       align: "right",
       render: (v) => `L. ${formatNumber(v)}`,
     },
     {
-      title: "ABONO",
+      title: "Abono",
       dataIndex: "abono",
       key: "abono",
       align: "right",
       render: (v) => `L. ${formatNumber(v)}`,
     },
     {
-      title: "PAGO_INTERES",
+      title: "Pago de interes",
       dataIndex: "pagoInteres",
       key: "pagoInteres",
       align: "right",
       render: (v) => `L. ${formatNumber(v)}`,
     },
     {
-      title: "Int-Cargo",
+      title: "Cargar Interes",
       dataIndex: "intCargo",
       key: "intCargo",
       align: "right",
@@ -423,13 +423,7 @@ export default function ResumenMovimientos() {
             >
               Resumen de Préstamos y Anticipos
             </Title>
-            <Text type="secondary" style={{ fontSize: isDesktop ? 14 : 12 }}>
-              {rangoFechas?.[0] &&
-                rangoFechas?.[1] &&
-                `Período: ${rangoFechas[0].format(
-                  "DD/MM/YYYY"
-                )} - ${rangoFechas[1].format("DD/MM/YYYY")}`}
-            </Text>
+           
           </div>
 
           <Table

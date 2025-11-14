@@ -50,6 +50,8 @@ export default function CompraForm({ compraId }) {
   const [compraTotalSacos, setCompraTotalSacos] = useState("");
   const [compraDescripcion, setCompraDescripcion] = useState("");
   const [compraOro, setCompraOro] = useState("0.00");
+  const [compraPorcDano, setCompraPorcDano] = useState(0); // nuevo campo
+
   const router = useRouter();
 
   const [errors, setErrors] = useState({});
@@ -127,10 +129,28 @@ export default function CompraForm({ compraId }) {
       compraPrecioQQ
     );
 
-    setCompraTotal(resultado.total);
-    setCompraRetencio(resultado.retencion);
-    setCompraOro(resultado.oro);
-  }, [compraCantidadQQ, compraTotalSacos, compraPrecioQQ, producto]);
+    const porc = parseFloat(compraPorcDano) || 0;
+
+    // ⬅️ 1. Calcular
+    let oroConDano = resultado.oro * (1 - porc / 100);
+
+    // ⬅️ 2. Redondear a 2 decimales
+
+    oroConDano = Number(oroConDano.toFixed(2));
+
+    const retencion = oroConDano * 0.96;
+
+    // ⬅️ 3. Guardar redondeado
+    setCompraOro(oroConDano);
+    setCompraTotal(oroConDano * compraPrecioQQ);
+    setCompraRetencio(retencion);
+  }, [
+    compraCantidadQQ,
+    compraTotalSacos,
+    compraPrecioQQ,
+    producto,
+    compraPorcDano,
+  ]);
 
   // Validación
   const validarDatos = () => {
@@ -240,6 +260,7 @@ export default function CompraForm({ compraId }) {
         setProducto,
         setCompraCantidadQQ,
         setCompraTotalSacos,
+        setCompraPorcDano,
         setCompraEn,
         setCompraDescripcion,
         setCompraTipoDocumento,
@@ -315,15 +336,22 @@ export default function CompraForm({ compraId }) {
       error: errors["Precio (Lps)"],
       validator: validarFloatPositivo,
     },
-
     {
-      label: "Total (Lps)",
-      value: compraTotal,
-      setter: setCompraTotal,
+      label: "Porcentaje de Daño (%)",
+      value: compraPorcDano,
+      setter: setCompraPorcDano,
       type: "Float",
-      required: true,
-      readOnly: true,
-      error: errors["Total"],
+      required: false,
+      tooltip:
+        "Ingrese el porcentaje normalmente, por ejemplo: 50 para 50%. No use 0.50.",
+      error: errors["Porcentaje de Daño"],
+      validator: (v) => {
+        if (v === "" || v === null || v === undefined) return null;
+        const num = parseFloat(v);
+        if (isNaN(num) || num < 0 || num > 100)
+          return "Ingrese un porcentaje válido entre 0 y 100";
+        return null;
+      },
     },
 
     {
@@ -334,6 +362,15 @@ export default function CompraForm({ compraId }) {
       required: true,
       readOnly: true,
       error: errors["Quintales Oro"],
+    },
+    {
+      label: "Total (Lps)",
+      value: compraTotal,
+      setter: setCompraTotal,
+      type: "Float",
+      required: true,
+      readOnly: true,
+      error: errors["Total"],
     },
 
     {

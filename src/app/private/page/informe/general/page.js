@@ -15,7 +15,10 @@ import ProtectedPage from "@/components/ProtectedPage";
 const { Title, Text } = Typography;
 
 export default function ResumenMovimientos() {
-  const hoy = [dayjs().startOf("day"), dayjs().endOf("day")];
+  const inicioAnio = dayjs().startOf("year");
+  const finAnio = dayjs().endOf("year");
+
+  const rangoInicial = [inicioAnio, finAnio];
   const {
     data,
     loading,
@@ -24,7 +27,7 @@ export default function ResumenMovimientos() {
     contextHolder,
     messageApi,
     fetchData,
-  } = useFetchReport("/api/reportes", hoy);
+  } = useFetchReport("/api/reportes", rangoInicial);
 
   const { mounted, isDesktop } = useClientAndDesktop();
 
@@ -423,7 +426,6 @@ export default function ResumenMovimientos() {
             >
               Resumen de Préstamos y Anticipos
             </Title>
-           
           </div>
 
           <Table

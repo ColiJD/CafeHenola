@@ -33,9 +33,11 @@ export function calcularTotalesCliente(cliente = {}) {
 
   return { totalQQ, totalLps, promedio };
 }
+const inicioAnio = dayjs().startOf("year");
+const finAnio = dayjs().endOf("year");
 
+export const rangoInicial = [inicioAnio, finAnio];
 export default function ReporteClientesEntradas() {
-  const hoy = [dayjs().startOf("day"), dayjs().endOf("day")];
   const { mounted, isDesktop } = useClientAndDesktop();
   const [nombreFiltro, setNombreFiltro] = useState("");
   const {
@@ -45,7 +47,7 @@ export default function ReporteClientesEntradas() {
     onFechasChange,
     contextHolder,
     fetchData,
-  } = useFetchReport("/api/reportes/reporteCliente", hoy);
+  } = useFetchReport("/api/reportes/reporteCliente", rangoInicial);
 
   const datosFiltrados = useMemo(() => {
     return data

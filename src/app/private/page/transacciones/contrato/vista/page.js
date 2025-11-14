@@ -13,6 +13,7 @@ import { formatNumber } from "@/components/Formulario";
 import SectionHeader from "@/components/ReportesElement/AccionesResporte";
 import { useFetchReport } from "@/hook/useFetchReport";
 import ProtectedPage from "@/components/ProtectedPage";
+import { rangoInicial } from "../../../informe/reporteCliente/page";
 
 const { Title, Text } = Typography;
 
@@ -21,7 +22,8 @@ export default function ReporteContratosPendientes() {
   const { mounted, isDesktop } = useClientAndDesktop();
   const [nombreFiltro, setNombreFiltro] = useState("");
   const { data, loading, contextHolder, fetchData } = useFetchReport(
-    "/api/contratos/vista"
+    "/api/contratos/vista",
+    rangoInicial
   );
 
   const datosFiltrados = useMemo(() => {

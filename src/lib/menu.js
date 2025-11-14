@@ -64,6 +64,13 @@ export const menuItems = [
         href: RutaTransaccion + "/deposito/vista",
         image: contrato,
       },
+       {
+        id: 406,
+        name: "Saldo Por Contrato",
+        href: RutaTransaccion + "/contrato/vista",
+        image: contrato,
+      },
+      
     ],
   },
   {

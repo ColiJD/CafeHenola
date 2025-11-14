@@ -27,10 +27,10 @@ export function calcularCafeDesdeProducto(
   let oro = pesoNeto / factorOro;
 
   // Truncar y formatear a string con 2 decimales
-  const oroStr = truncarDosDecimalesSinRedondear(oro);
+  const oroStr = (oro);
 
-  const total = truncarDosDecimalesSinRedondear(precioQQ * oroStr);
-  const retencion = truncarDosDecimalesSinRedondear(oroStr * 0.96);
+  const total = (precioQQ * oroStr);
+  const retencion = (oroStr * 0.96);
 
   return { oro: oroStr, total, retencion };
 }

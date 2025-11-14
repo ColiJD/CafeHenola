@@ -14,6 +14,7 @@ import { useFetchReport } from "@/hook/useFetchReport";
 import TablaTotales from "@/components/ReportesElement/TablaTotales";
 import ProtectedPage from "@/components/ProtectedPage";
 import { generarReportePDF } from "@/Doc/Reportes/FormatoDoc";
+import { rangoInicial } from "../reporteCliente/page";
 
 const { Title, Text } = Typography;
 
@@ -58,7 +59,7 @@ export default function ReporteCompradoresSalidas() {
     onFechasChange,
     contextHolder,
     fetchData,
-  } = useFetchReport("/api/reportes/reporteSalidas", hoy);
+  } = useFetchReport("/api/reportes/reporteSalidas", rangoInicial);
 
   // ---------------------------------------
   // Filtrado + Totales

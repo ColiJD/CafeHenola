@@ -27,7 +27,10 @@ export default function TablaSaldoDepositos() {
 
   const [nombreFiltro, setNombreFiltro] = useState("");
   const [tipoCafeFiltro, setTipoCafeFiltro] = useState("");
-  const [rangoFecha, setRangoFecha] = useState([dayjs(), dayjs()]);
+  const [rangoFecha, setRangoFecha] = useState([
+    dayjs().startOf("year"),
+    dayjs().endOf("year"),
+  ]);
 
   const [estadoFiltro, setEstadoFiltro] = useState("Pendiente");
 
@@ -190,7 +193,7 @@ export default function TablaSaldoDepositos() {
             title: "Total (Lps)",
             dataIndex: "liquidadoValor",
             key: "liquidadoValor",
-            render : truncarDosDecimalesSinRedondear,
+            render: truncarDosDecimalesSinRedondear,
           },
         ]),
   ];

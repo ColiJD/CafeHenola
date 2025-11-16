@@ -70,6 +70,12 @@ export const menuItems = [
         href: RutaTransaccion + "/contrato/vista",
         image: contrato,
       },
+       {
+        id: 40,
+        name: "Saldo Prestamo y  Anticipo ",
+        href: Ruta + "/informe/reportePrestamo",
+        image: contrato,
+      },
       
     ],
   },

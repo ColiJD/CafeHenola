@@ -2,14 +2,16 @@ import prisma from "@/lib/prisma";
 import { truncarDosDecimalesSinRedondear } from "@/lib/calculoCafe";
 import { checkRole } from "@/lib/checkRole";
 
-export async function POST(request, req) {
-  const sessionOrResponse = await checkRole(req, [
+export async function POST(request) {
+  // 🔹 Verificar rol usando el request correcto
+  const sessionOrResponse = await checkRole(request, [
     "ADMIN",
     "GERENCIA",
     "OPERARIOS",
     "AUDITORES",
   ]);
   if (sessionOrResponse instanceof Response) return sessionOrResponse;
+
   try {
     const {
       contratoID,
@@ -21,62 +23,56 @@ export async function POST(request, req) {
       descripcion,
     } = await request.json();
 
-    // console.log("Datos recibidos:", {
-    //   contratoID,
-    //   clienteID,
-    //   tipoCafe,
-    //   cantidadQQ,
-    //   precioQQ,
-    //   totalSacos,
-    //   descripcion,
-    // });
-
-    // 1️⃣ Obtener el contrato
+    // 1️⃣ Obtener contrato
     const contrato = await prisma.contrato.findUnique({
       where: { contratoID: Number(contratoID) },
     });
 
-    // console.log("Contrato encontrado:", contrato);
-
     if (!contrato) {
-      return new Response(
-        JSON.stringify({ error: "No se encontró el contrato" }),
+      return Response.json(
+        { error: "No se encontró el contrato" },
         { status: 400 }
       );
     }
 
-    // 2️⃣ Calcular saldo disponible desde detallecontrato
+    // ❌ Bloquear entrega si el contrato está anulado
+    if (
+      contrato.contratoMovimiento?.toUpperCase() === "ANULADO" ||
+      contrato.estado?.toUpperCase() === "ANULADO"
+    ) {
+      return Response.json(
+        {
+          error: "Este contrato está ANULADO y no permite registrar entregas.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // 2️⃣ Calcular total entregado (solo detalles válidos)
     const detalle = await prisma.detallecontrato.aggregate({
       _sum: { cantidadQQ: true },
-      where: { contratoID: Number(contratoID) },
+      where: {
+        contratoID: Number(contratoID),
+        tipoMovimiento: { notIn: ["ANULADO", "Anulado", "anulado"] },
+      },
     });
 
-    // console.log("Detalle acumulado:", detalle);
-
     const totalEntregado = parseFloat(detalle._sum?.cantidadQQ ?? "0");
-    const contratoCantidadQQ = parseFloat(
-      contrato.contratoCantidadQQ.toString()
-    );
+    const contratoCantidadQQ = Number(contrato.contratoCantidadQQ);
     const saldoDisponible = contratoCantidadQQ - totalEntregado;
 
-    // console.log({
-    //   totalEntregado,
-    //   contratoCantidadQQ,
-    //   saldoDisponible,
-    // });
-
     if (Number(cantidadQQ) > saldoDisponible) {
-      return new Response(
-        JSON.stringify({
+      return Response.json(
+        {
           error: `La cantidad a entregar (${cantidadQQ}) supera el saldo disponible (${saldoDisponible})`,
-        }),
+        },
         { status: 400 }
       );
     }
 
-    // 3️⃣ Ejecutar transacción
+    // 3️⃣ Ejecutar transacción completa
     const resultado = await prisma.$transaction(async (tx) => {
-      // a) Registrar entrega en detallecontrato
+      // a) Crear detalle de entrega
       const detalleEntrega = await tx.detallecontrato.create({
         data: {
           contratoID: Number(contratoID),
@@ -91,9 +87,7 @@ export async function POST(request, req) {
       const nuevoTotalEntregado = totalEntregado + Number(cantidadQQ);
       let estadoContrato = "Pendiente";
 
-      // console.log("Nuevo total entregado:", nuevoTotalEntregado);
-
-      // b) Actualizar estado del contrato si se completó
+      // b) Liquidar contrato si completado
       if (nuevoTotalEntregado >= contratoCantidadQQ) {
         await tx.contrato.update({
           where: { contratoID: Number(contratoID) },
@@ -102,7 +96,7 @@ export async function POST(request, req) {
 
         estadoContrato = "Liquidado";
 
-        // c) Registrar cierre en cierrecontrato
+        // c) Registrar cierre contrato
         await tx.cierrecontrato.create({
           data: {
             contratoID: Number(contratoID),
@@ -159,24 +153,21 @@ export async function POST(request, req) {
         detalleEntregaID: detalleEntrega.detalleID,
         saldoDespuesLps: truncarDosDecimalesSinRedondear(
           (contratoCantidadQQ - nuevoTotalEntregado) * Number(precioQQ)
-        ), // 🔹 truncado
+        ),
       };
     });
 
-    // console.log("Resultado de la transacción:", resultado);
-
-    // 4️⃣ Retornar resultado
-    return new Response(
-      JSON.stringify({
+    return Response.json(
+      {
         message: "Entrega de contrato registrada correctamente",
         ...resultado,
-      }),
+      },
       { status: 201 }
     );
   } catch (error) {
     console.error("Error en POST /api/contratos/entregar:", error);
-    return new Response(
-      JSON.stringify({ error: error?.message || "Error interno" }),
+    return Response.json(
+      { error: error?.message || "Error interno" },
       { status: 500 }
     );
   }

@@ -16,25 +16,31 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const clienteID = searchParams.get("clienteID");
 
-    // 🟢 Si se pasa clienteID: mantener lógica original
+    // ====================================================
+    // 🟢 1) SI HAY clienteID → DEVOLVER CONTRATOS PENDIENTES DEL CLIENTE
+    // ====================================================
     if (clienteID) {
       const contratos = await prisma.contrato.findMany({
         where: {
           contratoclienteID: Number(clienteID),
-          contratoMovimiento: { not: "ANULADO" }, // ignorar contratos anulados
+
+          // ❌ ignorar contratos anulados (todas las variantes)
+          contratoMovimiento: {
+            notIn: ["ANULADO", "Anulado", "anulado"],
+          },
         },
-        include: { cliente: { select: { clienteNombre: true } } },
+        include: {
+          cliente: { select: { clienteNombre: true, clienteApellido: true } },
+        },
       });
 
       if (contratos.length === 0) {
-        return new Response(JSON.stringify([]), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        });
+        return Response.json([]);
       }
 
       const contratoIds = contratos.map((c) => c.contratoID);
 
+      // 🔥 Calcular totales reales SOLO con detalles válidos
       const totales = await prisma.$queryRaw(
         Prisma.sql`
           SELECT
@@ -43,7 +49,7 @@ export async function GET(req) {
             COALESCE(SUM(dc.cantidadQQ), 0) AS cantidadEntregada
           FROM detallecontrato dc
           WHERE dc.contratoID IN (${Prisma.join(contratoIds)})
-            AND dc.tipoMovimiento != 'ANULADO'
+            AND dc.tipoMovimiento NOT IN ('ANULADO', 'Anulado', 'anulado')
           GROUP BY dc.contratoID
         `
       );
@@ -60,68 +66,73 @@ export async function GET(req) {
 
       const resultado = contratos
         .map((c) => {
-          const totalesContrato = totalesMap.get(c.contratoID) || {
+          const tot = totalesMap.get(c.contratoID) || {
             totalDetalle: 0,
             cantidadEntregada: 0,
           };
-          const saldoInicial = Number(c.contratoTotalLps || 0);
-          const faltante = saldoInicial - totalesContrato.totalDetalle;
 
           const cantidadInicial = Number(c.contratoCantidadQQ || 0);
-          const cantidadFaltante =
-            cantidadInicial - totalesContrato.cantidadEntregada;
+          const saldoInicial = Number(c.contratoTotalLps || 0);
 
-          const completado =
-            totalesContrato.cantidadEntregada >= cantidadInicial;
+          const cantidadFaltante = cantidadInicial - tot.cantidadEntregada;
+          const faltanteSaldo = saldoInicial - tot.totalDetalle;
+
+          const completado = tot.cantidadEntregada >= cantidadInicial;
 
           return {
             contratoID: c.contratoID,
-            clienteNombreCompleto: c.cliente?.clienteNombre || "",
+            clienteNombreCompleto: `${c.cliente?.clienteNombre || ""} ${
+              c.cliente?.clienteApellido || ""
+            }`.trim(),
+
             saldoInicial,
-            totalDetalle: totalesContrato.totalDetalle,
-            faltante,
+            totalDetalle: tot.totalDetalle,
+            faltante: faltanteSaldo,
+
             cantidadInicial,
-            cantidadEntregada: totalesContrato.cantidadEntregada,
+            cantidadEntregada: tot.cantidadEntregada,
             cantidadFaltante,
+
             completado,
           };
         })
-        .filter((c) => !c.completado);
+        .filter((c) => !c.completado); // 🔥 Solo contratos pendientes
 
-      return new Response(JSON.stringify(resultado), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
+      return Response.json(resultado);
     }
 
-    // 🟡 Si NO se pasa clienteID: devolver todos los clientes con contratos pendientes
+    // ====================================================
+    // 🟡 2) SI NO HAY clienteID → LISTADO DE CLIENTES PENDIENTES
+    // ====================================================
     const clientesPendientes = await prisma.$queryRaw`
-  SELECT 
-    cl.clienteID,
-    cl.clienteNombre,
-    cl.clienteApellido
-  FROM cliente cl
-  LEFT JOIN (
-    SELECT
-      contratoclienteID,
-      SUM(contratoCantidadQQ) AS cantidadTotal
-    FROM contrato
-    WHERE contratoMovimiento != 'ANULADO'
-    GROUP BY contratoclienteID
-  ) ct ON ct.contratoclienteID = cl.clienteID
-  LEFT JOIN (
-    SELECT
-      c.contratoclienteID,
-      SUM(dc.cantidadQQ) AS cantidadEntregada
-    FROM contrato c
-    JOIN detallecontrato dc
-      ON dc.contratoID = c.contratoID
-      AND dc.tipoMovimiento != 'ANULADO'
-    WHERE c.contratoMovimiento != 'ANULADO'
-    GROUP BY c.contratoclienteID
-  ) dt ON dt.contratoclienteID = cl.clienteID
-  WHERE (COALESCE(ct.cantidadTotal, 0) - COALESCE(dt.cantidadEntregada, 0)) > 0;
-`;
+      SELECT 
+        cl.clienteID,
+        cl.clienteNombre,
+        cl.clienteApellido
+      FROM cliente cl
+      LEFT JOIN (
+        -- Cantidad TOTAL inicial de contratos
+        SELECT
+          contratoclienteID,
+          SUM(contratoCantidadQQ) AS cantidadInicialTotal
+        FROM contrato
+        WHERE contratoMovimiento NOT IN ('ANULADO', 'Anulado', 'anulado')
+        GROUP BY contratoclienteID
+      ) ctot ON ctot.contratoclienteID = cl.clienteID
+      LEFT JOIN (
+        -- Cantidad total ENTREGADA (solo detalles válidos)
+        SELECT
+          c.contratoclienteID,
+          SUM(dc.cantidadQQ) AS cantidadEntregadaTotal
+        FROM contrato c
+        JOIN detallecontrato dc
+          ON dc.contratoID = c.contratoID
+         AND dc.tipoMovimiento NOT IN ('ANULADO', 'Anulado', 'anulado')
+        WHERE c.contratoMovimiento NOT IN ('ANULADO', 'Anulado', 'anulado')
+        GROUP BY c.contratoclienteID
+      ) dent ON dent.contratoclienteID = cl.clienteID
+      WHERE (COALESCE(ctot.cantidadInicialTotal, 0) - COALESCE(dent.cantidadEntregadaTotal, 0)) > 0
+    `;
 
     const resultado = clientesPendientes.map((c) => ({
       clienteID: c.clienteID,
@@ -130,15 +141,12 @@ export async function GET(req) {
       }`.trim(),
     }));
 
-    return new Response(JSON.stringify(resultado), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    return Response.json(resultado);
   } catch (error) {
-    console.error("Error al obtener contratos pendientes:", error);
+    console.error("❌ Error al obtener contratos pendientes:", error);
     return new Response(
       JSON.stringify({ error: "No se pudieron cargar los contratos." }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500 }
     );
   }
 }

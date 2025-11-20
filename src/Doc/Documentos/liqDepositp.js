@@ -33,6 +33,8 @@ export const exportLiquidacionDeposito = async (formState) => {
   const descripcion = formState?.descripcion || "N/A";
   const comprobanteID = formState?.comprobanteID || "0000";
   const cantidadLetras = numeroALetras(cantidadLiquidar, "QQ de oro");
+  const precio = formState?.precio || formState?.depositoPrecioQQ || 0;
+
   const formaPago = formState?.formaPago || "";
 
   // nombre del productor desde cliente
@@ -135,14 +137,16 @@ export const exportLiquidacionDeposito = async (formState) => {
     autoTable(doc, {
       startY,
       margin: { left: leftMargin, right: rightMargin },
-      head: [
-        ["Tipo de Café", "Cantidad a Liquidar (QQ)", "Total a Pagar (Lps)"],
-      ],
+      head: [["Tipo de Café", "Cantidad (QQ)", "Precio (Lps)", "Total (Lps)"]],
       body: [
         [
           { content: tipoCafe, styles: { textColor: [255, 0, 0] } },
           {
             content: formatNumber(cantidadLiquidar),
+            styles: { textColor: [255, 0, 0] },
+          },
+          {
+            content: `L. ${formatNumber(precio)}`,
             styles: { textColor: [255, 0, 0] },
           },
           {

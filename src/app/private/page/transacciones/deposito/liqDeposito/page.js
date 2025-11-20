@@ -231,12 +231,13 @@ export default function DepositoForm() {
       clienteID: formState.cliente.value,
       tipoCafe: formState.producto.value,
       cantidadQQ: parseFloat(formState.depositoCantidadQQ),
-      precioQQ: parseFloat(formState.liqPrecio),
+      precioQQ: parseFloat(formState.depositoPrecioQQ),
       total: parseFloat(totalLiquidacion),
       tipoDocumento: formState.depositoTipoDocumento || "N/A",
       descripcion: formState.depositoDescripcion || "N/A",
       liqEn: formState.depositoEn || "Liquidación Depósito",
     };
+
 
     try {
       const res = await fetch("/api/liqDeposito", {

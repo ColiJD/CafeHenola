@@ -47,12 +47,11 @@ export async function POST(request,req) {
 
     // 3️⃣ Llamar al stored procedure para liquidar
     await prisma.$executeRawUnsafe(
-      `CALL LiquidarDepositoAuto(?, ?, ?, ?, ?, ?, ?,?)`,
+      `CALL LiquidarDepositoAuto(?, ?, ?, ?, ?, ?,?)`,
       Number(clienteID),
       Number(tipoCafe),
       Number(cantidadQQ),
       Number(precioQQ),
-      movimiento || "Entrada",
       tipoDocumento,
       descripcion,
       liqEn

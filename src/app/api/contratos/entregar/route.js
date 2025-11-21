@@ -61,10 +61,13 @@ export async function POST(request) {
     const contratoCantidadQQ = Number(contrato.contratoCantidadQQ);
     const saldoDisponible = contratoCantidadQQ - totalEntregado;
 
-    if (Number(cantidadQQ) > saldoDisponible) {
+    const cantidadQQNum = truncarDosDecimalesSinRedondear(Number(cantidadQQ));
+    const saldoDispNum = truncarDosDecimalesSinRedondear(saldoDisponible);
+
+    if (cantidadQQNum > saldoDispNum) {
       return Response.json(
         {
-          error: `La cantidad a entregar (${cantidadQQ}) supera el saldo disponible (${saldoDisponible})`,
+          error: `La cantidad a entregar (${cantidadQQNum}) supera el saldo disponible (${saldoDispNum})`,
         },
         { status: 400 }
       );

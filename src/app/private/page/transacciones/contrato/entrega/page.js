@@ -221,31 +221,30 @@ export default function LiquidacionContratoForm() {
   // ------------------------------
   // Recalcular valores cuando cambia cantidad/precio
   // ------------------------------
-useEffect(() => {
-  if (!formState.producto) return;
+  useEffect(() => {
+    if (!formState.producto) return;
 
-  const { oro } = calcularCafeDesdeProducto(
-    formState.cantidadLiquidar,   // peso bruto → oro
+    const { oro } = calcularCafeDesdeProducto(
+      formState.cantidadLiquidar, // peso bruto → oro
+      formState.totalSacos,
+      formState.producto
+    );
+
+    const oroFix = truncarDosDecimalesSinRedondear(oro);
+
+    const total = oroFix * parseFloat(formState.precioQQ || 0);
+
+    setFormState((prev) => ({
+      ...prev,
+      oro: oroFix,
+      totalLiquidacion: truncarDosDecimalesSinRedondear(total),
+    }));
+  }, [
+    formState.cantidadLiquidar,
+    formState.precioQQ,
     formState.totalSacos,
-    formState.producto
-  );
-
-  const oroFix = truncarDosDecimalesSinRedondear(oro);
-
-  const total = oroFix * parseFloat(formState.precioQQ || 0);
-
-  setFormState((prev) => ({
-    ...prev,
-    oro: oroFix,
-    totalLiquidacion: truncarDosDecimalesSinRedondear(total),
-  }));
-}, [
-  formState.cantidadLiquidar,
-  formState.precioQQ,
-  formState.totalSacos,
-  formState.producto,
-]);
-
+    formState.producto,
+  ]);
 
   // ------------------------------
   // Abrir modal de previsualización
@@ -261,9 +260,12 @@ useEffect(() => {
     e.preventDefault();
     setSubmitting(true);
 
-    if (formState.oro > formState.saldoDisponibleQQ) {
+    const oro = truncarDosDecimalesSinRedondear(formState.oro);
+    const saldo = truncarDosDecimalesSinRedondear(formState.saldoDisponibleQQ);
+
+    if (oro > saldo) {
       messageApi.error(
-        `La cantidad (${formState.oro}) supera el saldo disponible (${formState.saldoDisponibleQQ})`
+        `La cantidad (${oro}) supera el saldo disponible (${saldo})`
       );
       setSubmitting(false);
       return;

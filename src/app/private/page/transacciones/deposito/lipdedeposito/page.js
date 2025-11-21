@@ -73,6 +73,7 @@ export default function ReporteLiquidacionDeposito() {
                         " " +
                         item.cliente?.clienteApellido || "Cliente",
                     cantidadLiquidar: parseFloat(item.liqCatidadQQ || 0),
+                    precio: parseFloat(item.liqPrecio || 0),
                     totalPagar: parseFloat(item.liqTotalLps || 0),
                     descripcion: item.liqDescripcion || "",
                     comprobanteID: item.liqID,
@@ -232,6 +233,7 @@ export default function ReporteLiquidacionDeposito() {
                       " " +
                       record.cliente?.clienteApellido || "Cliente",
                   cantidadLiquidar: parseFloat(record.liqCatidadQQ || 0),
+                  precio: parseFloat(record.liqPrecio || 0),
                   totalPagar: parseFloat(record.liqTotalLps || 0),
                   descripcion: record.liqDescripcion || "",
                   comprobanteID: record.liqID,

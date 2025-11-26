@@ -23,9 +23,9 @@ import SectionHeader from "@/components/ReportesElement/AccionesResporte";
 
 import {
   CalendarOutlined,
-  AppstoreOutlined,
-  DollarOutlined,
-  LineChartOutlined,
+  // AppstoreOutlined,
+  // DollarOutlined,
+  // LineChartOutlined,
 } from "@ant-design/icons";
 import EstadisticasCards from "@/components/ReportesElement/DatosEstadisticos";
 import {
@@ -35,6 +35,7 @@ import {
   columnsPrestamos,
   getPrestamosMoviColumns,
 } from "./columnas";
+// import TablaTotales from "@/components/ReportesElement/TablaTotales";
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -47,7 +48,7 @@ export default function MovimientosComprasPage() {
     dayjs().endOf("year"),
   ]);
   const [data, setData] = useState([]);
-  const [totales, setTotales] = useState({});
+  // const [totales, setTotales] = useState({});
   const [prestamos, setPrestamos] = useState([]);
   const [loading, setLoading] = useState(false);
   const { mounted, isDesktop } = useClientAndDesktop();
@@ -148,6 +149,8 @@ export default function MovimientosComprasPage() {
                 ) / totalQQ
               : 0;
 
+          const precioUnitario = detalles[0]?.precioQQ || 0;
+
           return {
             contratoID: contrato.contratoID,
             descripcion: contrato.descripcion,
@@ -155,6 +158,7 @@ export default function MovimientosComprasPage() {
             producto: contrato.producto?.productName || "-",
             fecha: contrato.fecha,
             totalQQ,
+            precio: precioUnitario,
             totalLps,
             promedioPrecio,
             detalles, // solo cantidad, precio, total y fecha
@@ -164,6 +168,12 @@ export default function MovimientosComprasPage() {
 
       const filaContratos = {
         tipo: "Contrato",
+
+        totalQQPorLiquidar: detallesContratos.reduce(
+          (sum, c) => sum + ((c.cantidadContrato || 0) - c.totalQQ),
+          0
+        ),
+
         totalQQ: detallesContratos.reduce((sum, c) => sum + c.totalQQ, 0),
         totalLps: detallesContratos.reduce((sum, c) => sum + c.totalLps, 0),
         promedioPrecio:
@@ -201,39 +211,53 @@ export default function MovimientosComprasPage() {
             (sum, l) => sum + l.cantidadQQ,
             0
           );
+
           const totalLpsLiquidado = detallesLiq.reduce(
             (sum, l) => sum + l.totalLps,
             0
           );
+
           const promedioPrecio =
             detallesLiq.reduce((sum, l) => sum + l.precioQQ * l.cantidadQQ, 0) /
             Math.max(1, totalQQLiquidado);
+
+          // Para mostrar en la tabla principal
+          const precioUnitario = detallesLiq[0]?.precioQQ || 0;
 
           return {
             depositoID: dep.depositoID,
             fecha: dep.fecha,
             producto: dep.producto || "-",
-            cantidadQQ: dep.cantidadQQ || 0, // solo referencia
-            totalQQLiquidado, // lo que usamos para los totales
-            totalLpsLiquidado, // lo que usamos para los totales
+            cantidadQQ: dep.cantidadQQ || 0,
+            precio: precioUnitario,
+            totalQQLiquidado,
+            totalLpsLiquidado,
             promedioPrecio,
             liquidado: totalQQLiquidado >= (dep.cantidadQQ || 0) ? "Sí" : "No",
-            detalles: detallesLiq, // detalles de liquidación con cantidad, precio y total
+            detalles: detallesLiq,
           };
         }
       );
-      console.log(detallesDepositos);
-      // Totales generales de depósitos
+
+      // FILA DE RESUMEN
       const filaDepositos = {
         tipo: "Depósito",
+
+        totalQQPorLiquidar: detallesDepositos.reduce(
+          (sum, d) => sum + ((d.cantidadQQ || 0) - d.totalQQLiquidado),
+          0
+        ),
+
         totalQQ: detallesDepositos.reduce(
           (sum, d) => sum + d.totalQQLiquidado,
           0
         ),
+
         totalLps: detallesDepositos.reduce(
           (sum, d) => sum + d.totalLpsLiquidado,
           0
         ),
+
         promedioPrecio:
           detallesDepositos.reduce(
             (sum, d) => sum + d.promedioPrecio * d.totalQQLiquidado,
@@ -243,6 +267,7 @@ export default function MovimientosComprasPage() {
             1,
             detallesDepositos.reduce((sum, d) => sum + d.totalQQLiquidado, 0)
           ),
+
         detalles: detallesDepositos,
       };
 
@@ -363,26 +388,26 @@ export default function MovimientosComprasPage() {
 
       setData([filaCompras, filaContratos, filaDepositos]);
 
-      setTotales({
-        totalQQ:
-          filaCompras.totalQQ + filaContratos.totalQQ + filaDepositos.totalQQ,
-        totalLps:
-          filaCompras.totalLps +
-          filaContratos.totalLps +
-          filaDepositos.totalLps,
-        promedioPrecio:
-          (filaCompras.totalQQ * filaCompras.promedioPrecio +
-            filaContratos.totalQQ * filaContratos.promedioPrecio +
-            filaDepositos.totalQQ * filaDepositos.promedioPrecio) /
-          Math.max(
-            1,
-            filaCompras.totalQQ + filaContratos.totalQQ + filaDepositos.totalQQ
-          ),
-        // 🔹 Totales de préstamos
-        prestamosMonto: totalPrestamosMonto,
-        prestamosAbonado: totalPrestamosAbonado,
-        prestamosRestante: totalPrestamosRestante,
-      });
+      // setTotales({
+      //   totalQQ:
+      //     filaCompras.totalQQ + filaContratos.totalQQ + filaDepositos.totalQQ,
+      //   totalLps:
+      //     filaCompras.totalLps +
+      //     filaContratos.totalLps +
+      //     filaDepositos.totalLps,
+      //   promedioPrecio:
+      //     (filaCompras.totalQQ * filaCompras.promedioPrecio +
+      //       filaContratos.totalQQ * filaContratos.promedioPrecio +
+      //       filaDepositos.totalQQ * filaDepositos.promedioPrecio) /
+      //     Math.max(
+      //       1,
+      //       filaCompras.totalQQ + filaContratos.totalQQ + filaDepositos.totalQQ
+      //     ),
+      //   // 🔹 Totales de préstamos
+      //   prestamosMonto: totalPrestamosMonto,
+      //   prestamosAbonado: totalPrestamosAbonado,
+      //   prestamosRestante: totalPrestamosRestante,
+      // });
 
       const hayRegistros =
         [filaCompras, filaContratos, filaDepositos].some(
@@ -418,7 +443,11 @@ export default function MovimientosComprasPage() {
 
         <Divider />
 
-        <Row gutter={[16, 16]} align="middle">
+        <Row
+          gutter={[16, 16]}
+          align="middle"
+          justify="space-around" // <-- centramos los filtros horizontalmente
+        >
           <Col xs={24} sm={12} md={8} lg={6}>
             <Space direction="vertical" style={{ width: "100%" }}>
               <Text strong>Cliente:</Text>
@@ -426,7 +455,7 @@ export default function MovimientosComprasPage() {
                 style={{ width: "100%" }}
                 placeholder="Seleccione un cliente"
                 showSearch
-               optionFilterProp="label"
+                optionFilterProp="label"
                 value={clienteID}
                 onChange={setClienteID}
                 options={clientes.map((c) => ({
@@ -462,69 +491,71 @@ export default function MovimientosComprasPage() {
           </Col>
         </Row>
 
-        {totales && (
+        {/* {totales && (
           <>
             <Divider />
-            <EstadisticasCards
-              isDesktop={isDesktop}
-              data={[
-                {
-                  titulo: "Total Quintales",
-                  valor: formatNumber(totales.totalQQ, 2),
-                  prefix: "QQ.",
-                  color: "#52c41a",
-                  icon: <AppstoreOutlined style={{ color: "#52c41a" }} />,
-                },
-                {
-                  titulo: "Total Lempiras",
-                  valor: formatNumber(totales.totalLps, 2),
-                  prefix: "L.",
-                  color: "#1890ff",
-                  icon: <DollarOutlined style={{ color: "#1890ff" }} />,
-                },
-                {
-                  titulo: "Promedio Precio",
-                  valor: formatNumber(totales.promedioPrecio, 2),
-                  prefix: "L.",
-                  color: "#faad14",
-                  icon: <LineChartOutlined style={{ color: "#faad14" }} />,
-                },
-              ]}
-            />
-
-            {prestamos.length > 0 && (
-              <>
-                <Divider />
-                <EstadisticasCards
-                  isDesktop={isDesktop}
-                  data={[
-                    {
-                      titulo: "Monto Total Préstamos",
-                      valor: formatNumber(totales.prestamosMonto, 2),
-                      prefix: "L.",
-                      color: "#722ed1",
-                      icon: <DollarOutlined style={{ color: "#722ed1" }} />,
-                    },
-                    {
-                      titulo: "Monto Abonado",
-                      valor: formatNumber(totales.prestamosAbonado, 2),
-                      prefix: "L.",
-                      color: "#52c41a",
-                      icon: <DollarOutlined style={{ color: "#52c41a" }} />,
-                    },
-                    {
-                      titulo: "Monto Restante",
-                      valor: formatNumber(totales.prestamosRestante, 2),
-                      prefix: "L.",
-                      color: "#cf1322",
-                      icon: <DollarOutlined style={{ color: "#cf1322" }} />,
-                    },
-                  ]}
-                />
-              </>
-            )}
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 18,
+                justifyContent: "space-between",
+              }}
+            >
+              <EstadisticasCards
+                isDesktop={isDesktop}
+                data={[
+                  {
+                    titulo: "QQ Entregados",
+                    valor: formatNumber(totales.totalQQ, 2),
+                    prefix: "QQ.",
+                    color: "#52c41a",
+                    icon: <AppstoreOutlined style={{ color: "#52c41a" }} />,
+                  },
+                  {
+                    titulo: "Entregados Lps",
+                    valor: formatNumber(totales.totalLps, 2),
+                    prefix: "L.",
+                    color: "#1890ff",
+                    icon: <DollarOutlined style={{ color: "#1890ff" }} />,
+                  },
+                  {
+                    titulo: "Promedio Precio",
+                    valor: formatNumber(totales.promedioPrecio, 2),
+                    prefix: "L.",
+                    color: "#faad14",
+                    icon: <LineChartOutlined style={{ color: "#faad14" }} />,
+                  },
+                  ...(prestamos.length > 0
+                    ? [
+                        {
+                          titulo: "Monto Total Préstamos",
+                          valor: formatNumber(totales.prestamosMonto, 2),
+                          prefix: "L.",
+                          color: "#722ed1",
+                          icon: <DollarOutlined style={{ color: "#722ed1" }} />,
+                        },
+                        {
+                          titulo: "Monto Abonado",
+                          valor: formatNumber(totales.prestamosAbonado, 2),
+                          prefix: "L.",
+                          color: "#52c41a",
+                          icon: <DollarOutlined style={{ color: "#52c41a" }} />,
+                        },
+                        {
+                          titulo: "Monto Restante",
+                          valor: formatNumber(totales.prestamosRestante, 2),
+                          prefix: "L.",
+                          color: "#cf1322",
+                          icon: <DollarOutlined style={{ color: "#cf1322" }} />,
+                        },
+                      ]
+                    : []),
+                ]}
+              />
+            </div>
           </>
-        )}
+        )} */}
 
         <Divider />
 
@@ -534,7 +565,13 @@ export default function MovimientosComprasPage() {
           >
             <Spin size="large" />
           </div>
-        ) : (
+        ) : data &&
+          data.some((row) =>
+            // Revisar si hay al menos un valor numérico >= 0
+            Object.values(row).some(
+              (val) => typeof val === "number" && val >= 0
+            )
+          ) ? (
           <Table
             columns={columns}
             dataSource={data}
@@ -574,40 +611,171 @@ export default function MovimientosComprasPage() {
               },
             }}
             pagination={false}
+            summary={() => (
+              <ResumenTablaGenerico
+                columns={columns}
+                data={data}
+                options={{
+                  highlightColumn: "promedioPrecio",
+                  weightedColumn: "totalQQ",
+                  highlightColumns: [
+                    { dataIndex: "totalQQPorLiquidar", type: "danger" },
+                  ],
+                }}
+              />
+            )}
           />
+        ) : (
+          <div style={{ textAlign: "center", padding: 40 }}>
+            <Text>No hay datos para mostrar</Text>
+          </div>
         )}
 
-        {!loading && data.length > 0 && prestamos.length > 0 && (
+        {!loading && data.length > 0 && (
           <>
             <Divider />
-            <Title level={4}>Préstamos y Anticipos</Title>
+            {/* Tabla de Préstamos */}
+            <Title level={4}>Préstamos</Title>
             <Table
               columns={columnsPrestamos}
-              dataSource={prestamos}
-              rowKey={(r) => r.prestamoId || r.anticipoId}
+              dataSource={prestamos.filter((p) => p.tipo !== "ANTICIPO")}
+              rowKey={(r) => r.prestamoId}
               scroll={{ x: "max-content" }}
               expandable={{
-                expandedRowRender: (record) => {
-                  const tipo =
-                    record.tipo === "ANTICIPO" ? "ANTICIPO" : "PRESTAMO";
-                  return (
-                    <Table
-                      size="small"
-                      columns={getPrestamosMoviColumns(tipo)}
-                      dataSource={record.movimientos}
-                      pagination={false}
-                      rowKey="movimientoId"
-                      scroll={{ x: "max-content" }}
-                    />
-                  );
-                },
+                expandedRowRender: (record) => (
+                  <Table
+                    size="small"
+                    columns={getPrestamosMoviColumns("PRESTAMO")}
+                    dataSource={record.movimientos}
+                    pagination={false}
+                    rowKey="movimientoId"
+                    scroll={{ x: "max-content" }}
+                  />
+                ),
               }}
               pagination={false}
+              summary={() => (
+                <ResumenTablaGenerico
+                  columns={columnsPrestamos}
+                  data={prestamos.filter((p) => p.tipo !== "ANTICIPO")}
+                  options={{
+                    highlightColumns: [{ dataIndex: "total", type: "danger" }],
+                  }}
+                />
+              )}
+            />
+
+            <Divider />
+            {/* Tabla de Anticipos */}
+            <Title level={4}>Anticipos</Title>
+            <Table
+              columns={columnsPrestamos}
+              dataSource={prestamos.filter((p) => p.tipo === "ANTICIPO")}
+              rowKey={(r) => r.anticipoId}
+              scroll={{ x: "max-content" }}
+              expandable={{
+                expandedRowRender: (record) => (
+                  <Table
+                    size="small"
+                    columns={getPrestamosMoviColumns("ANTICIPO")}
+                    dataSource={record.movimientos}
+                    pagination={false}
+                    rowKey="movimientoId"
+                    scroll={{ x: "max-content" }}
+                  />
+                ),
+              }}
+              pagination={false}
+              summary={() => (
+                <ResumenTablaGenerico
+                  columns={columnsPrestamos}
+                  data={prestamos.filter((p) => p.tipo === "ANTICIPO")}
+                  options={{
+                    highlightColumns: [{ dataIndex: "total", type: "danger" }],
+                  }}
+                />
+              )}
             />
             <Divider />
           </>
         )}
       </Card>
     </ProtectedPage>
+  );
+}
+export function ResumenTablaGenerico({ columns, data, options = {} }) {
+  const {
+    highlightColumn,
+    fixed,
+    formatCell,
+    weightedColumn,
+    highlightColumns = [],
+  } = options;
+
+  // Calcular totales solo para columnas numéricas
+  const totals = {};
+  columns.forEach((col) => {
+    if (!col.dataIndex) return;
+
+    const numericValues = data
+      .map((row) => row[col.dataIndex])
+      .filter((v) => typeof v === "number" && !isNaN(v));
+
+    // Sumar para columnas normales
+    if (numericValues.length > 0) {
+      totals[col.dataIndex] = numericValues.reduce((sum, v) => sum + v, 0);
+    }
+
+    // Calcular promedio ponderado si es la columna destacada y hay columna de peso
+    if (col.dataIndex === highlightColumn && weightedColumn) {
+      const weightedSum = data.reduce(
+        (sum, row) =>
+          sum + (row[col.dataIndex] || 0) * (row[weightedColumn] || 0),
+        0
+      );
+      const totalWeight = data.reduce(
+        (sum, row) => sum + (row[weightedColumn] || 0),
+        0
+      );
+      totals[col.dataIndex] = totalWeight > 0 ? weightedSum / totalWeight : 0;
+    }
+  });
+
+  return (
+    <Table.Summary fixed={fixed}>
+      <Table.Summary.Row>
+        <Table.Summary.Cell colSpan={1}>
+          <div style={{ textAlign: "left", paddingLeft: 8, fontWeight: 600 }}>
+            Totales
+          </div>
+        </Table.Summary.Cell>
+
+        {columns.map((col) => {
+          if (!col.dataIndex)
+            return <Table.Summary.Cell key={col.key}></Table.Summary.Cell>;
+
+          const value = totals[col.dataIndex];
+          if (value === undefined)
+            return (
+              <Table.Summary.Cell key={col.dataIndex}></Table.Summary.Cell>
+            );
+
+          // Buscar si la columna está en highlightColumns
+          const highlightObj = highlightColumns.find(
+            (h) => h.dataIndex === col.dataIndex
+          );
+
+          return (
+            <Table.Summary.Cell key={col.dataIndex} align="center">
+              <Text strong={!!highlightObj} type={highlightObj?.type}>
+                {formatCell
+                  ? formatCell(value, col.dataIndex)
+                  : formatNumber(value, 2)}
+              </Text>
+            </Table.Summary.Cell>
+          );
+        })}
+      </Table.Summary.Row>
+    </Table.Summary>
   );
 }

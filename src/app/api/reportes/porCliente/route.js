@@ -36,18 +36,20 @@ export async function GET(req) {
       orderBy: { compraFecha: "asc" },
     });
 
-    const detallesCompras = compras.map((c) => {
-      const cantidadQQ = Number(c.compraCantidadQQ) || 0;
-      const precioQQ = Number(c.compraPrecioQQ) || 0;
-      return {
-        fecha: c.compraFecha,
-        producto: c.producto?.productName || "-",
-        cantidadQQ,
-        precioQQ,
-        totalLps: cantidadQQ * precioQQ,
-        compraId: c.compraId,
-      };
-    });
+    const detallesCompras = compras
+      .filter((c) => c.tipoMovimiento !== "Anulado")
+      .map((c) => {
+        const cantidadQQ = Number(c.compraCantidadQQ) || 0;
+        const precioQQ = Number(c.compraPrecioQQ) || 0;
+        return {
+          fecha: c.compraFecha,
+          producto: c.producto?.productName || "-",
+          cantidadQQ,
+          precioQQ,
+          totalLps: cantidadQQ * precioQQ,
+          compraId: c.compraId,
+        };
+      });
 
     const totalQQCompras = detallesCompras.reduce(
       (sum, c) => sum + c.cantidadQQ,
@@ -92,46 +94,49 @@ export async function GET(req) {
     });
 
     // Preparar detalles por contrato y calcular totales
-    const detallesContratos = contratos.map((contrato) => {
-      const detalles = contrato.detallecontrato.map((d) => {
-        const cantidadQQ = Number(d.cantidadQQ) || 0;
-        const precioQQ = Number(d.precioQQ) || 0;
+    const detallesContratos = contratos
+      .filter((d) => d.tipoMovimiento !== "Anulado")
+      .map((contrato) => {
+        const detalles = contrato.detallecontrato.map((d) => {
+          const cantidadQQ = Number(d.cantidadQQ) || 0;
+          const precioQQ = Number(d.precioQQ) || 0;
+          return {
+            detalleID: d.detalleID,
+            fecha: d.fecha,
+            producto: contrato.producto?.productName || "-",
+            cantidadQQ,
+            precioQQ,
+            totalLps: cantidadQQ * precioQQ,
+          };
+        });
+
+        const totalQQ = detalles.reduce((sum, d) => sum + d.cantidadQQ, 0);
+        const totalLps = detalles.reduce((sum, d) => sum + d.totalLps, 0);
+        const promedioPrecio =
+          totalQQ > 0
+            ? detalles.reduce((sum, d) => sum + d.precioQQ * d.cantidadQQ, 0) /
+              totalQQ
+            : 0;
+
         return {
-          detalleID: d.detalleID,
-          fecha: d.fecha,
-          producto: contrato.producto?.productName || "-",
-          cantidadQQ,
-          precioQQ,
-          totalLps: cantidadQQ * precioQQ,
+          contratoID: contrato.contratoID,
+          cantidadContrato: Number(contrato.contratoCantidadQQ),
+          fecha: contrato.contratoFecha,
+          descripcion: contrato.contratoDescripcion,
+          producto: contrato.producto,
+          totalQQ,
+          totalLps,
+          promedioPrecio,
+          detalles,
         };
       });
-
-      const totalQQ = detalles.reduce((sum, d) => sum + d.cantidadQQ, 0);
-      const totalLps = detalles.reduce((sum, d) => sum + d.totalLps, 0);
-      const promedioPrecio =
-        totalQQ > 0
-          ? detalles.reduce((sum, d) => sum + d.precioQQ * d.cantidadQQ, 0) /
-            totalQQ
-          : 0;
-
-      return {
-        contratoID: contrato.contratoID,
-        cantidadContrato: Number(contrato.contratoCantidadQQ),
-        fecha: contrato.contratoFecha,
-        descripcion: contrato.contratoDescripcion,
-        producto: contrato.producto,
-        totalQQ,
-        totalLps,
-        promedioPrecio,
-        detalles,
-      };
-    });
 
     /** -------- DEPÓSITOS -------- */
     const depositos = await prisma.deposito.findMany({
       where: {
         clienteID: Number(clienteID),
         depositoFecha: { gte: startDate, lte: endDate },
+        depositoMovimiento: "Deposito",
       },
       select: {
         depositoID: true,
@@ -140,6 +145,9 @@ export async function GET(req) {
         depositoDescripcion: true,
         producto: { select: { productName: true } },
         detalleliqdeposito: {
+          where: {
+            movimiento: "Entrada", // ignora 'Anulado'
+          },
           select: { id: true, cantidadQQ: true, precio: true },
         },
       },
@@ -180,7 +188,7 @@ export async function GET(req) {
         liqDeposito: liquidaciones,
       };
     });
-  
+
     // Totales de depósitos
     const totalQQDeposito = detallesDepositos.reduce(
       (sum, d) => sum + d.cantidadQQ,

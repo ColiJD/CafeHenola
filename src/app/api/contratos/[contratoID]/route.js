@@ -6,7 +6,6 @@ export async function DELETE(req, { params }) {
   if (sessionOrResponse instanceof Response) return sessionOrResponse;
 
   try {
-
     const contratoID = Number(params.contratoID);
     if (!contratoID) {
       return new Response(JSON.stringify({ error: "ID inválido" }), {
@@ -26,10 +25,16 @@ export async function DELETE(req, { params }) {
 
     // 🔹 Ejecutar la lógica correspondiente en una transacción
     await prisma.$transaction([
-      // 3️⃣ Actualizar estado del registro (compra/venta)
+      // 1️⃣ Anular contrato
       prisma.contrato.update({
         where: { contratoID },
         data: { estado: "Anulado", contratoMovimiento: "Anulado" },
+      }),
+
+      // 2️⃣ Anular detalles
+      prisma.detallecontrato.updateMany({
+        where: { contratoID },
+        data: { tipoMovimiento: "Anulado" }, // o estado: "Anulado"
       }),
     ]);
 

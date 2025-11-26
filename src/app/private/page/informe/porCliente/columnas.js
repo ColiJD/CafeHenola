@@ -18,33 +18,33 @@ export const columnasPorTipo = {
       render: renderDate,
     },
     { title: "Producto", dataIndex: "producto" },
-    { title: "Descripción", dataIndex: "descripcion", width: 120 },
+
     {
-      title: "Cantidad Inicial",
+      title: "Inicial QQ",
       dataIndex: "cantidadContrato",
       align: "center",
       width: 120,
       render: renderNumber,
     },
     {
-      title: "Total QQ",
+      title: "Entregado QQ",
       dataIndex: "totalQQ",
       align: "center",
       render: renderNumber,
     },
     {
-      title: "Total Lps",
-      dataIndex: "totalLps",
+      title: "Precio",
+      dataIndex: "precio",
       align: "center",
       render: renderMoney,
     },
     {
-      title: "Promedio Precio",
-      dataIndex: "promedioPrecio",
+      title: "Entregado Lps",
+      dataIndex: "totalLps",
       align: "center",
       render: renderMoney,
-      width: 120,
     },
+
     {
       title: "Completado",
       dataIndex: "liquidado",
@@ -69,26 +69,26 @@ export const columnasPorTipo = {
     { title: "Producto", dataIndex: "producto" },
 
     {
-      title: "Cantidad QQ",
+      title: "Inicial QQ",
       dataIndex: "cantidadQQ",
       align: "center",
       render: renderNumber,
     },
     {
-      title: "Total QQ Liquidado",
+      title: "Entregado QQ",
       dataIndex: "totalQQLiquidado",
       align: "center",
       render: renderNumber,
     },
     {
-      title: "Total Lps Liquidado",
-      dataIndex: "totalLpsLiquidado",
+      title: "Precio",
+      dataIndex: "precio",
       align: "center",
       render: renderMoney,
     },
     {
-      title: "Promedio Precio",
-      dataIndex: "promedioPrecio",
+      title: "Entregado Lps",
+      dataIndex: "totalLpsLiquidado",
       align: "center",
       render: renderMoney,
     },
@@ -172,14 +172,24 @@ export const columns = [
     render: (tipo) => <Tag color="green">{tipo}</Tag>,
   },
   {
-    title: "Total QQ",
+    title: "QQ Pendientes",
+    dataIndex: "totalQQPorLiquidar",
+    key: "totalQQPorLiquidar",
+    align: "center",
+    render: (v, record) =>
+      record.tipo === "Contrato" || record.tipo === "Depósito"
+        ? formatNumber(v || 0, 2)
+        : null,
+  },
+  {
+    title: "Entregado QQ",
     dataIndex: "totalQQ",
     key: "totalQQ",
     align: "center",
     render: (v) => formatNumber(v, 2),
   },
   {
-    title: "Total Lps",
+    title: "Entregado Lps",
     dataIndex: "totalLps",
     key: "totalLps",
     align: "center",
@@ -224,15 +234,6 @@ export const columnsPrestamos = [
     dataIndex: "total",
     align: "center",
     render: (v) => "L. " + formatNumber(v, 2),
-  },
-  {
-    title: "Tipo Movimiento",
-    dataIndex: "tipo",
-    filters: [
-      { text: "PRÉSTAMO", value: "PRESTAMO" },
-      { text: "ANTICIPO", value: "ANTICIPO" },
-    ],
-    onFilter: (value, record) => record.tipo === value,
   },
 
   {

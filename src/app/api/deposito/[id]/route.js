@@ -82,7 +82,13 @@ export async function DELETE(req, { params }) {
             },
       }),
 
-      // 3️⃣ Actualizar estado del registro (compra/venta)
+      // 3️⃣ Anular detalles de liquidación vinculados (si no hay, no pasa nada)
+      prisma.detalleliqdeposito.updateMany({
+        where: { depositoID },
+        data: { movimiento: "Anulado" },
+      }),
+
+      // 4️⃣ Anular depósito
       prisma.deposito.update({
         where: { depositoID },
         data: { depositoMovimiento: "Anulado", estado: "Anulado" },

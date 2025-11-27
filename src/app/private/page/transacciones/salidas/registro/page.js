@@ -20,6 +20,7 @@ import {
   DeleteFilled,
   FilePdfOutlined,
 } from "@ant-design/icons";
+import { rangoInicial } from "../../../informe/reporteCliente/page";
 import SectionHeader from "@/components/ReportesElement/AccionesResporte";
 import { useFetchReport } from "@/hook/useFetchReport";
 import ProtectedPage from "@/components/ProtectedPage";
@@ -41,7 +42,7 @@ export default function ReporteRegistroSalida() {
   const [nombreFiltro, setNombreFiltro] = useState("");
 
   const { data, loading, rangoFechas, onFechasChange, fetchData } =
-    useFetchReport("/api/salidas", hoy);
+    useFetchReport("/api/salidas", rangoInicial);
 
   const datosFiltrados = useMemo(() => {
     const lista = Array.isArray(data) ? data : [];
@@ -295,7 +296,7 @@ export default function ReporteRegistroSalida() {
             isDesktop={isDesktop}
             loading={loading}
             icon={<CalendarOutlined />}
-            titulo="Registro de Deposito de Salida"
+            titulo="Registro de Confirmacion de Salida"
             subtitulo="Registros de salidas por comprador"
             onRefresh={() => {
               if (rangoFechas?.[0] && rangoFechas?.[1]) {

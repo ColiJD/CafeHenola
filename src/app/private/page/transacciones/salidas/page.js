@@ -9,7 +9,11 @@ import NotificationDrawer from "@/components/NotificationDrawer";
 import FloatingNotificationButton from "@/components/FloatingNotificationButton";
 import { useRouter } from "next/navigation";
 import { obtenerSelectData, obtenerSalidasPendientes } from "@/lib/consultas"; // tu función de referencia
-import { SolutionOutlined, SaveOutlined } from "@ant-design/icons";
+import {
+  SolutionOutlined,
+  SaveOutlined,
+  FileAddOutlined,
+} from "@ant-design/icons";
 import LiquidacionDrawer from "@/components/salidas/DrawerLIquidacion";
 import { PDFComprobante } from "@/Doc/Documentos/generico";
 
@@ -229,8 +233,8 @@ export default function FormSalida() {
           notifications={notifications}
           actions={[
             {
-              tooltip: "Ir a Registro de Deposito",
-              icon: <SolutionOutlined />,
+              tooltip: "Ir a Registro de Confirmacion",
+              icon: <FileAddOutlined />,
               onClick: () =>
                 router.push("/private/page/transacciones/salidas/registro"),
             },
@@ -241,8 +245,9 @@ export default function FormSalida() {
                 router.push("/private/page/transacciones/salidas/registroliq"),
             },
             {
-              tooltip: "Liquidar Salida",
-              icon: <SaveOutlined />,
+             
+              label: "Liquidar Salida",
+              type: "primary", // color azul de primary
               onClick: () => handleAbrirLiquidacion(comprador),
             },
           ]}

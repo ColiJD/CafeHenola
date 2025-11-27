@@ -26,6 +26,8 @@ import { useFetchReport } from "@/hook/useFetchReport";
 import ProtectedPage from "@/components/ProtectedPage";
 import EstadisticasCards from "@/components/ReportesElement/DatosEstadisticos";
 import ProtectedButton from "@/components/ProtectedButton";
+import { PDFComprobante } from "@/Doc/Documentos/generico";
+import { rangoInicial } from "../../../informe/reporteCliente/page";
 
 const { Title, Text } = Typography;
 
@@ -39,7 +41,7 @@ export default function ReporteLiqSalida() {
   const [nombreFiltro, setNombreFiltro] = useState("");
 
   const { data, loading, rangoFechas, onFechasChange, fetchData } =
-    useFetchReport("/api/salidas/liquidarSalida", hoy);
+    useFetchReport("/api/salidas/liquidarSalida", rangoInicial);
 
   const datosFiltrados = useMemo(() => {
     const lista = Array.isArray(data) ? data : [];
@@ -151,6 +153,50 @@ export default function ReporteLiqSalida() {
             gap: 5,
           }}
         >
+          <Popconfirm
+            title="¿Seguro que deseas EXPORTAR este registro?"
+            onConfirm={async () => {
+              try {
+                messageApi.open({
+                  type: "loading",
+                  content: "Generando comprobante, por favor espere...",
+                  duration: 0,
+                  key: "generandoComprobante",
+                });
+
+                // Datos a exportar
+                await PDFComprobante({
+                  tipoComprobante:
+                    "COMPROBANTE DE LIQUIDACION ",
+                  cliente: record.compradores?.compradorNombre || "—",
+                  productos: [
+                    {
+                      nombre: "Café Seco",
+                      cantidad: parseFloat(record.liqCantidadQQ || 0),
+                    },
+                  ],
+                  total:parseFloat(record.liqCantidadQQ || 0), // para mostrar en letras,
+                  observaciones: record.liqDescripcion || "—",
+                  comprobanteID: record.liqSalidaID,
+                  columnas: [
+                    { title: "Producto", key: "nombre" },
+                    { title: "Cantidad (QQ)", key: "cantidad" },
+                  ],
+                });
+
+                messageApi.destroy("generandoComprobante");
+                messageApi.success("Comprobante generado correctamente");
+              } catch (err) {
+                console.error("Error generando comprobante:", err);
+                messageApi.destroy("generandoComprobante");
+                messageApi.error("Error generando comprobante PDF");
+              }
+            }}
+            okText="Sí"
+            cancelText="No"
+          >
+            <Button size="small" type="primary" icon={<FilePdfOutlined />} />
+          </Popconfirm>
           <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
             <Popconfirm
               title="¿Seguro que deseas eliminar este contrato?"

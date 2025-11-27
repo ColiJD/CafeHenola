@@ -40,17 +40,21 @@ export async function GET(req) {
 
       const totales = await prisma.$queryRaw(
         Prisma.sql`
-          SELECT
-            dl.depositoID,
-            COALESCE(SUM(dl.cantidadQQ), 0) AS cantidadEntregada,
-            COALESCE(SUM(dl.totalLps), 0) AS totalLiquidado
-          FROM detalleliqdeposito dl
-          LEFT JOIN liqdeposito lq
-            ON lq.liqID = dl.liqID
-            AND lq.liqMovimiento != 'ANULADO'
-          WHERE dl.depositoID IN (${Prisma.join(depositoIds)})
-          GROUP BY dl.depositoID
-        `
+    SELECT
+      dl.depositoID,
+      COALESCE(SUM(
+        CASE WHEN dl.movimiento != 'ANULADO' AND lq.liqMovimiento != 'ANULADO'
+        THEN dl.cantidadQQ ELSE 0 END
+      ), 0) AS cantidadEntregada,
+      COALESCE(SUM(
+        CASE WHEN dl.movimiento != 'ANULADO' AND lq.liqMovimiento != 'ANULADO'
+        THEN dl.totalLps ELSE 0 END
+      ), 0) AS totalLiquidado
+    FROM detalleliqdeposito dl
+    JOIN liqdeposito lq ON lq.liqID = dl.liqID
+    WHERE dl.depositoID IN (${Prisma.join(depositoIds)})
+    GROUP BY dl.depositoID
+  `
       );
 
       const totalesMap = new Map(
@@ -117,20 +121,21 @@ export async function GET(req) {
         WHERE d.depositoMovimiento != 'ANULADO'
         GROUP BY d.clienteID
       ) dep ON dep.clienteID = cl.clienteID
-      LEFT JOIN (
-        SELECT
-          dp.clienteID,
-          SUM(dl.cantidadQQ) AS cantidadEntregada,
-          SUM(dl.totalLps) AS totalLiquidado
-        FROM deposito dp
-        JOIN detalleliqdeposito dl
-          ON dl.depositoID = dp.depositoID
-        JOIN liqdeposito lq
-          ON lq.liqID = dl.liqID
-          AND lq.liqMovimiento != 'ANULADO'
-        WHERE dp.depositoMovimiento != 'ANULADO'
-        GROUP BY dp.clienteID
-      ) liq ON liq.clienteID = cl.clienteID
+     LEFT JOIN (
+  SELECT
+    dp.clienteID,
+    SUM(CASE WHEN dl.movimiento != 'ANULADO' THEN dl.cantidadQQ ELSE 0 END) AS cantidadEntregada,
+    SUM(CASE WHEN dl.movimiento != 'ANULADO' THEN dl.totalLps ELSE 0 END) AS totalLiquidado
+  FROM deposito dp
+  JOIN detalleliqdeposito dl
+    ON dl.depositoID = dp.depositoID
+  JOIN liqdeposito lq
+    ON lq.liqID = dl.liqID
+    AND lq.liqMovimiento != 'ANULADO'
+  WHERE dp.depositoMovimiento != 'ANULADO'
+  GROUP BY dp.clienteID
+) liq ON liq.clienteID = cl.clienteID
+
       WHERE (COALESCE(dep.cantidadTotal, 0) - COALESCE(liq.cantidadEntregada, 0)) > 0
          OR (COALESCE(dep.totalLps, 0) - COALESCE(liq.totalLiquidado, 0)) > 0;
     `;

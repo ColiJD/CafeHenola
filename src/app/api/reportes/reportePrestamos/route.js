@@ -8,20 +8,19 @@ export async function GET(req) {
     "OPERARIOS",
     "AUDITORES",
   ]);
-
   if (sessionOrResponse instanceof Response) return sessionOrResponse;
 
   try {
     const { searchParams } = new URL(req.url);
-    const desdeParam = searchParams.get("desde");
-    const hastaParam = searchParams.get("hasta");
+    const desde = searchParams.get("desde")
+      ? new Date(searchParams.get("desde"))
+      : new Date("2000-01-01");
 
-    const desde = desdeParam ? new Date(desdeParam) : new Date("2000-01-01");
-    const hasta = hastaParam ? new Date(hastaParam) : new Date();
+    const hasta = searchParams.get("hasta")
+      ? new Date(searchParams.get("hasta"))
+      : new Date();
 
-    // ----------------------------------------------------------
-    // 1️⃣ Obtener todos los clientes
-    // ----------------------------------------------------------
+    // 1️⃣ Clientes
     const clientes = await prisma.cliente.findMany({
       select: {
         clienteID: true,
@@ -31,90 +30,113 @@ export async function GET(req) {
       orderBy: { clienteNombre: "asc" },
     });
 
-    const resultadosClientes = [];
+    const resultados = [];
 
-    // ----------------------------------------------------------
-    // 2️⃣ Recorrer cada cliente y calcular préstamos y anticipos
-    // ----------------------------------------------------------
     for (const cli of clientes) {
-      // Préstamos
-      const prestamosActivos = await prisma.prestamos.aggregate({
+      // -------------------------------------------------------------
+      // 2️⃣ PRESTAMOS → activos + movimientos
+      // -------------------------------------------------------------
+      const activosPrestamo = await prisma.prestamos.aggregate({
         _sum: { monto: true },
-        where: { clienteId: cli.clienteID, estado: "ACTIVO" },
+        where: {
+          clienteId: cli.clienteID,
+          estado: "ACTIVO",
+        },
       });
 
-      const movimientosPrestamo = await prisma.movimientos_prestamo.groupBy({
+      const movPrestamo = await prisma.movimientos_prestamo.groupBy({
         by: ["tipo_movimiento"],
         _sum: { monto: true },
         where: {
           prestamos: { clienteId: cli.clienteID },
-          tipo_movimiento: { in: ["ABONO", "PAGO_INTERES", "Int-Cargo"] },
           fecha: { gte: desde, lte: hasta },
+          tipo_movimiento: { in: ["Int-Cargo", "ABONO", "PAGO_INTERES"] },
         },
       });
 
-      const resumenPrestamos = {
+      const Mpre = {
+        "Int-Cargo": 0,
         ABONO: 0,
         PAGO_INTERES: 0,
-        "Int-Cargo": 0,
       };
-      movimientosPrestamo.forEach((mov) => {
-        if (resumenPrestamos[mov.tipo_movimiento] !== undefined) {
-          resumenPrestamos[mov.tipo_movimiento] = Number(mov._sum.monto ?? 0);
-        }
-      });
+      for (const m of movPrestamo) {
+        Mpre[m.tipo_movimiento] = Number(m._sum.monto ?? 0);
+      }
 
-      // Anticipos
-      const anticiposActivos = await prisma.anticipo.aggregate({
+      const activoPrestamo =
+        Number(activosPrestamo._sum.monto ?? 0) + Mpre["Int-Cargo"];
+      const abonoPrestamo = Mpre["ABONO"] + Mpre["PAGO_INTERES"];
+      const saldoPrestamo = activoPrestamo - abonoPrestamo;
+
+      // -------------------------------------------------------------
+      // 3️⃣ ANTICIPOS → activos + movimientos
+      // -------------------------------------------------------------
+      const activosAnticipo = await prisma.anticipo.aggregate({
         _sum: { monto: true },
-        where: { clienteId: cli.clienteID, estado: "ACTIVO" },
+        where: {
+          clienteId: cli.clienteID,
+          estado: "ACTIVO",
+        },
       });
 
-      const movimientosAnticipos = await prisma.movimientos_anticipos.groupBy({
+      const movAnticipo = await prisma.movimientos_anticipos.groupBy({
         by: ["tipo_movimiento"],
         _sum: { monto: true },
         where: {
           anticipo: { clienteId: cli.clienteID },
+          fecha: { gte: desde, lte: hasta },
           tipo_movimiento: {
             in: ["CARGO_ANTICIPO", "INTERES_ANTICIPO", "ABONO_ANTICIPO"],
           },
-          fecha: { gte: desde, lte: hasta },
         },
       });
 
-      const resumenAnticipos = {
+      const Manti = {
         CARGO_ANTICIPO: 0,
         INTERES_ANTICIPO: 0,
         ABONO_ANTICIPO: 0,
       };
-      movimientosAnticipos.forEach((mov) => {
-        if (resumenAnticipos[mov.tipo_movimiento] !== undefined) {
-          resumenAnticipos[mov.tipo_movimiento] = Number(mov._sum.monto ?? 0);
-        }
-      });
+      for (const m of movAnticipo) {
+        Manti[m.tipo_movimiento] = Number(m._sum.monto ?? 0);
+      }
 
-      resultadosClientes.push({
+      const activoAnticipo =
+        Number(activosAnticipo._sum.monto ?? 0) + Manti["CARGO_ANTICIPO"];
+      const abonoAnticipo = Manti["ABONO_ANTICIPO"] + Manti["INTERES_ANTICIPO"];
+      const saldoAnticipo = activoAnticipo - abonoAnticipo;
+
+      const totalCliente =
+        activoPrestamo +
+        abonoPrestamo +
+        saldoPrestamo +
+        activoAnticipo +
+        abonoAnticipo +
+        saldoAnticipo;
+
+      if (totalCliente === 0) continue;
+
+      // -------------------------------------------------------------
+      // 4️⃣ Enviar cliente con cálculos listos
+      // -------------------------------------------------------------
+      resultados.push({
         clienteID: cli.clienteID,
-        nombre: `${cli.clienteNombre ?? ""} ${cli.clienteApellido ?? ""}`.trim(),
-        prestamos: {
-          totalPrestamosActivos: Number(prestamosActivos._sum.monto ?? 0),
-          movimientos: resumenPrestamos,
-        },
-        anticipos: {
-          totalAnticiposActivos: Number(anticiposActivos._sum.monto ?? 0),
-          movimientos: resumenAnticipos,
-        },
+        nombre: `${cli.clienteNombre ?? ""} ${
+          cli.clienteApellido ?? ""
+        }`.trim(),
+        activoPrestamo,
+        abonoPrestamo,
+        saldoPrestamo,
+        activoAnticipo,
+        abonoAnticipo,
+        saldoAnticipo,
       });
     }
 
-    // ----------------------------------------------------------
-    // 3️⃣ Retornar array de clientes
-    // ----------------------------------------------------------
-    return Response.json({ ok: true, clientes: resultadosClientes });
+    return Response.json({ ok: true, clientes: resultados });
   } catch (error) {
-    console.error("Error en API:", error);
+    console.error("ERROR REPORTE: ", error);
     return Response.json(
-      { ok: false, error: "Error al obtener el reporte de clientes" },
+      { ok: false, error: "Error al obtener el reporte" },
       { status: 500 }
     );
   }

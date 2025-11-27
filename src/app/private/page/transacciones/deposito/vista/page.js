@@ -8,6 +8,7 @@ import { FiltrosTarjetas } from "@/lib/FiltrosTarjetas";
 import TarjetaMobile from "@/components/TarjetaMobile";
 import dayjs from "dayjs";
 import ProtectedPage from "@/components/ProtectedPage";
+import { formatNumber } from "@/components/Formulario";
 
 // Plugins para filtros de fechas
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
@@ -172,13 +173,13 @@ export default function TablaSaldoDepositos() {
             title: "Total (QQ)",
             dataIndex: "cantidadTotal",
             key: "cantidadTotal",
-            render: truncarDosDecimalesSinRedondear,
+            render: formatNumber,
           },
           {
             title: "Saldo (QQ)",
             dataIndex: "saldoPendienteQQ",
             key: "saldoPendienteQQ",
-            render: truncarDosDecimalesSinRedondear,
+            render: formatNumber,
           },
         ]
       : [
@@ -186,14 +187,14 @@ export default function TablaSaldoDepositos() {
             title: "Liquidado (QQ)",
             dataIndex: "cantidadLiquidada",
             key: "cantidadLiquidada",
-            render: truncarDosDecimalesSinRedondear,
+            render: formatNumber,
           },
 
           {
             title: "Total (Lps)",
             dataIndex: "liquidadoValor",
             key: "liquidadoValor",
-            render: truncarDosDecimalesSinRedondear,
+            render: formatNumber,
           },
         ]),
   ];

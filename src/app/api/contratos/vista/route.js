@@ -65,7 +65,7 @@ export async function GET(req) {
       })
       .filter((c) => c.pendiente > 0); // solo contratos pendientes
 
-    console.log(pendientes);
+
 
     return Response.json({ ok: true, pendientes });
   } catch (error) {

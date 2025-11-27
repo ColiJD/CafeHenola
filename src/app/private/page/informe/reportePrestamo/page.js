@@ -21,50 +21,6 @@ import { rangoInicial } from "../reporteCliente/page";
 const { Title, Text } = Typography;
 
 // --------------------------------------------------------------
-// Calcular totales por cliente
-// --------------------------------------------------------------
-export function calcularTotalesCliente(c) {
-  // Préstamos
-  const prestamoActivo = parseFloat(c.prestamos?.totalPrestamosActivos ?? 0);
-  const cargoPrestamo = parseFloat(
-    c.prestamos?.movimientos?.["Int-Cargo"] ?? 0
-  );
-  const abonosPrestamo = parseFloat(c.prestamos?.movimientos?.ABONO ?? 0);
-  const interesesPrestamo = parseFloat(
-    c.prestamos?.movimientos?.PAGO_INTERES ?? 0
-  );
-
-  const activoPrestamo = prestamoActivo + cargoPrestamo;
-  const abonoTotalPrestamo = abonosPrestamo + interesesPrestamo;
-  const saldoPrestamo = activoPrestamo - abonoTotalPrestamo;
-
-  // Anticipos
-  const anticipoActivo = parseFloat(c.anticipos?.totalAnticiposActivos ?? 0);
-  const cargoAnticipo = parseFloat(
-    c.anticipos?.movimientos?.CARGO_ANTICIPO ?? 0
-  );
-  const interesesAnticipo = parseFloat(
-    c.anticipos?.movimientos?.INTERES_ANTICIPO ?? 0
-  );
-  const abonosAnticipo = parseFloat(
-    c.anticipos?.movimientos?.ABONO_ANTICIPO ?? 0
-  );
-
-  const activoAnticipo = anticipoActivo + cargoAnticipo;
-  const abonoTotalAnticipo = abonosAnticipo + interesesAnticipo;
-  const saldoAnticipo = activoAnticipo - abonoTotalAnticipo;
-
-  return {
-    activoPrestamo,
-    abonoPrestamo: abonoTotalPrestamo,
-    saldoPrestamo,
-    activoAnticipo,
-    abonoAnticipo: abonoTotalAnticipo,
-    saldoAnticipo,
-  };
-}
-
-// --------------------------------------------------------------
 // Componente principal
 // --------------------------------------------------------------
 export default function ReporteClientes() {
@@ -83,13 +39,12 @@ export default function ReporteClientes() {
   // Filtrar y calcular totales
   const datosFiltrados = useMemo(() => {
     const clientesArray = data?.clientes ?? [];
-    return clientesArray
-      .filter((item) =>
-        !nombreFiltro
-          ? true
-          : item.nombre?.toLowerCase().includes(nombreFiltro.toLowerCase())
-      )
-      .map((item) => ({ ...item, ...calcularTotalesCliente(item) }));
+
+    return clientesArray.filter((item) =>
+      !nombreFiltro
+        ? true
+        : item.nombre?.toLowerCase().includes(nombreFiltro.toLowerCase())
+    );
   }, [data, nombreFiltro]);
 
   // Totales globales (ahora incluye los 6 valores)

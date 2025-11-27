@@ -19,7 +19,7 @@ export const cleanText = (text) => {
 };
 
 export const PDFComprobante = async ({
-  tipoComprobante = "COMPROBANTE",
+  tipoComprobante = "COMPROBANTE CONFIRMACION DE VENTA",
   cliente = "Cliente",
   productos = [],
   total = 0,
@@ -183,11 +183,15 @@ export const PDFComprobante = async ({
     doc.text("Forma de Pago:", leftMargin, startY);
     const formas = ["Efectivo", "Transferencia", "Cheque"];
     let x = leftMargin + 100;
+    const gap = 20; // espacio entre casilla y siguiente texto
     formas.forEach((f) => {
-      doc.rect(x, startY - 7, 10, 10);
-      if (formaPago === f) doc.text("X", x + 2, startY + 1);
-      doc.text(f, x + 15, startY + 1);
-      x += 100;
+      const rectWidth = 10;
+      doc.rect(x, startY - 7, rectWidth, 10); // caja
+      if (formaPago === f) doc.text("X", x + 2, startY + 1); // marcar seleccionado
+      const textX = x + rectWidth + 5; // espacio entre cuadro y texto
+      doc.text(f, textX, startY + 1);
+      // mover x al final del texto + un margen
+      x = textX + doc.getTextWidth(f) + 20;
     });
 
     startY += 25;

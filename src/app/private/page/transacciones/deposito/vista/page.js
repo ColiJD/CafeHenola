@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Table, Row, Col, message, Button, Grid } from "antd";
-import { truncarDosDecimalesSinRedondear } from "@/lib/calculoCafe";
+
 import TarjetasDeTotales from "@/components/DetallesCard";
 import Filtros from "@/components/Filtros";
 import { FiltrosTarjetas } from "@/lib/FiltrosTarjetas";
@@ -214,7 +214,7 @@ export default function TablaSaldoDepositos() {
             title: "Total (QQ)",
             dataIndex: "cantidadTotal",
             key: "cantidadTotal",
-            render: truncarDosDecimalesSinRedondear,
+            render: formatNumber,
           },
           {
             title: "Saldo (QQ)",
@@ -222,7 +222,7 @@ export default function TablaSaldoDepositos() {
             key: "saldoPendienteQQ",
             render: (v) => (
               <span style={{ color: v > 0 ? "red" : "green" }}>
-                {truncarDosDecimalesSinRedondear(v)}
+                {formatNumber(v)}
               </span>
             ),
           },
@@ -232,19 +232,19 @@ export default function TablaSaldoDepositos() {
             title: "Liquidado (QQ)",
             dataIndex: "cantidadLiquidada",
             key: "cantidadLiquidada",
-            render: truncarDosDecimalesSinRedondear,
+            render: formatNumber,
           },
           {
             title: "Precio (Lps/QQ)",
             dataIndex: "precioPromedio",
             key: "precioPromedio",
-            render: truncarDosDecimalesSinRedondear,
+            render: formatNumber,
           },
           {
             title: "Total (Lps)",
             dataIndex: "liquidadoValor",
             key: "liquidadoValor",
-            render: truncarDosDecimalesSinRedondear,
+            render: formatNumber,
           },
         ]),
   ];
@@ -261,14 +261,14 @@ export default function TablaSaldoDepositos() {
             {
               title:
                 estadoFiltro === "Pendiente" ? "Total (QQ)" : "Liquidado (QQ)",
-              value: truncarDosDecimalesSinRedondear(totalQQ),
+              value: formatNumber(totalQQ),
             },
             {
               title:
                 estadoFiltro === "Pendiente"
                   ? "Saldo Pendiente (QQ)"
                   : "Total (Lps)",
-              value: truncarDosDecimalesSinRedondear(totalSaldo),
+              value: formatNumber(totalSaldo),
             },
           ]}
         />
@@ -322,32 +322,32 @@ export default function TablaSaldoDepositos() {
               {
                 label: "Total (QQ)",
                 key: "cantidadTotal",
-                render: truncarDosDecimalesSinRedondear,
+                render: formatNumber,
                 visible: estadoFiltro === "Pendiente",
               },
               {
                 label: "Saldo Pendiente (QQ)",
                 key: "saldoPendienteQQ",
-                render: truncarDosDecimalesSinRedondear,
+                render: formatNumber,
                 visible: estadoFiltro === "Pendiente",
                 color: (v) => (v > 0 ? "red" : "green"),
               },
               {
                 label: "Liquidado (QQ)",
                 key: "cantidadLiquidada",
-                render: truncarDosDecimalesSinRedondear,
+                render: formatNumber,
                 visible: estadoFiltro !== "Pendiente",
               },
               {
                 label: "Precio (Lps/QQ)",
                 key: "precioPromedio",
-                render: truncarDosDecimalesSinRedondear,
+                render: formatNumber,
                 visible: estadoFiltro !== "Pendiente",
               },
               {
                 label: "Total (Lps)",
                 key: "liquidadoValor",
-                render: truncarDosDecimalesSinRedondear,
+                render: formatNumber,
                 visible: estadoFiltro !== "Pendiente",
               },
               { label: "Estado", key: () => estadoFiltro },
@@ -363,31 +363,31 @@ export default function TablaSaldoDepositos() {
               {
                 label: "Total (QQ)",
                 key: "cantidadTotal",
-                render: truncarDosDecimalesSinRedondear,
+                render: formatNumber,
                 visible: estadoFiltro === "Pendiente",
               },
               {
                 label: "Saldo (QQ)",
                 key: "saldoPendienteQQ",
-                render: truncarDosDecimalesSinRedondear,
+                render: formatNumber,
                 visible: estadoFiltro === "Pendiente",
               },
               {
                 label: "Liquidado (QQ)",
                 key: "cantidadLiquidada",
-                render: truncarDosDecimalesSinRedondear,
+                render: formatNumber,
                 visible: estadoFiltro !== "Pendiente",
               },
               {
                 label: "Precio (Lps/QQ)",
                 key: "precioPromedio",
-                render: truncarDosDecimalesSinRedondear,
+                render: formatNumber,
                 visible: estadoFiltro !== "Pendiente",
               },
               {
                 label: "Total (Lps)",
                 key: "liquidadoValor",
-                render: truncarDosDecimalesSinRedondear,
+                render: formatNumber,
                 visible: estadoFiltro !== "Pendiente",
               },
             ]}

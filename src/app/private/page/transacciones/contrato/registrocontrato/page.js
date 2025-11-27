@@ -23,6 +23,8 @@ import ProtectedPage from "@/components/ProtectedPage";
 import ProtectedButton from "@/components/ProtectedButton";
 import { exportContratoCafe } from "@/Doc/Documentos/contrato";
 import { DeleteFilled, FilePdfOutlined } from "@ant-design/icons";
+import { useRouter } from "next/navigation";
+import { rangoInicial } from "../../../informe/reporteCliente/page";
 
 const { Title, Text } = Typography;
 
@@ -33,7 +35,7 @@ export default function ReporteRegistroContrato() {
   const [messageApi, contextHolder] = message.useMessage();
 
   const { data, loading, rangoFechas, onFechasChange, fetchData } =
-    useFetchReport("/api/contratos/registrocontrato", hoy);
+    useFetchReport("/api/contratos/registrocontrato", rangoInicial);
 
   const datosFiltrados = useMemo(() => {
     const lista = Array.isArray(data?.detalles) ? data.detalles : [];
@@ -232,6 +234,8 @@ export default function ReporteRegistroContrato() {
     },
   ];
 
+  const router = useRouter();
+
   // Eliminar contrato
   const eliminarContrato = async (contratoID) => {
     try {
@@ -241,18 +245,42 @@ export default function ReporteRegistroContrato() {
       const data = await res.json();
 
       if (res.ok) {
+        // Contrato anulado correctamente
         messageApi.success("Contrato anulado correctamente");
-        // Espera a que la eliminación se confirme y luego recarga
+
+        // Recarga la tabla
         if (rangoFechas?.[0] && rangoFechas?.[1]) {
-          await fetchData(
+          fetchData(
             rangoFechas[0].startOf("day").toISOString(),
             rangoFechas[1].endOf("day").toISOString()
           );
         } else {
-          await fetchData();
+          fetchData();
         }
       } else {
-        messageApi.error(data.error || "Error al anular el contrato");
+        // Si no se puede anular, mostrar mensaje con botón al registro de entregas
+        messageApi.open({
+          
+          duration: 6,
+          content: (
+            <div>
+              <b>{data.error || "No se puede anular el contrato"}</b>
+
+              <br />
+              <Button
+                type="primary"
+                size="small"
+                onClick={() =>
+                  router.push(
+                    "/private/page/transacciones/contrato/detallecontrato"
+                  )
+                }
+              >
+                Ir al registro de entregas
+              </Button>
+            </div>
+          ),
+        });
       }
     } catch (error) {
       console.error(error);

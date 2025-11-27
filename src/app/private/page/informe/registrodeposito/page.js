@@ -24,6 +24,8 @@ import ProtectedPage from "@/components/ProtectedPage";
 import ProtectedButton from "@/components/ProtectedButton";
 import { exportDeposito } from "@/Doc/Documentos/desposito";
 import { FilePdfOutlined, DeleteFilled, EditFilled } from "@ant-design/icons";
+import { rangoInicial } from "../reporteCliente/page";
+import { useRouter } from "next/navigation";
 
 const { Title, Text } = Typography;
 
@@ -41,7 +43,7 @@ export default function ReporteRegistroDeposito() {
     onFechasChange,
 
     fetchData,
-  } = useFetchReport("/api/deposito/registrodeposito", hoy);
+  } = useFetchReport("/api/deposito/registrodeposito", rangoInicial);
 
   const datosFiltrados = useMemo(() => {
     const lista = Array.isArray(data?.detalles) ? data.detalles : [];
@@ -151,8 +153,6 @@ export default function ReporteRegistroDeposito() {
           <Popconfirm
             title="¿Seguro que deseas EXPORTAR esta compra?"
             onConfirm={async () => {
-           
-
               // Mostrar mensaje inicial
               messageApi.open({
                 type: "loading",
@@ -225,6 +225,8 @@ export default function ReporteRegistroDeposito() {
     },
   ];
 
+  const router = useRouter();
+
   const eliminarDeposito = async (id) => {
     try {
       const res = await fetch(`/api/deposito/${id}`, {
@@ -244,9 +246,28 @@ export default function ReporteRegistroDeposito() {
           await fetchData();
         }
       } else {
-        messageApiRef.current.error(
-          data.error || "Error al eliminar el depósito"
-        );
+        // Si no se puede anular, mostrar mensaje con botón al registro de entregas
+        messageApi.open({
+          duration: 6,
+          content: (
+            <div>
+              <b>{data.error || "No se puede anular el deposito"}</b>
+
+              <br />
+              <Button
+                type="primary"
+                size="small"
+                onClick={() =>
+                  router.push(
+                    "/private/page/transacciones/deposito/lipdedeposito"
+                  )
+                }
+              >
+                Ir al registro de entregas
+              </Button>
+            </div>
+          ),
+        });
       }
     } catch (error) {
       console.error(error);

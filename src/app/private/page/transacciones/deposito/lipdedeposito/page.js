@@ -29,6 +29,7 @@ import TarjetaMobile from "@/components/TarjetaMobile";
 import ProtectedPage from "@/components/ProtectedPage";
 import { formatNumber } from "@/components/Formulario";
 import { eliminarRecurso } from "../../salidas/registro/page";
+import { rangoInicial } from "../../../informe/reporteCliente/page";
 
 const { Title, Text } = Typography;
 
@@ -39,7 +40,7 @@ export default function ReporteLiquidacionDeposito() {
   const [messageApi, contextHolder] = message.useMessage();
 
   const { data, loading, rangoFechas, onFechasChange, fetchData } =
-    useFetchReport("/api/liqDeposito/RedDeLiquidacion", hoy);
+    useFetchReport("/api/liqDeposito/RedDeLiquidacion", rangoInicial);
 
   const datosFiltrados = useMemo(() => {
     const lista = Array.isArray(data?.detalles) ? data.detalles : [];

@@ -23,6 +23,7 @@ import { generarReporteDetalleContrato } from "@/Doc/Reportes/FormatoDetalleCont
 import ProtectedButton from "@/components/ProtectedButton";
 import { exportEntregaContrato } from "@/Doc/Documentos/entregaContrato";
 import { FilePdfOutlined, DeleteFilled } from "@ant-design/icons";
+import { rangoInicial } from "../../../informe/reporteCliente/page";
 const { Title, Text } = Typography;
 
 export default function Reportedetallecontrato() {
@@ -33,7 +34,7 @@ export default function Reportedetallecontrato() {
   const messageApiRef = useRef(messageApi);
 
   const { data, loading, rangoFechas, onFechasChange, fetchData } =
-    useFetchReport("/api/contratos/detallecontrato", hoy);
+    useFetchReport("/api/contratos/detallecontrato", rangoInicial);
 
   const datosFiltrados = useMemo(() => {
     const lista = Array.isArray(data?.detalles) ? data.detalles : [];

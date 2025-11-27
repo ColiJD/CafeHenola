@@ -13,30 +13,43 @@ export async function DELETE(req, { params }) {
       });
     }
 
-    // 🔹 Buscar el registro (puede ser compra o venta)
-    const registro = await prisma.contrato.findUnique({
+    // 🔹 Buscar el contrato
+    const contrato = await prisma.contrato.findUnique({
       where: { contratoID },
     });
-    if (!registro) {
-      return new Response(JSON.stringify({ error: "Registro no encontrado" }), {
+    if (!contrato) {
+      return new Response(JSON.stringify({ error: "Contrato no encontrado" }), {
         status: 404,
       });
     }
 
-    // 🔹 Ejecutar la lógica correspondiente en una transacción
-    await prisma.$transaction([
-      // 1️⃣ Anular contrato
-      prisma.contrato.update({
-        where: { contratoID },
-        data: { estado: "Anulado", contratoMovimiento: "Anulado" },
-      }),
+    // 🔹 Buscar detalles activos (NO anulados)
+    const detallesActivos = await prisma.detallecontrato.findMany({
+      where: {
+        contratoID,
+        tipoMovimiento: { not: "Anulado" }, // ← ignorar anulados
+      },
+      select: {
+        detalleID: true,
+      },
+    });
 
-      // 2️⃣ Anular detalles
-      prisma.detallecontrato.updateMany({
-        where: { contratoID },
-        data: { tipoMovimiento: "Anulado" }, // o estado: "Anulado"
-      }),
-    ]);
+    if (detallesActivos.length > 0) {
+      const lista = detallesActivos.map((d) => `#${d.detalleID}`).join(", ");
+
+      return new Response(
+        JSON.stringify({
+          error: `No se puede eliminar el contrato porque tiene entregas activas: ${lista}.`,
+          detalles: detallesActivos,
+        }),
+        { status: 400 }
+      );
+    }
+    // 🔹 Anular el contrato si no hay detalles tipo Entrada activos
+    await prisma.contrato.update({
+      where: { contratoID },
+      data: { estado: "Anulado", contratoMovimiento: "Anulado" },
+    });
 
     return new Response(
       JSON.stringify({
@@ -45,9 +58,9 @@ export async function DELETE(req, { params }) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("❌ Error al anular registro:", error);
+    console.error("❌ Error al anular contrato:", error);
     return new Response(
-      JSON.stringify({ error: "Error interno al anular el registro" }),
+      JSON.stringify({ error: "Error interno al anular el contrato" }),
       { status: 500 }
     );
   }

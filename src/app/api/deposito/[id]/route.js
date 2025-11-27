@@ -13,14 +13,41 @@ export async function DELETE(req, { params }) {
       });
     }
 
-    // 🔹 Buscar el registro (puede ser compra o venta)
+    // 🔹 Buscar el depósito
     const registro = await prisma.deposito.findUnique({
       where: { depositoID },
     });
     if (!registro) {
-      return new Response(JSON.stringify({ error: "Registro no encontrado" }), {
+      return new Response(JSON.stringify({ error: "Depósito no encontrado" }), {
         status: 404,
       });
+    }
+
+    // 🔹 Buscar liquidaciones activas (para obtener IDs)
+    // 🔹 Buscar liquidaciones activas del depósito
+    const liquidacionesActivas = await prisma.detalleliqdeposito.findMany({
+      where: {
+        depositoID,
+        movimiento: { not: "Anulado" }, // activas
+      },
+      select: {
+        id: true, // id del detalle
+        liqID: true, // id de la liquidación
+      },
+    });
+
+    if (liquidacionesActivas.length > 0) {
+      const listaLiquidaciones = liquidacionesActivas
+        .map((l) => `#${l.liqID}`)
+        .join(", ");
+
+      return new Response(
+        JSON.stringify({
+          error: `No se puede eliminar el depósito porque está asociado a la liquidación ${listaLiquidaciones}.`,
+          detalles: liquidacionesActivas,
+        }),
+        { status: 400 }
+      );
     }
 
     // 🔹 Buscar el movimiento asociado
@@ -39,56 +66,31 @@ export async function DELETE(req, { params }) {
       );
     }
 
-    // 🔹 Determinar tipo de movimiento (Entrada o Salida)
     const esEntrada = movimiento.tipoMovimiento === "Entrada";
-    const esSalida = movimiento.tipoMovimiento === "Salida";
 
-    if (!esEntrada && !esSalida) {
-      return new Response(
-        JSON.stringify({
-          error:
-            "El movimiento no es ni Entrada ni Salida (posiblemente ya fue anulado)",
-        }),
-        { status: 400 }
-      );
-    }
-
-    // 🔹 Ejecutar la lógica correspondiente en una transacción
+    // 🔹 Ejecutar la transacción
     await prisma.$transaction([
-      // 1️⃣ Actualizar movimiento
       prisma.movimientoinventario.update({
         where: { movimientoID: movimiento.movimientoID },
         data: {
           tipoMovimiento: "Anulado",
-          nota: `${
-            esEntrada ? "Desposito" : "desposito"
-          } anulada #${depositoID}`,
+          nota: `Depósito anulado #${depositoID}`,
         },
       }),
 
-      // 2️⃣ Ajustar inventario (según tipo)
       prisma.inventariocliente.update({
         where: { inventarioClienteID: movimiento.inventarioClienteID },
         data: esEntrada
           ? {
-              // Si era Entrada, ahora restamos
               cantidadQQ: { decrement: movimiento.cantidadQQ },
               cantidadSacos: { decrement: movimiento.cantidadSacos },
             }
           : {
-              // Si era Salida, ahora sumamos
               cantidadQQ: { increment: movimiento.cantidadQQ },
               cantidadSacos: { increment: movimiento.cantidadSacos },
             },
       }),
 
-      // 3️⃣ Anular detalles de liquidación vinculados (si no hay, no pasa nada)
-      prisma.detalleliqdeposito.updateMany({
-        where: { depositoID },
-        data: { movimiento: "Anulado" },
-      }),
-
-      // 4️⃣ Anular depósito
       prisma.deposito.update({
         where: { depositoID },
         data: { depositoMovimiento: "Anulado", estado: "Anulado" },
@@ -102,9 +104,9 @@ export async function DELETE(req, { params }) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("❌ Error al anular registro:", error);
+    console.error("❌ Error al anular depósito:", error);
     return new Response(
-      JSON.stringify({ error: "Error interno al anular el registro" }),
+      JSON.stringify({ error: "Error interno al anular el depósito" }),
       { status: 500 }
     );
   }

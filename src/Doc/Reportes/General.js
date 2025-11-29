@@ -29,22 +29,23 @@ export const exportPDFGeneralConPrestamos = (
   const colorPrestamos = options.colorPrestamos || [255, 193, 7]; // Amarillo
 
   // ==== ENCABEZADO ====
-  // ==== ENCABEZADO COMPACTO ====
   doc.setFillColor(...colorPrimario);
-  doc.rect(0, 0, 297, 18, "F"); // Altura más pequeña
+  doc.rect(0, 0, 216, 20, "F"); // ancho carta vertical, altura más pequeña
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(12); // Fuente más pequeña
+
+  // Título
+  doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text(options.title || "REPORTE DE MOVIMIENTOS", 148.5, 10, {
+  doc.text(`REPORTE GENERAL`, 108, 10, {
     align: "center",
   });
 
-  doc.setFontSize(8); // Fuente más pequeña para la fecha
+  // Fecha
+  doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
-  doc.text(`Generado el: ${dayjs().format("DD/MM/YYYY HH:mm")}`, 148.5, 15, {
+  doc.text(`Generado el: ${dayjs().format("DD/MM/YYYY HH:mm")}`, 108, 16, {
     align: "center",
   });
-
   // ==== FILTROS ====
   let yPosition = 35;
   doc.setTextColor(...colorTexto);
@@ -197,7 +198,7 @@ export const exportPDFGeneralConPrestamos = (
     });
   }
 
-  const nombreArchivo = `reporte-movimientos-${dayjs().format(
+  const nombreArchivo = `reporte-general-${dayjs().format(
     "YYYY-MM-DD-HHmm"
   )}.pdf`;
   doc.save(nombreArchivo);

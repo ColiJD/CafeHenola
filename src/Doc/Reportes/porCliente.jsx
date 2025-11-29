@@ -22,9 +22,9 @@ export const exportPDFMovimientosCliente = ({
   options = {},
 }) => {
   const doc = new jsPDF({
-    orientation: options.orientation || "landscape",
+    orientation: "portrait", // orientación vertical
     unit: "mm",
-    format: "a4",
+    format: "letter", // tamaño carta
   });
 
   const colorPrimario = options.colorPrimario || [41, 128, 185];
@@ -33,16 +33,25 @@ export const exportPDFMovimientosCliente = ({
   const colorPrestamos = options.colorPrestamos || [255, 193, 7];
   const fontSize = options.fontSize || 9;
 
+
   // ==== ENCABEZADO ====
   doc.setFillColor(...colorPrimario);
-  doc.rect(0, 0, 297, 25, "F");
+  doc.rect(0, 0, 216, 20, "F"); // ancho carta vertical, altura más pequeña
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(16);
+
+  // Título
+  doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
-  doc.text(`REPORTE DE MOVIMIENTOS - ${clienteNombre}`, 148.5, 12, { align: "center" });
-  doc.setFontSize(9);
+  doc.text(`Reporte de Movimientos - ${clienteNombre}`, 108, 10, {
+    align: "center",
+  });
+
+  // Fecha
+  doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
-  doc.text(`Generado el: ${dayjs().format("DD/MM/YYYY HH:mm")}`, 148.5, 18, { align: "center" });
+  doc.text(`Generado el: ${dayjs().format("DD/MM/YYYY HH:mm")}`, 108, 16, {
+    align: "center",
+  });
 
   // ==== FILTROS ====
   let yPosition = 35;
@@ -56,7 +65,9 @@ export const exportPDFMovimientosCliente = ({
 
   if (rangoFechas.inicio && rangoFechas.fin) {
     doc.text(
-      `• Período: ${dayjs(rangoFechas.inicio).format("DD/MM/YYYY")} - ${dayjs(rangoFechas.fin).format("DD/MM/YYYY")}`,
+      `• Período: ${dayjs(rangoFechas.inicio).format("DD/MM/YYYY")} - ${dayjs(
+        rangoFechas.fin
+      ).format("DD/MM/YYYY")}`,
       20,
       yPosition
     );
@@ -103,7 +114,15 @@ export const exportPDFMovimientosCliente = ({
 
     autoTable(doc, {
       startY: yPosition,
-      head: [["Tipo", "QQ Pendientes", "Entregado QQ", "Entregado Lps", "Promedio Precio"]],
+      head: [
+        [
+          "Tipo",
+          "QQ Pendientes",
+          "Entregado QQ",
+          "Entregado Lps",
+          "Promedio Precio",
+        ],
+      ],
       body,
       theme: "grid",
       headStyles: {
@@ -121,7 +140,9 @@ export const exportPDFMovimientosCliente = ({
   }
 
   // ==== PRÉSTAMOS ====
-  const safePrestamos = Array.isArray(prestamos) ? prestamos.filter(p => p.tipo !== "ANTICIPO") : [];
+  const safePrestamos = Array.isArray(prestamos)
+    ? prestamos.filter((p) => p.tipo !== "ANTICIPO")
+    : [];
   if (safePrestamos.length > 0) {
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
@@ -171,7 +192,9 @@ export const exportPDFMovimientosCliente = ({
   }
 
   // ==== ANTICIPOS ====
-  const safeAnticipos = Array.isArray(prestamos) ? prestamos.filter(p => p.tipo === "ANTICIPO") : [];
+  const safeAnticipos = Array.isArray(prestamos)
+    ? prestamos.filter((p) => p.tipo === "ANTICIPO")
+    : [];
   if (safeAnticipos.length > 0) {
     doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
@@ -220,13 +243,21 @@ export const exportPDFMovimientosCliente = ({
     yPosition = doc.lastAutoTable.finalY + 8;
   }
 
-  if (body.length === 0 && safePrestamos.length === 0 && safeAnticipos.length === 0) {
+  if (
+    body.length === 0 &&
+    safePrestamos.length === 0 &&
+    safeAnticipos.length === 0
+  ) {
     doc.setFontSize(10);
     doc.setTextColor(200, 100, 100);
-    doc.text("No hay datos disponibles para mostrar", 148.5, yPosition + 10, { align: "center" });
+    doc.text("No hay datos disponibles para mostrar", 148.5, yPosition + 10, {
+      align: "center",
+    });
   }
 
-  const nombreArchivo = `reporte-movimientos-${dayjs().format("YYYY-MM-DD-HHmm")}.pdf`;
+  const nombreArchivo = `reporte-movimientos-${clienteNombre}-${dayjs().format(
+    "YYYY-MM-DD-HHmm"
+  )}.pdf`;
   doc.save(nombreArchivo);
   return doc;
 };

@@ -73,20 +73,20 @@ export default function ResumenMovimientos() {
     const saldoLps = (entradas?.totalLps ?? 0) - (salidas?.totalLps ?? 0);
     const saldoProm = saldoQQ > 0 ? saldoLps / saldoQQ : 0;
 
-    filasConTotales.push({
-      key: "saldo",
-      tipo: "Saldo Restante",
-      compraQQ: null, // 👈 null evita que aparezca en DESGLOSE
-      compraLps: null,
-      depositoQQ: null,
-      depositoLps: null,
-      contratoQQ: null,
-      contratoLps: null,
-      totalQQ: saldoQQ,
-      totalLps: saldoLps,
-      promedio: saldoProm,
-      esSaldo: true, // para aplicar estilo especial
-    });
+    // filasConTotales.push({
+    //   key: "saldo",
+    //   tipo: "Saldo Restante",
+    //   compraQQ: null, // 👈 null evita que aparezca en DESGLOSE
+    //   compraLps: null,
+    //   depositoQQ: null,
+    //   depositoLps: null,
+    //   contratoQQ: null,
+    //   contratoLps: null,
+    //   totalQQ: saldoQQ,
+    //   totalLps: saldoLps,
+    //   promedio: saldoProm,
+    //   esSaldo: true, // para aplicar estilo especial
+    // });
 
     return filasConTotales;
   }, [data]);
@@ -356,7 +356,7 @@ export default function ResumenMovimientos() {
       },
       {
         key: "pend",
-        descripcion: "Pendiente por Liquidar (QQ)",
+        descripcion: "Confirmacion por Liquidar (QQ)",
         cantidad: Number(data?.pendiente ?? 0),
       },
     ];

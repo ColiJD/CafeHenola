@@ -73,7 +73,7 @@ export const exportPDFGeneralConPrestamos = (
 
   // ==== RESUMEN GENERAL (Entradas, Salidas y Saldo Restante) ====
   const resumen = data.filter((row) =>
-    ["entradas", "salidas", "saldo"].includes(row.key)
+    ["entradas", "salidas"].includes(row.key)
   );
 
   if (resumen.length) {

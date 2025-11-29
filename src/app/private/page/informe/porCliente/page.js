@@ -20,6 +20,7 @@ import { formatNumber } from "@/components/Formulario";
 import ProtectedPage from "@/components/ProtectedPage";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
 import SectionHeader from "@/components/ReportesElement/AccionesResporte";
+import { exportPDFMovimientosCliente } from "@/Doc/Reportes/porCliente";
 
 import {
   CalendarOutlined,
@@ -439,10 +440,71 @@ export default function MovimientosComprasPage() {
           icon={<CalendarOutlined />}
           titulo="Registros por Cliente"
           subtitulo="Resumen de actividades por cliente"
+          onExportPDF={() => {
+            // Validaciones iniciales
+            if (!Array.isArray(data) || data.length === 0) {
+              messageApi.warning(
+                "No hay datos válidos para generar el reporte."
+              );
+              return;
+            }
+
+            if (!clienteID) {
+              messageApi.warning(
+                "Seleccione un cliente para generar el reporte."
+              );
+              return;
+            }
+
+            const key = "generandoPDF";
+            messageApi.open({
+              key,
+              type: "loading",
+              content: "Generando reporte...",
+              duration: 0,
+            });
+
+            try {
+              // Obtener nombre del cliente
+              const cliente = clientes.find((c) => c.clienteID === clienteID);
+              const clienteNombre = cliente?.clienteNombre || "-";
+
+              // Llamada al PDF con data segura
+              exportPDFMovimientosCliente({
+                clienteID,
+                clienteNombre,
+                dataTabla: Array.isArray(data) ? data : [],
+                prestamos: Array.isArray(prestamos) ? prestamos : [],
+                rangoFechas: {
+                  inicio: fechaRango?.[0]?.format("YYYY-MM-DD") || null,
+                  fin: fechaRango?.[1]?.format("YYYY-MM-DD") || null,
+                },
+                options: {
+                  fontSize: 8, // tamaño de letra más pequeño
+                  colorPrimario: [41, 128, 185],
+                  colorSecundario: [236, 240, 241],
+                  colorTexto: [44, 62, 80],
+                },
+              });
+
+              messageApi.success({
+                content: "Reporte generado correctamente",
+                key,
+                duration: 2,
+              });
+            } catch (error) {
+              console.error(error);
+              messageApi.error({
+                content: "Error al generar el reporte",
+                key,
+                duration: 2,
+              });
+            }
+          }}
+          disableExport={!data || data.length === 0}
         />
 
         <Divider />
-
         <Row
           gutter={[16, 16]}
           align="middle"
@@ -490,7 +552,6 @@ export default function MovimientosComprasPage() {
             </Button>
           </Col>
         </Row>
-
         {/* {totales && (
           <>
             <Divider />
@@ -556,9 +617,7 @@ export default function MovimientosComprasPage() {
             </div>
           </>
         )} */}
-
         <Divider />
-
         {loading ? (
           <div
             style={{ display: "flex", justifyContent: "center", padding: 40 }}
@@ -630,7 +689,6 @@ export default function MovimientosComprasPage() {
             <Text>No hay datos para mostrar</Text>
           </div>
         )}
-
         {!loading && data.length > 0 && (
           <>
             <Divider />

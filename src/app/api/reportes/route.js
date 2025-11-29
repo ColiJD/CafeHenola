@@ -181,6 +181,33 @@ export async function GET(req) {
       totalAnticiposActivos: Number(anticiposActivos._sum.monto ?? 0),
       movimientos: resumenMovimientosAnticipo,
     };
+    const inventario = await prisma.inventariocliente.aggregate({
+      _sum: { cantidadQQ: true },
+    });
+
+    // 1️⃣ Total de salidas válidas
+    const totalSalidasRaw = await prisma.salida.aggregate({
+      _sum: { salidaCantidadQQ: true },
+      where: { salidaMovimiento: "Salida" },
+    });
+    const totalSalidas = Number(totalSalidasRaw._sum.salidaCantidadQQ ?? 0);
+
+    // 2️⃣ Total liquidado válido (detalle no anulado)
+    const totalLiquidadoRaw = await prisma.detalleliqsalida.aggregate({
+      _sum: { cantidadQQ: true },
+      where: {
+        OR: [
+          { movimiento: null }, // incluir los nulos
+          { movimiento: { not: "Anulado" } }, // incluir los distintos de "Anulado"
+        ],
+      },
+    });
+    const totalLiquidado = Number(totalLiquidadoRaw._sum.cantidadQQ ?? 0);
+
+    // 3️⃣ Pendiente
+    const pendiente = totalSalidas - totalLiquidado;
+
+
 
     return new Response(
       JSON.stringify({
@@ -190,6 +217,12 @@ export async function GET(req) {
         salidas,
         prestamos,
         anticipos,
+        inventario: {
+          disponibleQQ: Number(inventario._sum.cantidadQQ ?? 0),
+        },
+        totalSalidas,
+        totalLiquidado,
+        pendiente,
       }),
       { status: 200 }
     );

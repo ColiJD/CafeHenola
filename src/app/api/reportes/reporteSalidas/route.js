@@ -38,13 +38,11 @@ export async function GET(req) {
       );
     }
 
-   
     const compradores = await prisma.compradores.findMany({
       select: { compradorId: true, compradorNombre: true },
     });
 
     const reportePromises = compradores.map(async (c) => {
-  
       const compraAgg = await prisma.compra.aggregate({
         _sum: { compraCantidadQQ: true, compraTotal: true },
         where: {
@@ -61,6 +59,7 @@ export async function GET(req) {
         where: {
           compradorID: c.compradorId,
           salidaFecha: { gte: desde, lte: hasta },
+          salidaMovimiento: "Salida",
         },
         select: {
           salidaCantidadQQ: true,
@@ -68,7 +67,6 @@ export async function GET(req) {
         },
       });
 
-   
       let salidaCantidad = 0;
       let salidaTotal = 0;
 
@@ -79,7 +77,6 @@ export async function GET(req) {
         salidaTotal += qq * precio;
       }
 
- 
       if (
         totalCompraQQ === 0 &&
         totalCompraLps === 0 &&

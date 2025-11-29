@@ -51,106 +51,128 @@ export default function ResumenMovimientos() {
         tipo: "Salidas",
         compraQQ: Number(data?.compras?.salidas?._sum?.compraCantidadQQ ?? 0),
         compraLps: Number(data?.compras?.salidas?._sum?.compraTotal ?? 0),
-        depositoQQ: 0,
-        depositoLps: 0,
-        contratoQQ: Number(data?.salidas?.cantidadQQ ?? 0),
-        contratoLps: Number(data?.salidas?.total ?? 0),
+        depositoQQ: Number(data?.salidas?.cantidadQQ ?? 0),
+        depositoLps: Number(data?.salidas?.total ?? 0),
+        contratoQQ: 0,
+        contratoLps: 0,
       },
     ];
 
-    return filas.map((row) => {
+    const filasConTotales = filas.map((row) => {
       const totalQQ = row.compraQQ + row.depositoQQ + row.contratoQQ;
       const totalLps = row.compraLps + row.depositoLps + row.contratoLps;
       const promedio = totalQQ > 0 ? totalLps / totalQQ : 0;
       return { ...row, totalQQ, totalLps, promedio };
     });
+
+    // 🔥 NUEVA FILA — SALDO RESTANTE
+    const entradas = filasConTotales.find((f) => f.key === "entradas");
+    const salidas = filasConTotales.find((f) => f.key === "salidas");
+
+    const saldoQQ = (entradas?.totalQQ ?? 0) - (salidas?.totalQQ ?? 0);
+    const saldoLps = (entradas?.totalLps ?? 0) - (salidas?.totalLps ?? 0);
+    const saldoProm = saldoQQ > 0 ? saldoLps / saldoQQ : 0;
+
+    filasConTotales.push({
+      key: "saldo",
+      tipo: "Saldo Restante",
+      compraQQ: null, // 👈 null evita que aparezca en DESGLOSE
+      compraLps: null,
+      depositoQQ: null,
+      depositoLps: null,
+      contratoQQ: null,
+      contratoLps: null,
+      totalQQ: saldoQQ,
+      totalLps: saldoLps,
+      promedio: saldoProm,
+      esSaldo: true, // para aplicar estilo especial
+    });
+
+    return filasConTotales;
   }, [data]);
 
   // 🔹 Columnas de la tabla
   const columnas = [
-    { title: "", dataIndex: "tipo", key: "tipo", fixed: "left" },
     {
-      title: "Compra / Venta",
-      children: [
-        {
-          title: "QQ",
-          dataIndex: "compraQQ",
-          key: "compraQQ",
-          align: "right",
-          render: (v) => formatNumber(v),
-        },
-        {
-          title: "Lps",
-          dataIndex: "compraLps",
-          key: "compraLps",
-          align: "right",
-          render: (v) => `L. ${formatNumber(v)}`,
-        },
-      ],
+      title: "",
+      dataIndex: "tipo",
+      key: "tipo",
+      fixed: "left",
+      render: (v) => <span style={{ fontWeight: "bold" }}>{v}</span>, // tipo en negrita
     },
     {
-      title: "Depósito",
-      children: [
-        {
-          title: "QQ",
-          dataIndex: "depositoQQ",
-          key: "depositoQQ",
-          align: "right",
-          render: (v) => formatNumber(v),
-        },
-        {
-          title: "Lps",
-          dataIndex: "depositoLps",
-          key: "depositoLps",
-          align: "right",
-          render: (v) => `L. ${formatNumber(v)}`,
-        },
-      ],
+      title: <span style={{ fontWeight: "bold", color: "#fff" }}>Totales</span>,
+      children: ["totalQQ", "totalLps", "promedio"].map((key) => ({
+        title:
+          key === "totalQQ"
+            ? "QQ Total"
+            : key === "totalLps"
+            ? "Total Lps"
+            : "Promedio",
+        dataIndex: key,
+        key,
+        align: "left",
+        render: (v) => (
+          <span style={{ fontWeight: "bold" }}>{formatNumber(v)}</span>
+        ),
+        onCell: () => ({
+          style: { backgroundColor: "#e6f7ff", fontWeight: "bold" }, // celdas azul claro y negrita
+        }),
+      })),
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#1890ff",
+          color: "#fff",
+          fontWeight: "bold",
+        }, // header azul oscuro
+      }),
     },
     {
-      title: "Contrato",
+      title: (
+        <span style={{ fontWeight: "bold", color: "#fff" }}>Desglose</span>
+      ),
       children: [
         {
-          title: "QQ",
-          dataIndex: "contratoQQ",
-          key: "contratoQQ",
-          align: "right",
-          render: (v) => formatNumber(v),
+          title: "Compra / Venta",
+          children: ["compraQQ", "compraLps"].map((key) => ({
+            title: key === "compraQQ" ? "QQ" : "Lps",
+            dataIndex: key,
+            key,
+            align: "left",
+            render: (v) =>
+              key.includes("Lps") ? `${formatNumber(v)}` : formatNumber(v),
+          })),
         },
         {
-          title: "Lps",
-          dataIndex: "contratoLps",
-          key: "contratoLps",
-          align: "right",
-          render: (v) => `L. ${formatNumber(v)}`,
+          title: "Depósito",
+          children: ["depositoQQ", "depositoLps"].map((key) => ({
+            title: key === "depositoQQ" ? "QQ" : "Lps",
+            dataIndex: key,
+            key,
+            align: "left",
+            render: (v) =>
+              key.includes("Lps") ? `${formatNumber(v)}` : formatNumber(v),
+          })),
+        },
+        {
+          title: "Contrato",
+          children: ["contratoQQ", "contratoLps"].map((key) => ({
+            title: key === "contratoQQ" ? "QQ" : "Lps",
+            dataIndex: key,
+            key,
+            align: "left",
+            render: (v) =>
+              key.includes("Lps") ? `${formatNumber(v)}` : formatNumber(v),
+          })),
         },
       ],
-    },
-    {
-      title: "Totales",
-      children: [
-        {
-          title: "QQ Total",
-          dataIndex: "totalQQ",
-          key: "totalQQ",
-          align: "right",
-          render: (v) => formatNumber(v),
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#1890ff",
+          color: "#fff",
+          fontWeight: "bold",
         },
-        {
-          title: "Total Lps",
-          dataIndex: "totalLps",
-          key: "totalLps",
-          align: "right",
-          render: (v) => `L. ${formatNumber(v)}`,
-        },
-        {
-          title: "Promedio",
-          dataIndex: "promedio",
-          key: "promedio",
-          align: "right",
-          render: (v) => `L. ${formatNumber(v)}`,
-        },
-      ],
+      }),
     },
   ];
 
@@ -226,55 +248,66 @@ export default function ResumenMovimientos() {
 
   // 🔹 Columnas de la tabla de préstamos
   const columnasPrestamos = [
-    { title: "", dataIndex: "tipo", key: "tipo", fixed: "left" },
     {
-      title: "Monto Inicial",
-      dataIndex: "totalPrestamos",
-      key: "totalPrestamos",
-      align: "right",
-      render: (v) => `L. ${formatNumber(v)}`,
+      title: "",
+      dataIndex: "tipo",
+      key: "tipo",
+      fixed: "left",
+      render: (v) => <span style={{ fontWeight: "bold" }}>{v}</span>, // tipo en negrita
     },
     {
-      title: "Abono",
-      dataIndex: "abono",
-      key: "abono",
-      align: "right",
-      render: (v) => `L. ${formatNumber(v)}`,
+      title: <span style={{ fontWeight: "bold", color: "#fff" }}>Totales</span>,
+      children: ["totalCreditos", "totalAbonos", "saldo"].map((key) => ({
+        title:
+          key === "totalCreditos"
+            ? "Total Créditos"
+            : key === "totalAbonos"
+            ? "Total Abonos"
+            : "Saldo",
+        dataIndex: key,
+        key,
+        align: "left",
+        render: (v) => `L. ${formatNumber(v)}`,
+        onCell: () => ({
+          style: { backgroundColor: "#e6f7ff", fontWeight: "bold" }, // celdas azul claro y negrita
+        }),
+      })),
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#1890ff",
+          color: "#fff",
+          fontWeight: "bold",
+          align: "left",
+        }, // header azul oscuro
+      }),
     },
     {
-      title: "Pago de interes",
-      dataIndex: "pagoInteres",
-      key: "pagoInteres",
-      align: "right",
-      render: (v) => `L. ${formatNumber(v)}`,
-    },
-    {
-      title: "Cargar Interes",
-      dataIndex: "intCargo",
-      key: "intCargo",
-      align: "right",
-      render: (v) => `L. ${formatNumber(v)}`,
-    },
-    {
-      title: "Total Créditos",
-      dataIndex: "totalCreditos",
-      key: "totalCreditos",
-      align: "right",
-      render: (v) => `L. ${formatNumber(v)}`,
-    },
-    {
-      title: "Total Abonos",
-      dataIndex: "totalAbonos",
-      key: "totalAbonos",
-      align: "right",
-      render: (v) => `L. ${formatNumber(v)}`,
-    },
-    {
-      title: "Saldo",
-      dataIndex: "saldo",
-      key: "saldo",
-      align: "right",
-      render: (v) => `L. ${formatNumber(v)}`,
+      title: (
+        <span style={{ fontWeight: "bold", color: "#fff" }}>Desglose</span>
+      ),
+      children: ["totalPrestamos", "abono", "pagoInteres", "intCargo"].map(
+        (key) => ({
+          title:
+            key === "totalPrestamos"
+              ? "Monto Inicial"
+              : key === "abono"
+              ? "Abono"
+              : key === "pagoInteres"
+              ? "Pago de interes"
+              : "Cargar Interes",
+          dataIndex: key,
+          key,
+          align: "left",
+          render: (v) => `L. ${formatNumber(v)}`,
+        })
+      ),
+      onHeaderCell: () => ({
+        style: {
+          backgroundColor: "#1890ff",
+          color: "#fff",
+          fontWeight: "bold",
+        },
+      }),
     },
   ];
 
@@ -306,6 +339,53 @@ export default function ResumenMovimientos() {
       };
     });
   };
+
+  const datosInventario = useMemo(() => {
+    if (!data) return [];
+
+    return [
+      {
+        key: "inv",
+        descripcion: "Inventario Disponible (QQ)",
+        cantidad: Number(data?.inventario?.disponibleQQ ?? 0),
+      },
+      {
+        key: "sal",
+        descripcion: "Confirmacion de venta(QQ)",
+        cantidad: Number(data?.totalSalidas ?? 0),
+      },
+      {
+        key: "pend",
+        descripcion: "Pendiente por Liquidar (QQ)",
+        cantidad: Number(data?.pendiente ?? 0),
+      },
+    ];
+  }, [data]);
+
+  const columnasInventario = [
+    {
+      title: "Descripción",
+      dataIndex: "descripcion",
+      key: "descripcion",
+      width: 200,
+    },
+    {
+      title: "Cantidad (QQ)",
+      dataIndex: "cantidad",
+      key: "cantidad",
+      align: "right",
+      width: 50,
+      render: (v, record) => {
+        let color = "inherit"; // color por defecto
+
+        if (record.key === "inv") color = "green"; // Inventario en verde
+        if (record.key === "sal") color = "green"; // Total Salidas en naranja
+        if (record.key === "pend") color = "red"; // Pendiente en rojo
+
+        return <span style={{ color }}>{formatNumber(v)}</span>;
+      },
+    },
+  ];
 
   if (!mounted) return <div style={{ padding: 24 }}>Cargando...</div>;
 
@@ -351,7 +431,7 @@ export default function ResumenMovimientos() {
               });
               try {
                 exportPDFGeneralConPrestamos(
-                  [...datosTabla, ...datosPrestamosYAnticipos],
+                  [...datosTabla, ...datosPrestamosYAnticipos, ...datosInventario],
                   { fechaInicio: rangoFechas?.[0], fechaFin: rangoFechas?.[1] },
                   { title: "Reporte Completo" }
                 );
@@ -389,6 +469,28 @@ export default function ResumenMovimientos() {
               level={4}
               style={{ margin: 0, fontSize: isDesktop ? 16 : 14 }}
             >
+              Inventario y Salidas
+            </Title>
+          </div>
+
+          <Table
+            columns={columnasInventario}
+            dataSource={datosInventario}
+            rowKey="key"
+            loading={loading}
+            pagination={false}
+            bordered
+            size="small"
+            style={{ tableLayout: "fixed" }}
+          />
+        </Card>
+
+        <Card style={{ borderRadius: 6, marginTop: 16 }}>
+          <div style={{ marginBottom: isDesktop ? 16 : 12 }}>
+            <Title
+              level={4}
+              style={{ margin: 0, fontSize: isDesktop ? 16 : 14 }}
+            >
               Resumen General
             </Title>
             <Text type="secondary" style={{ fontSize: isDesktop ? 14 : 12 }}>
@@ -410,10 +512,7 @@ export default function ResumenMovimientos() {
             size="small"
             scroll={{ x: "max-content" }}
             onRow={(record) => ({
-              style: {
-                backgroundColor:
-                  record.key === "entradas" ? "#e6f7ff" : "#fff1f0",
-              },
+              style: { backgroundColor: "#fffbe6" },
             })}
           />
         </Card>

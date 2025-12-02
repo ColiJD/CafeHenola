@@ -329,42 +329,7 @@ export default function ReporteClientesEntradas() {
                 [
                   { header: "ID Cliente", key: "clienteID" },
                   { header: "Nombre", key: "nombre" },
-                  {
-                    header: "Compra QQ",
-                    key: "compraCantidadQQ",
-                    format: "numero",
-                    isCantidad: true,
-                  },
-                  {
-                    header: "Compra Lps",
-                    key: "compraTotalLps",
-                    format: "moneda",
-                    isTotal: true,
-                  },
-                  {
-                    header: "Contrato QQ",
-                    key: "contratoCantidadQQ",
-                    format: "numero",
-                    isCantidad: true,
-                  },
-                  {
-                    header: "Contrato Lps",
-                    key: "contratoTotalLps",
-                    format: "moneda",
-                    isTotal: true,
-                  },
-                  {
-                    header: "Depósito QQ",
-                    key: "depositoCantidadQQ",
-                    format: "numero",
-                    isCantidad: true,
-                  },
-                  {
-                    header: "Depósito Lps",
-                    key: "depositoTotalLps",
-                    format: "moneda",
-                    isTotal: true,
-                  },
+
                   {
                     header: "Total QQ",
                     key: "totalQQ",

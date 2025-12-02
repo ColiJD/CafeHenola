@@ -239,6 +239,7 @@ export default function PrestamosGeneral() {
           abono: filas.reduce((acc, f) => acc + (f.abono || 0), 0),
           intCargo: filas.reduce((acc, f) => acc + (f.intCargo || 0), 0),
           intAbono: filas.reduce((acc, f) => acc + (f.intAbono || 0), 0),
+          esTotal: true,
         };
 
         if (tipo === "prestamo") {
@@ -286,18 +287,25 @@ export default function PrestamosGeneral() {
         dataIndex: "fecha",
         width: 110,
         fixed: isDesktop ? "left" : false,
+
         sorter: (a, b) => {
+          if (a.esTotal) return 1; // <-- CAMBIO
+          // 👉 Si B es la fila total, va al final
+          if (b.esTotal) return -1; // <-- CAMBIO
           const dateA = a.fecha
-            ? new Date(a.fecha.split("/").reverse().join("/"))
+            ? new Date(a.fecha.split("/").reverse().join("-"))
             : 0;
           const dateB = b.fecha
-            ? new Date(b.fecha.split("/").reverse().join("/"))
+            ? new Date(b.fecha.split("/").reverse().join("-"))
             : 0;
           return dateA - dateB;
         },
-        sortDirections: ["ascend", "descend"], // solo estos dos, no hay opción de "none"
-        defaultSortOrder: "descend",
+
+        sortDirections: ["ascend", "descend"],
+        defaultSortOrder: "ascend", // ✅ POR DEFECTO DESCENDENTE
+        showSorterTooltip: true,
       },
+
       {
         title: "Días",
         dataIndex: "dias",
@@ -748,9 +756,14 @@ export default function PrestamosGeneral() {
       );
       return;
     }
-
+    // 👉 ORDENAR CRONOLÓGICAMENTE ANTES DE IMPRIMIR
     const dataPDF = data
-      .filter((f) => f.tipo !== "TOTAL") // ✅ remover fila total
+      .filter((f) => f.tipo !== "TOTAL")
+      .sort((a, b) => {
+        const dateA = new Date(a.fecha.split("/").reverse().join("-"));
+        const dateB = new Date(b.fecha.split("/").reverse().join("-"));
+        return dateA - dateB;
+      })
       .map((f) => ({ ...f }));
 
     generarReportePDF(

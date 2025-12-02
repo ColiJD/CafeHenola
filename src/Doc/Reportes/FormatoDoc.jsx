@@ -4,14 +4,19 @@ import dayjs from "dayjs";
 import fondoImg from "@/img/frijoles.png";
 
 /**
- * Genera PDF para cualquier reporte de manera automática con diseño mejorado.
+ * Genera un archivo PDF para reportes con diseño optimizado.
  *
- * @param {Array} data - Datos del reporte
- * @param {Object} filtros - Filtros aplicados
- * @param {Array} columnas - Columnas [{ header, key, format, isCantidad, isTotal }]
- *      isCantidad -> columna de cantidad (QQ)
- *      isTotal -> columna de monto (Lps)
- * @param {Object} options - Opciones (title, colores, orientación)
+ * @param {Array} data - Conjunto de registros del reporte.
+ * @param {Object} filtros - Filtros aplicados al reporte.
+ * @param {Array} columnas - Definición de columnas:
+ *        [{ header, key, format, isCantidad, isTotal }]
+ *        isCantidad → columna con cantidad (QQ).
+ *        isTotal → columna con monto (L).
+ * @param {Object} options - Opciones del reporte (title, colores, orientación).
+ *
+ * Esta función sigue criterios de presentación clara y ordenada,
+ * recomendados por estándares APA: organización, congruencia visual
+ * y rotulación consistente.
  */
 export const generarReportePDF = (
   data,
@@ -20,20 +25,22 @@ export const generarReportePDF = (
   options = {}
 ) => {
   const doc = new jsPDF({
-    orientation: options.orientation || "landscape",
+    orientation: "portrait",
     unit: "mm",
-    format: "a4",
+    format: "letter",
   });
 
   const pageWidth = doc.internal.pageSize.width;
   const pageHeight = doc.internal.pageSize.height;
   const margin = 15;
 
+  // Colores base con valores predeterminados
   const colorPrimario = options.colorPrimario || [41, 128, 185];
   const colorSecundario = options.colorSecundario || [236, 240, 241];
   const colorTexto = options.colorTexto || [44, 62, 80];
   const colorAccento = options.colorAccento || [52, 152, 219];
 
+  // Formateo de números con dos decimales
   const formatNumber = (num) =>
     !num || isNaN(num)
       ? "0.00"
@@ -42,20 +49,20 @@ export const generarReportePDF = (
           maximumFractionDigits: 2,
         });
 
-  // -------------------------------
-  // ENCABEZADO CON LOGO
-  // -------------------------------
+  /* ------------------------------------------------------
+   * ENCABEZADO
+   * ------------------------------------------------------ */
   const headerHeight = 32;
 
   // Fondo del encabezado
   doc.setFillColor(...colorPrimario);
   doc.rect(0, 0, pageWidth, headerHeight, "F");
 
-  // Franja decorativa superior
-  doc.setFillColor(colorAccento[0], colorAccento[1], colorAccento[2]);
+  // Franja decorativa
+  doc.setFillColor(...colorAccento);
   doc.rect(0, 0, pageWidth, 3, "F");
 
-  // Logo (izquierda con margen seguro)
+  // Logo
   const logoSize = 18;
   const logoX = margin;
   const logoY = 7;
@@ -66,16 +73,13 @@ export const generarReportePDF = (
     console.warn("No se pudo cargar el logo:", error);
   }
 
-  // Título centrado (asegurando espacio para el logo)
-  const titleAreaStart = logoX + logoSize + 10;
-  const titleAreaEnd = pageWidth - margin;
-  const titleCenterX = (titleAreaStart + titleAreaEnd) / 2;
-
+  // Título central
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(20);
   doc.setFont("helvetica", "bold");
   doc.text(options.title || "REPORTE", pageWidth / 2, 14, { align: "center" });
 
+  // Fecha de generación
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.text(
@@ -85,7 +89,7 @@ export const generarReportePDF = (
     { align: "center" }
   );
 
-  // Línea decorativa inferior del encabezado
+  // Línea inferior del encabezado
   doc.setDrawColor(255, 255, 255);
   doc.setLineWidth(0.5);
   doc.line(
@@ -95,13 +99,13 @@ export const generarReportePDF = (
     headerHeight - 3
   );
 
-  // -------------------------------
-  // SECCIÓN DE FILTROS
-  // -------------------------------
+  /* ------------------------------------------------------
+   * SECCIÓN DE FILTROS
+   * ------------------------------------------------------ */
   let yPos = headerHeight + 8;
 
-  // Calcular altura necesaria para filtros
-  let filtrosLines = 1; // Título
+  // Cálculo dinámico de la altura
+  let filtrosLines = 1;
   if (filtros.fechaInicio && filtros.fechaFin) filtrosLines++;
   if (filtros.nombreFiltro) filtrosLines++;
   if (!filtros.fechaInicio && !filtros.nombreFiltro) filtrosLines++;
@@ -109,7 +113,7 @@ export const generarReportePDF = (
   const lineHeight = 5.5;
   const filtrosHeight = filtrosLines * lineHeight + 8;
 
-  // Caja de filtros
+  // Caja externa
   doc.setFillColor(250, 250, 252);
   doc.setDrawColor(...colorPrimario);
   doc.setLineWidth(0.3);
@@ -123,7 +127,7 @@ export const generarReportePDF = (
     "FD"
   );
 
-  // Contenido de filtros
+  // Título de filtros
   yPos += 6;
   doc.setTextColor(...colorPrimario);
   doc.setFontSize(11);
@@ -135,9 +139,11 @@ export const generarReportePDF = (
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
 
+  // Período
   if (filtros.fechaInicio && filtros.fechaFin) {
     doc.setFont("helvetica", "bold");
     doc.text("Período:", margin + 5, yPos);
+
     doc.setFont("helvetica", "normal");
     doc.text(
       `${dayjs(filtros.fechaInicio).format("DD/MM/YYYY")} - ${dayjs(
@@ -146,20 +152,27 @@ export const generarReportePDF = (
       margin + 23,
       yPos
     );
+
     yPos += lineHeight;
   }
+
+  // Búsqueda
   if (filtros.nombreFiltro) {
     doc.setFont("helvetica", "bold");
     doc.text("Búsqueda:", margin + 5, yPos);
+
     doc.setFont("helvetica", "normal");
-    const maxTextWidth = pageWidth - margin * 2 - 30;
+    const maxWidth = pageWidth - margin * 2 - 30;
+
     const searchText = doc.splitTextToSize(
       `"${filtros.nombreFiltro}"`,
-      maxTextWidth
+      maxWidth
     );
     doc.text(searchText, margin + 25, yPos);
     yPos += lineHeight * searchText.length;
   }
+
+  // Sin filtros
   if (!filtros.fechaInicio && !filtros.nombreFiltro) {
     doc.setFont("helvetica", "italic");
     doc.setTextColor(100, 100, 100);
@@ -167,12 +180,11 @@ export const generarReportePDF = (
     yPos += lineHeight;
   }
 
-  // Espacio después de filtros
   yPos = headerHeight + 8 + filtrosHeight + 8;
 
-  // -------------------------------
-  // CALCULAR TOTALES Y PROMEDIO
-  // -------------------------------
+  /* ------------------------------------------------------
+   * CÁLCULO DE TOTALES Y PROMEDIO
+   * ------------------------------------------------------ */
   const totales = {};
   let totalCantidad = 0;
   let totalMonto = 0;
@@ -189,9 +201,9 @@ export const generarReportePDF = (
 
   const promedioGeneral = totalCantidad > 0 ? totalMonto / totalCantidad : 0;
 
-  // -------------------------------
-  // TABLA DETALLE
-  // -------------------------------
+  /* ------------------------------------------------------
+   * TABLA DETALLE
+   * ------------------------------------------------------ */
   const tableBody = data.map((row) =>
     columnas.map((col) => {
       if (col.format === "moneda") return `L. ${formatNumber(row[col.key])}`;
@@ -200,8 +212,9 @@ export const generarReportePDF = (
     })
   );
 
-  // Fila de totales
-  const totalRow = columnas.map((col) => {
+  // Fila final: Totales
+  const totalRow = columnas.map((col, i) => {
+    if (i === 0) return "TOTAL GENERAL";
     if (col.isCantidad) return formatNumber(totales[col.key] || 0);
     if (col.isTotal) return `L. ${formatNumber(totales[col.key] || 0)}`;
     if (col.key.toLowerCase().includes("promedio"))
@@ -213,7 +226,6 @@ export const generarReportePDF = (
 
   const tableHead = columnas.map((col) => col.header);
 
-  // Calcular espacio disponible para la tabla
   const footerSpace = 20;
   const availableHeight = pageHeight - yPos - footerSpace;
 
@@ -232,7 +244,7 @@ export const generarReportePDF = (
       minCellHeight: 8,
     },
     bodyStyles: {
-      fontSize: 8,
+      fontSize: 7,
       textColor: colorTexto,
       cellPadding: 2.5,
       minCellHeight: 7,
@@ -252,25 +264,36 @@ export const generarReportePDF = (
       return acc;
     }, {}),
     margin: { left: margin, right: margin, bottom: footerSpace },
+
+    // Estilos especiales para la fila de totales
     didParseCell: (data) => {
-      // Fila de totales con estilo especial
-      if (data.row.index === tableBody.length - 1 && data.section === "body") {
+      const isTotalRow =
+        data.row.index === tableBody.length - 1 && data.section === "body";
+
+      if (isTotalRow) {
         data.cell.styles.fillColor = [52, 73, 94];
         data.cell.styles.textColor = [255, 255, 255];
         data.cell.styles.fontStyle = "bold";
-        data.cell.styles.fontSize = 9;
-        data.cell.styles.cellPadding = 3;
+        data.cell.styles.fontSize = 6;
+        data.cell.styles.valign = "middle";
+
+        if (data.column.index === 0) {
+          data.cell.styles.halign = "right";
+          return;
+        }
+
+        const rawValue = String(data.cell.raw).replace(/[^0-9.-]/g, "");
+        const isNumeric = !isNaN(parseFloat(rawValue));
+
+        data.cell.styles.halign = isNumeric ? "right" : "center";
       }
     },
+
+    // Pie de página
     didDrawPage: (dataArg) => {
       const pageCount = doc.internal.getNumberOfPages();
       const currentPage = dataArg.pageNumber;
 
-      // ✅ Ya NO se dibuja encabezado en páginas siguientes
-      // Nada en esta sección excepto en página 1, pero en página 1 ya lo dibujaste arriba
-      // Así que no ponemos nada para páginas siguientes
-
-      // ✅ Pie de página
       const footerY = pageHeight - 12;
 
       doc.setDrawColor(...colorPrimario);
@@ -284,30 +307,24 @@ export const generarReportePDF = (
         `Página ${currentPage} de ${pageCount}`,
         pageWidth - margin,
         footerY + 5,
-        { align: "right" }
+        {
+          align: "right",
+        }
       );
 
-      const miniLogoSize = 5;
       try {
-        doc.addImage(
-          fondoImg,
-          "PNG",
-          margin,
-          footerY + 1.5,
-          miniLogoSize,
-          miniLogoSize
-        );
-      } catch (error) {}
+        doc.addImage(fondoImg, "PNG", margin, footerY + 1.5, 5, 5);
+      } catch {}
     },
   });
 
-  // -------------------------------
-  // Guardar PDF
-  // -------------------------------
-  const filename = `${(options.title || "reporte").replace(
-    /\s+/g,
-    "_"
-  )}-${dayjs().format("YYYY-MM-DD-HHmm")}.pdf`;
+  /* ------------------------------------------------------
+   * GUARDADO
+   * ------------------------------------------------------ */
+  const filename = `${(options.title || "reporte")
+    .replace(/\s+/g, "_")
+    .toLowerCase()}-${dayjs().format("YYYY-MM-DD-HHmm")}.pdf`;
+
   doc.save(filename);
   return doc;
 };

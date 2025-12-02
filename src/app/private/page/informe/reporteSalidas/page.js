@@ -214,12 +214,6 @@ export default function ReporteCompradoresSalidas() {
     { header: "ID", key: "compradorId" },
     { header: "Nombre", key: "nombre" },
 
-    { header: "Venta QQ", key: "compraQQ", format: "numero" },
-    { header: "Venta Lps", key: "compraLps", format: "moneda" },
-
-    { header: "Compromiso QQ", key: "salidaQQ", format: "numero" },
-    { header: "Compromiso Lps", key: "salidaLps", format: "moneda" },
-
     // ✅ SOLO AQUÍ VAN LOS INDICADORES
     { header: "Total QQ", key: "totalQQ", format: "numero", isCantidad: true },
     { header: "Total Lps", key: "totalLps", format: "moneda", isTotal: true },

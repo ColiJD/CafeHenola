@@ -1,7 +1,7 @@
 "use client"; // Indica que este archivo se ejecuta en el cliente (Next.js)
 
 import { useEffect, useState } from "react"; // Hooks de React
-import { message } from "antd"; // Componente de mensajes de Ant Design
+import { message, Spin } from "antd"; // Componente de mensajes de Ant Design
 import Formulario from "@/components/Formulario"; // Componente genérico de formulario
 import PreviewModal from "@/components/Modal"; // Modal para previsualización
 import { obtenerClientesSelect, obtenerProductosSelect } from "@/lib/consultas"; // Funciones para traer clientes/productos
@@ -24,13 +24,15 @@ import {
 } from "@/lib/consultas";
 import { useRouter } from "next/navigation";
 
-export default function ContratoForm() {
+export default function ContratoForm({ contratoID }) {
   // 🔹 Estados de datos seleccionables
   const [clientes, setClientes] = useState([]); // Lista de clientes para el select
   const [productos, setProductos] = useState([]); // Lista de productos para el select
   const [drawerVisible, setDrawerVisible] = useState(false); // control de drawer
   const [notifications, setNotifications] = useState([]); // notificaciones
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(false);
 
   // 🔹 Estado centralizado del formulario
   const [formState, setFormState] = useState({
@@ -103,12 +105,15 @@ export default function ContratoForm() {
   // 🔹 useEffect para cargar clientes y productos desde la API
   useEffect(() => {
     async function cargarDatos() {
+      setLoadingData(true);
       try {
         setClientes(await obtenerClientesSelect(messageApi)); // Trae clientes
         setProductos(await obtenerProductosSelect(messageApi)); // Trae productos
       } catch (err) {
         console.error(err);
         messageApi.error("Error cargando clientes o productos"); // Mensaje de error
+      } finally {
+        setLoadingData(false);
       }
     }
     cargarDatos();
@@ -203,8 +208,14 @@ export default function ContratoForm() {
 
     try {
       // 🔹 Petición POST al endpoint
-      const res = await fetch("/api/contratos", {
-        method: "POST",
+      // 🔹 Aquí decidimos la URL y método según si es creación o edición
+      const url = contratoID
+        ? `/api/contratos/${contratoID}`
+        : "/api/contratos";
+
+      const method = contratoID ? "PUT" : "POST";
+      const res = await fetch(url, {
+        method: method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
@@ -215,7 +226,11 @@ export default function ContratoForm() {
         throw new Error(result.error || "No se pudo registrar el contrato");
       }
 
-      messageApi.success("Contrato registrado exitosamente");
+      messageApi.success(
+        contratoID
+          ? "Contrato actualizado exitosamente"
+          : "Contrato registrado exitosamente"
+      );
 
       setPreviewVisible(false);
       // 🔹 Generar y descargar PDF del contrato
@@ -258,66 +273,132 @@ export default function ContratoForm() {
       });
     } catch (error) {
       console.error(error);
-      messageApi.error("Error enviando los datos");
+      messageApi.error(error.message || "Ocurrió un error inesperado");
     } finally {
       setSubmitting(false);
     }
   };
 
+  useEffect(() => {
+    // Esperar hasta que se carguen clientes y productos
+    if (!contratoID || loadingData) return;
+
+    const cargarContrato = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/contratos/${contratoID}`);
+        const data = await res.json();
+
+        if (!res.ok)
+          throw new Error(data.error || "Error cargando el contrato");
+
+        // Buscar cliente y producto en los selects
+        const clienteSeleccionado = clientes.find(
+          (c) => c.value === data.clienteID
+        ) || {
+          value: data.cliente?.clienteID ?? "nuevo", // si no hay ID, ponemos "nuevo" o algo único
+          label: data.cliente?.clienteNombre || "Sin nombre",
+        };
+
+        const productoSeleccionado = productos.find(
+          (p) => p.value === data.contratoTipoCafe
+        ) || {
+          value: data.contratoTipoCafe,
+          label: data.producto?.productName || "Sin nombre",
+        };
+
+        // Actualizar formState
+        setFormState((prev) => ({
+          ...prev,
+          cliente: clienteSeleccionado,
+          producto: productoSeleccionado,
+          contratoPrecio: data.contratoPrecio?.toString() || "",
+          contratoCantidadQQ: data.contratoCantidadQQ?.toString() || "",
+          contratoRetencion: data.contratoRetencionQQ?.toString() || "0",
+          contratoTotalLps: data.contratoTotalLps?.toString() || "0",
+          contratoEn: data.contratoEn || "Contrato Directo",
+          contratoDescripcion: data.contratoDescripcion || "",
+        }));
+      } catch (err) {
+        console.error(err);
+        messageApi.error("No se pudo cargar el contrato");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarContrato();
+  }, [contratoID, loadingData]);
+
   return (
     <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
       <>
         {contextHolder} {/* Contenedor de mensajes Ant Design */}
-        <FloatingNotificationButton
-          notifications={notifications}
-          onClick={() => setDrawerVisible(true)}
-        />
-        <NotificationDrawer
-          visible={drawerVisible}
-          onClose={() => setDrawerVisible(false)}
-          title="Notificaciones"
-          subtitle={formState.cliente?.label}
-          notifications={notifications}
-          actions={[
-            {
-              tooltip: "Ir a Registro",
-              icon: <SolutionOutlined />,
-              onClick: () =>
-                router.push(
-                  "/private/page/transacciones/contrato/registrocontrato"
-                ),
-            },
-          ]}
-        />
-        {/* Componente de formulario principal */}
-        <Formulario
-          key={formState.cliente?.value || "empty"}
-          title="Registrar Contrato"
-          fields={fields}
-          onSubmit={handleRegistrarClick}
-          submitting={submitting}
-          button={{
-            text: "Registrar Contrato",
-            onClick: handleRegistrarClick,
-            type: "primary",
-          }}
-        />
-        {/* Modal de previsualización antes de confirmar */}
-        <PreviewModal
-          open={previewVisible}
-          title="Previsualización del contrato"
-          onCancel={() => setPreviewVisible(false)}
-          onConfirm={handleConfirmar}
-          confirmLoading={submitting}
-          fields={fields.map((f) => ({
-            label: f.label,
-            value:
-              f.type === "select"
-                ? f.options?.find((o) => o.value === f.value?.value)?.label
-                : f.value ||
-                  (f.label === "Contrato en" ? "Contrato Directo" : "-"),
-          }))}
-        />
+        {loading || loadingData ? (
+          <div
+            style={{
+              minHeight: "16rem",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <Spin size="large" />
+          </div>
+        ) : (
+          <>
+            <FloatingNotificationButton
+              notifications={notifications}
+              onClick={() => setDrawerVisible(true)}
+            />
+            <NotificationDrawer
+              visible={drawerVisible}
+              onClose={() => setDrawerVisible(false)}
+              title="Notificaciones"
+              subtitle={formState.cliente?.label}
+              notifications={notifications}
+              actions={[
+                {
+                  tooltip: "Ir a Registro",
+                  icon: <SolutionOutlined />,
+                  onClick: () =>
+                    router.push(
+                      "/private/page/transacciones/contrato/registrocontrato"
+                    ),
+                },
+              ]}
+            />
+            {/* Componente de formulario principal */}
+            <Formulario
+              key={formState.cliente?.value || "empty"}
+              title={contratoID ? "Editar Contrato" : "Registrar Contrato"}
+              fields={fields}
+              onSubmit={handleRegistrarClick}
+              submitting={submitting}
+              button={{
+                text: contratoID ? "Actualizar Contrato" : "Registrar Contrato",
+                onClick: handleRegistrarClick,
+                type: "primary",
+              }}
+            />
+            {/* Modal de previsualización antes de confirmar */}
+            <PreviewModal
+              open={previewVisible}
+              title="Previsualización del contrato"
+              onCancel={() => setPreviewVisible(false)}
+              onConfirm={handleConfirmar}
+              confirmLoading={submitting}
+              fields={fields.map((f) => ({
+                label: f.label,
+                value:
+                  f.type === "select"
+                    ? f.options?.find((o) => o.value === f.value?.value)?.label
+                    : f.value ||
+                      (f.label === "Contrato en" ? "Contrato Directo" : "-"),
+              }))}
+            />
+          </>
+        )}
       </>
     </ProtectedPage>
   );

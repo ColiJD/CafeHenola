@@ -22,7 +22,7 @@ import TarjetaMobile from "@/components/TarjetaMobile";
 import ProtectedPage from "@/components/ProtectedPage";
 import ProtectedButton from "@/components/ProtectedButton";
 import { exportContratoCafe } from "@/Doc/Documentos/contrato";
-import { DeleteFilled, FilePdfOutlined } from "@ant-design/icons";
+import { DeleteFilled, FilePdfOutlined, EditFilled } from "@ant-design/icons";
 import { useRouter } from "next/navigation";
 import { rangoInicial } from "../../../informe/reporteCliente/page";
 
@@ -201,24 +201,20 @@ export default function ReporteRegistroContrato() {
           >
             <Button size="small" type="primary" icon={<FilePdfOutlined />} />
           </Popconfirm>
-          {/* <ProtectedButton allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+          <ProtectedButton allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
             <Popconfirm
-              title="¿Seguro que deseas EDITAR esta compra"
+              title="¿Seguro que deseas EDITAR este contrato?"
               onConfirm={() =>
                 router.push(
-                  movimientoFiltro === "Salida"
-                    ? `/private/page/transacciones/venta/${record.compraId}`
-                    : `/private/page/transacciones/compra/${record.compraId}`
+                  `/private/page/transacciones/contrato/${record.contratoID}`
                 )
               }
               okText="Sí"
               cancelText="No"
             >
-              <Button size="small" type="default">
-                Editar
-              </Button>
+              <Button size="small" type="default" icon={<EditFilled />} />
             </Popconfirm>
-          </ProtectedButton> */}
+          </ProtectedButton>
           <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
             <Popconfirm
               title="¿Seguro que deseas eliminar este contrato"
@@ -260,7 +256,6 @@ export default function ReporteRegistroContrato() {
       } else {
         // Si no se puede anular, mostrar mensaje con botón al registro de entregas
         messageApi.open({
-          
           duration: 6,
           content: (
             <div>

@@ -10,8 +10,9 @@ import {
   Button,
   message,
 } from "antd";
+import { DetalleDrawer } from "./DrawerDetalle";
 import dayjs from "dayjs";
-import { DeleteOutlined, FileTextOutlined } from "@ant-design/icons";
+import { FileTextOutlined } from "@ant-design/icons";
 import Filtros from "@/components/Filtros";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
 import EstadisticasCards from "@/components/ReportesElement/DatosEstadisticos";
@@ -22,9 +23,11 @@ import ProtectedPage from "@/components/ProtectedPage";
 import { generarReporteDetalleContrato } from "@/Doc/Reportes/FormatoDetalleContratoDoc";
 import ProtectedButton from "@/components/ProtectedButton";
 import { exportEntregaContrato } from "@/Doc/Documentos/entregaContrato";
-import { FilePdfOutlined, DeleteFilled } from "@ant-design/icons";
+import { FilePdfOutlined, DeleteFilled, EditFilled } from "@ant-design/icons";
 import { rangoInicial } from "../../../informe/reporteCliente/page";
 const { Title, Text } = Typography;
+import { useRouter } from "next/navigation";
+import { formatNumber } from "@/components/Formulario";
 
 export default function Reportedetallecontrato() {
   const hoy = [dayjs().startOf("day"), dayjs().endOf("day")];
@@ -32,9 +35,94 @@ export default function Reportedetallecontrato() {
   const [nombreFiltro, setNombreFiltro] = useState("");
   const [messageApi, contextHolder] = message.useMessage();
   const messageApiRef = useRef(messageApi);
+  const router = useRouter();
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [detalleSeleccionado, setDetalleSeleccionado] = useState(null);
+  const [loadingDetalle, setLoadingDetalle] = useState(false);
+  const [cantidadEdit, setCantidadEdit] = useState(null);
 
   const { data, loading, rangoFechas, onFechasChange, fetchData } =
     useFetchReport("/api/contratos/detallecontrato", rangoInicial);
+
+  const cargarDetalle = async (detalleID) => {
+    try {
+      setLoadingDetalle(true);
+      const res = await fetch(`/api/contratos/detallecontrato/${detalleID}`);
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "Error cargando detalle");
+
+      // Aquí asignamos el resultado al estado
+      setDetalleSeleccionado({
+        ...data,
+        clienteLabel: data.cliente || "Sin nombre",
+        productoLabel: data.producto?.productName || "Sin nombre",
+      });
+
+      setDrawerVisible(true); // Abrir drawer
+    } catch (err) {
+      console.error(err);
+      messageApi.error("No se pudo cargar el detalle");
+    } finally {
+      setLoadingDetalle(false);
+    }
+  };
+
+  const handleActualizarDetalle = async (values) => {
+    if (!detalleSeleccionado) return;
+
+    try {
+      messageApi.open({
+        type: "loading",
+        content: "Actualizando entrega...",
+        duration: 0,
+      });
+
+      const res = await fetch(
+        `/api/contratos/detallecontrato/${detalleSeleccionado.detalleID}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contratoID: detalleSeleccionado.contratoID,
+            clienteID: detalleSeleccionado.clienteID,
+            tipoCafe: detalleSeleccionado.tipoCafe,
+            cantidadQQ: Number(values.cantidadQQ),
+            precioQQ: Number(detalleSeleccionado.precioQQ),
+            observaciones: values.observaciones,
+          }),
+        }
+      );
+
+      const data = await res.json();
+      messageApi.destroy();
+
+      if (!res.ok) {
+        return messageApi.error(
+          data.error || "No se pudo actualizar la entrega"
+        );
+      }
+
+      // ÉXITO
+      messageApi.success("Entrega actualizada correctamente");
+      // 🔄 Actualizar tabla llamando a fetchData
+      if (rangoFechas?.[0] && rangoFechas?.[1]) {
+        await fetchData(
+          rangoFechas[0].startOf("day").toISOString(),
+          rangoFechas[1].endOf("day").toISOString()
+        );
+      } else {
+        await fetchData();
+      }
+
+      // Cerrar Drawer
+      setDrawerVisible(false);
+    } catch (error) {
+      console.error(error);
+      messageApi.destroy();
+      messageApi.error("Error inesperado al actualizar");
+    }
+  };
 
   const datosFiltrados = useMemo(() => {
     const lista = Array.isArray(data?.detalles) ? data.detalles : [];
@@ -89,13 +177,13 @@ export default function Reportedetallecontrato() {
       title: "Precio QQ (Lps)",
       dataIndex: "precioQQ",
       align: "right",
-      render: (v) => <Text>L. {v.toFixed(2)}</Text>,
+      render: (v) => formatNumber(v),
     },
     {
       title: "Total (Lps)",
       dataIndex: "totalLps",
       align: "right",
-      render: (v) => <Text>L. {v.toFixed(2)}</Text>,
+      render: (v) => formatNumber(v),
     },
     { title: "Observaciones", dataIndex: "observaciones", width: 250 },
 
@@ -115,7 +203,7 @@ export default function Reportedetallecontrato() {
           }}
         >
           <Popconfirm
-            title="¿Seguro que deseas EXPORTAR esta compra?"
+            title="¿Seguro que deseas EXPORTAR este detalle de contrato?"
             onConfirm={async () => {
               // Mostrar mensaje inicial
               messageApi.open({
@@ -153,24 +241,14 @@ export default function Reportedetallecontrato() {
           >
             <Button size="small" type="primary" icon={<FilePdfOutlined />} />
           </Popconfirm>
-          {/* <ProtectedButton allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
-                <Popconfirm
-                  title="¿Seguro que deseas EDITAR esta compra"
-                  onConfirm={() =>
-                    router.push(
-                      movimientoFiltro === "Salida"
-                        ? `/private/page/transacciones/venta/${record.compraId}`
-                        : `/private/page/transacciones/compra/${record.compraId}`
-                    )
-                  }
-                  okText="Sí"
-                  cancelText="No"
-                >
-                  <Button size="small" type="default">
-                    Editar
-                  </Button>
-                </Popconfirm>
-              </ProtectedButton> */}
+          <ProtectedButton allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+            <Button
+              size="small"
+              type="default"
+              icon={<EditFilled />}
+              onClick={() => cargarDetalle(record.detalleID)}
+            />
+          </ProtectedButton>
           <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
             <Popconfirm
               title="¿Seguro que deseas eliminar este contrato?"
@@ -249,6 +327,44 @@ export default function Reportedetallecontrato() {
     { label: "Acciones", key: "acciones" },
   ];
 
+  const camposDetalle = [
+    { label: "Cliente", key: "clienteLabel", editable: false },
+    { label: "Contrato ID", key: "contratoID", editable: false },
+    { label: "Producto", key: "productoLabel", editable: false },
+    {
+      label: "Cantidad QQ",
+      key: "cantidadQQ",
+      editable: true,
+      type: "number",
+      rules: [
+        { required: true, message: "Ingrese cantidad" },
+        { type: "number", min: 1, message: "Debe ser mayor a 0" },
+      ],
+    },
+    {
+      label: "Precio QQ",
+      key: "precioQQ",
+      editable: false,
+      render: (detalle) => `L. ${formatNumber(detalle.precioQQ)}`,
+    },
+    {
+      label: "Total Lps",
+      key: "total",
+      editable: false,
+      render: (detalle, editValues) =>
+        `L. ${formatNumber(
+          (editValues?.cantidadQQ ?? detalle.cantidadQQ) * detalle.precioQQ
+        )}`,
+    },
+    { label: "Observaciones", key: "observaciones", editable: true },
+    {
+      label: "Fecha",
+      key: "fecha",
+      editable: false,
+      render: (detalle) => dayjs(detalle.fecha).format("DD/MM/YYYY"),
+    },
+  ];
+
   if (!mounted) return null;
 
   return (
@@ -263,6 +379,15 @@ export default function Reportedetallecontrato() {
         }}
       >
         {contextHolder}
+        <DetalleDrawer
+          visible={drawerVisible}
+          onClose={() => setDrawerVisible(false)}
+          detalle={detalleSeleccionado}
+          loading={loadingDetalle}
+          onFinish={handleActualizarDetalle}
+          isDesktop={isDesktop}
+          campos={camposDetalle}
+        />
 
         <Card>
           <SectionHeader
@@ -345,7 +470,6 @@ export default function Reportedetallecontrato() {
             </>
           )}
         </Card>
-
         <Card style={{ borderRadius: 6 }}>
           <div style={{ marginBottom: isDesktop ? 16 : 12 }}>
             <Title

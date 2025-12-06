@@ -85,7 +85,6 @@ export async function PUT(request, { params }) {
     }
 
     const body = await request.json();
-    console.log("Body recibido:", body);
 
     const {
       contratoclienteID,
@@ -122,14 +121,19 @@ export async function PUT(request, { params }) {
       });
     }
 
-    // Verificar si existen detalles asociados
-    const detallesCount = await prisma.detallecontrato.count({
-      where: { contratoID },
+    // Verificar si existen detalles asociados no anulados
+    const detalleAsociado = await prisma.detallecontrato.findFirst({
+      where: {
+        contratoID,
+        tipoMovimiento: { not: "Anulado" }, // ignorar anulados
+      },
+      select: { detalleID: true }, // solo traemos el ID para el mensaje
     });
-    if (detallesCount > 0) {
+
+    if (detalleAsociado) {
       return new Response(
         JSON.stringify({
-          error: `No se puede modificar este contrato #${contratoID} porque ya tiene entregas registradas .`,
+          error: `No se puede modificar este contrato #${contratoID} porque ya tiene entregas registradas (Detalle ID: ${detalleAsociado.detalleID}).`,
         }),
         { status: 403 }
       );

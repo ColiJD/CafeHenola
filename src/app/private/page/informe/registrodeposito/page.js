@@ -26,6 +26,7 @@ import { exportDeposito } from "@/Doc/Documentos/desposito";
 import { FilePdfOutlined, DeleteFilled, EditFilled } from "@ant-design/icons";
 import { rangoInicial } from "../reporteCliente/page";
 import { useRouter } from "next/navigation";
+import { DetalleDrawer } from "../../transacciones/contrato/detallecontrato/DrawerDetalle";
 
 const { Title, Text } = Typography;
 
@@ -35,6 +36,9 @@ export default function ReporteRegistroDeposito() {
   const [messageApi, contextHolder] = message.useMessage();
   const [nombreFiltro, setNombreFiltro] = useState("");
   const messageApiRef = useRef(messageApi);
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [detalleSeleccionado, setDetalleSeleccionado] = useState(null);
+  const [loadingDetalle, setLoadingDetalle] = useState(false);
 
   const {
     data,
@@ -44,6 +48,144 @@ export default function ReporteRegistroDeposito() {
 
     fetchData,
   } = useFetchReport("/api/deposito/registrodeposito", rangoInicial);
+
+  const cargarDetalle = async (id) => {
+    try {
+      setLoadingDetalle(true);
+      const res = await fetch(`/api/deposito/${id}`);
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "Error cargando deposito");
+
+      // Aquí asignamos el resultado al estado
+      setDetalleSeleccionado({
+        detalleID: data.depositoID,
+        fecha: data.depositoFecha,
+        cantidadQQ: data.depositoCantidadQQ,
+        retencionQQ: data.depositoRetencionQQ,
+        observaciones: data.depositoDescripcion,
+        clienteID: data.cliente.clienteID,
+        clienteNombre: `${data.cliente.clienteNombre} ${data.cliente.clienteApellido}`,
+        productoID: data.producto.productID,
+        productoNombre: data.producto.productName,
+      });
+
+      setDrawerVisible(true); // Abrir drawer
+    } catch (err) {
+      messageApi.error("No se pudo cargar el deposito");
+    } finally {
+      setLoadingDetalle(false);
+    }
+  };
+
+  const handleActualizarDetalle = async (values) => {
+    if (!detalleSeleccionado) return;
+
+    try {
+      messageApi.open({
+        type: "loading",
+        content: "Actualizando depósito...",
+        duration: 0,
+      });
+
+      const res = await fetch(
+        `/api/deposito/${detalleSeleccionado.detalleID}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            depositoID: detalleSeleccionado.detalleID,
+            cantidadQQ: Number(values.cantidadQQ),
+            retencionQQ: Number(values.retencionQQ),
+            observaciones: values.observaciones,
+          }),
+        }
+      );
+
+      const data = await res.json();
+      messageApi.destroy();
+
+      if (!res.ok) {
+        // Mostrar mensaje con botón para ir al registro de liquidaciones
+        return messageApi.open({
+          duration: 6,
+          content: (
+            <div>
+              <b>{data.error || "No se pudo actualizar el depósito"}</b>
+              <br />
+              <Button
+                type="primary"
+                size="small"
+                style={{ marginTop: 6 }}
+                onClick={() =>
+                  router.push(
+                    "/private/page/transacciones/deposito/lipdedeposito"
+                  )
+                }
+              >
+                Ver liquidaciones asociadas
+              </Button>
+            </div>
+          ),
+        });
+      }
+
+      // ÉXITO
+      messageApi.success("Depósito actualizado correctamente");
+      // 🔄 Actualizar tabla llamando a fetchData
+      if (rangoFechas?.[0] && rangoFechas?.[1]) {
+        await fetchData(
+          rangoFechas[0].startOf("day").toISOString(),
+          rangoFechas[1].endOf("day").toISOString()
+        );
+      } else {
+        await fetchData();
+      }
+
+      // Cerrar Drawer
+      setDrawerVisible(false);
+    } catch (error) {
+      console.error(error);
+      messageApi.destroy();
+      messageApi.error("Error inesperado al actualizar");
+    }
+  };
+  const camposDetalle = [
+    { label: "Cliente", key: "clienteNombre", editable: false },
+    { label: "Producto", key: "productoNombre", editable: false },
+    {
+      label: "Cantidad QQ",
+      key: "cantidadQQ",
+      editable: true,
+      type: "number",
+      rules: [
+        { required: true, message: "Ingrese cantidad" },
+        { type: "number", min: 1, message: "Debe ser mayor a 0" },
+      ],
+    },
+    {
+      label: "Retención QQ",
+      key: "retencionQQ",
+      editable: false,
+      render: (detalle, editValues) => {
+        const cantidad = editValues?.cantidadQQ ?? detalle.cantidadQQ;
+        const retencion = cantidad * 0.96; // 4%
+
+        return `${formatNumber(retencion)}`;
+      },
+    },
+    {
+      label: "Observaciones",
+      key: "observaciones",
+      editable: true,
+    },
+    {
+      label: "Fecha",
+      key: "fecha",
+      editable: false,
+      render: (detalle) => dayjs(detalle.fecha).format("DD/MM/YYYY"),
+    },
+  ];
 
   const datosFiltrados = useMemo(() => {
     const lista = Array.isArray(data?.detalles) ? data.detalles : [];
@@ -192,24 +334,14 @@ export default function ReporteRegistroDeposito() {
           >
             <Button size="small" type="primary" icon={<FilePdfOutlined />} />
           </Popconfirm>
-          {/* <ProtectedButton allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
-            <Popconfirm
-              title="¿Seguro que deseas EDITAR esta compra"
-              onConfirm={() =>
-                router.push(
-                  movimientoFiltro === "Salida"
-                    ? `/private/page/transacciones/venta/${record.compraId}`
-                    : `/private/page/transacciones/compra/${record.compraId}`
-                )
-              }
-              okText="Sí"
-              cancelText="No"
-            >
-              <Button size="small" type="default">
-                Editar
-              </Button>
-            </Popconfirm>
-          </ProtectedButton> */}
+          <ProtectedButton allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+            <Button
+              size="small"
+              type="default"
+              icon={<EditFilled />}
+              onClick={() => cargarDetalle(record.id)}
+            />
+          </ProtectedButton>
           <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
             <Popconfirm
               title="¿Seguro que deseas eliminar este depósito?"
@@ -303,6 +435,15 @@ export default function ReporteRegistroDeposito() {
         }}
       >
         {contextHolder}
+        <DetalleDrawer
+          visible={drawerVisible}
+          onClose={() => setDrawerVisible(false)}
+          detalle={detalleSeleccionado}
+          loading={loadingDetalle}
+          isDesktop={isDesktop}
+          onFinish={handleActualizarDetalle}
+          campos={camposDetalle}
+        />
 
         <Card>
           <SectionHeader
@@ -412,23 +553,16 @@ export default function ReporteRegistroDeposito() {
                 ...item,
                 acciones: (
                   <div style={{ display: "flex", gap: 6 }}>
-                    {/* <ProtectedButton
+                    <ProtectedButton
                       allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}
                     >
                       <Button
                         size="small"
                         type="default"
-                        onClick={() =>
-                          router.push(
-                            movimientoFiltro === "Salida"
-                              ? `/private/page/transacciones/venta/${item.compraId}`
-                              : `/private/page/transacciones/compra/${item.compraId}`
-                          )
-                        }
-                      >
-                        Editar
-                      </Button>
-                    </ProtectedButton> */}
+                        icon={<EditFilled />}
+                        onClick={() => cargarDetalle(item.id)}
+                      />
+                    </ProtectedButton>
 
                     <Popconfirm
                       title="¿Seguro que deseas EXPORTAR esta compra?"

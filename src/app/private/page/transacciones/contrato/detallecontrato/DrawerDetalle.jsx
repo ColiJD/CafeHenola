@@ -9,8 +9,6 @@ import {
   Spin,
   Typography,
 } from "antd";
-import dayjs from "dayjs";
-import { formatNumber } from "@/components/Formulario";
 
 const { Text } = Typography;
 
@@ -39,7 +37,7 @@ export const DetalleDrawer = ({
     }
   }, [detalle, campos, form]);
 
-  if (!detalle && !loading) return <Text>No hay detalle seleccionado</Text>;
+  if (!detalle && !loading) return;
 
   const handleChange = (key, value) => {
     setEditValues((prev) => ({ ...prev, [key]: value }));
@@ -48,14 +46,14 @@ export const DetalleDrawer = ({
 
   return (
     <Drawer
-      title={`Actualizar Detalle #${detalle?.detalleID ?? ""}`}
+      title={`Actualizar Registro #${detalle?.detalleID ?? ""}`}
       width={isDesktop ? 600 : 350}
       onClose={onClose}
       open={visible}
       footer={null}
     >
       {loading ? (
-        <Spin tip="Cargando detalle..." />
+        <Spin tip="Cargando Registro..." />
       ) : (
         <Form
           form={form}

@@ -1,7 +1,7 @@
 "use client"; // Indica que este archivo se ejecuta en el cliente (Next.js)
 
 import { useEffect, useState } from "react"; // Hooks de React
-import { message, Spin } from "antd"; // Componente de mensajes de Ant Design
+import { message, Spin, Button } from "antd"; // Componente de mensajes de Ant Design
 import Formulario from "@/components/Formulario"; // Componente genérico de formulario
 import PreviewModal from "@/components/Modal"; // Modal para previsualización
 import { obtenerClientesSelect, obtenerProductosSelect } from "@/lib/consultas"; // Funciones para traer clientes/productos
@@ -223,7 +223,27 @@ export default function ContratoForm({ contratoID }) {
       const result = await res.json();
 
       if (!res.ok || !result.contratoID) {
-        throw new Error(result.error || "No se pudo registrar el contrato");
+        return messageApi.open({
+          duration: 6,
+          content: (
+            <div>
+              <b>{result.error || "No se pudo registrar el contrato"}</b>
+              <br />
+              <Button
+                type="primary"
+                size="small"
+                style={{ marginTop: 6 }}
+                onClick={() =>
+                  router.push(
+                    "/private/page/transacciones/contrato/detallecontrato"
+                  )
+                }
+              >
+                Ver Contratos
+              </Button>
+            </div>
+          ),
+        });
       }
 
       messageApi.success(

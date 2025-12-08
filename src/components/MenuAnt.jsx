@@ -7,6 +7,7 @@ import { Layout, Menu, Button, theme, Grid, Drawer } from "antd";
 import "@/style/menu.css";
 import ProtectedPage from "@/components/ProtectedPage";
 import SessionTimeout from "./SessionTime";
+import CajaChicaBalanceWidget from "@/components/caja-chica/CajaChicaBalanceWidget";
 const { Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
 
@@ -21,7 +22,7 @@ export default function DashboardLayout({ children }) {
   } = theme.useToken();
 
   useEffect(() => {
-    setMounted(true); 
+    setMounted(true);
   }, []);
 
   useEffect(() => {
@@ -73,7 +74,9 @@ export default function DashboardLayout({ children }) {
   const isMobile = !screens.md;
 
   return (
-    <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS","AUDITORES"]}>
+    <ProtectedPage
+      allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS", "AUDITORES"]}
+    >
       <SessionTimeout warnBeforeSeconds={60} />
       <Layout style={{ minHeight: "100vh" }}>
         {/* 🔹 Desktop Sider */}
@@ -127,6 +130,8 @@ export default function DashboardLayout({ children }) {
               />
             </div>
 
+            <CajaChicaBalanceWidget collapsed={collapsed} />
+
             {menu}
           </Sider>
         )}
@@ -169,11 +174,17 @@ export default function DashboardLayout({ children }) {
                   padding: 0,
                   lineHeight: 1,
                 }}
-              >
-                ×
-              </Button>
+              ></Button>
             </div>
+            <div
+              style={{
+                alignItems: "center",
 
+                background: "#001529",
+              }}
+            >
+              <CajaChicaBalanceWidget collapsed={false} />
+            </div>
             {menu}
           </Drawer>
         )}

@@ -22,6 +22,7 @@ model users {
   roleId          Int
   createdAt       DateTime          @default(now()) @db.DateTime(0)
   password_resets password_resets[]
+  caja_chica      caja_chica[]
   roles           roles             @relation(fields: [roleId], references: [roleId], onDelete: NoAction, onUpdate: NoAction, map: "users_ibfk_1")
 
   @@index([roleId], map: "roleId")
@@ -341,4 +342,17 @@ model salida {
   compradores       compradores        @relation(fields: [compradorID], references: [compradorId], onDelete: NoAction, onUpdate: NoAction, map: "salida_ibfk_1")
 
   @@index([compradorID], map: "compradorID")
+}
+
+model caja_chica {
+  id          Int      @id @default(autoincrement())
+  fecha       DateTime @default(now()) @db.DateTime(0)
+  descripcion String   @db.VarChar(255)
+  monto       Decimal  @db.Decimal(10, 2)
+  tipo        String   @db.VarChar(20) // "Ingreso" or "Egreso"
+  usuarioId   Int?
+  estado      String?  @default("Activo") @db.VarChar(20)
+  users       users?   @relation(fields: [usuarioId], references: [userId], onDelete: NoAction, onUpdate: NoAction)
+  
+  @@index([usuarioId], map: "usuarioId")
 }

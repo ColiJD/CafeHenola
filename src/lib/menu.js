@@ -64,19 +64,18 @@ export const menuItems = [
         href: RutaTransaccion + "/deposito/vista",
         image: contrato,
       },
-       {
+      {
         id: 406,
         name: "Saldo Por Contrato",
         href: RutaTransaccion + "/contrato/vista",
         image: contrato,
       },
-       {
+      {
         id: 40,
         name: "Saldo Prestamo y  Anticipo ",
         href: Ruta + "/informe/reportePrestamo",
         image: contrato,
       },
-      
     ],
   },
   {
@@ -142,6 +141,7 @@ export const menuItems = [
     image: producto,
     href: Ruta + "/inventario",
   },
+
   {
     id: 7,
     name: "Prestamo",

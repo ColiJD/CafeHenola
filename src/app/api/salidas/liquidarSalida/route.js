@@ -7,26 +7,38 @@ export async function POST(req) {
     const body = await req.json();
     const { compradorID, cantidadLiquidar, descripcion } = body;
 
-    if (!compradorID || !cantidadLiquidar) {
+    const compradorIdNum = Number(compradorID);
+    const cantidadSolicitada = Number(cantidadLiquidar);
+
+    if (
+      isNaN(compradorIdNum) ||
+      isNaN(cantidadSolicitada) ||
+      cantidadSolicitada <= 0
+    ) {
       return NextResponse.json(
-        { error: "Faltan datos obligatorios" },
+        { error: "Faltan datos obligatorios o inválidos" },
         { status: 400 }
       );
     }
 
-    const cantidadSolicitada = Number(cantidadLiquidar);
-
     const resultado = await prisma.$transaction(async (tx) => {
       let cantidad = cantidadSolicitada;
 
-      // obtener todas las salidas del comprador, FIFO
+      // Obtener todas las salidas del comprador, FIFO
       const salidas = await tx.salida.findMany({
-        where: { compradorID: Number(compradorID) },
+        where: {
+          compradorID: compradorIdNum,
+          salidaMovimiento: { notIn: ["ANULADO", "Anulado", "anulado"] },
+        },
         orderBy: { salidaFecha: "asc" },
-        include: { detalleliqsalida: true },
+        include: {
+          detalleliqsalida: {
+            where: { movimiento: { notIn: ["ANULADO", "Anulado", "anulado"] } },
+          },
+        },
       });
 
-      // calcular pendientes dinámicos
+      // Calcular pendientes dinámicos
       const pendientes = salidas
         .map((s) => {
           const totalLiquidado = s.detalleliqsalida.reduce(
@@ -42,29 +54,29 @@ export async function POST(req) {
         throw new Error("NO_PENDIENTES");
       }
 
-      // crear registro maestro de liquidación
+      // Crear registro maestro de liquidación
       const liqSalida = await tx.liqsalida.create({
         data: {
           liqFecha: new Date(),
-          compradorID: Number(compradorID),
+          compradorID: compradorIdNum,
           liqMovimiento: "Salida",
           liqCantidadQQ: cantidadSolicitada,
           liqDescripcion: descripcion || "",
         },
       });
 
-      // recorrer FIFO
+      // Recorrer FIFO y registrar detalle
       for (const s of pendientes) {
         if (cantidad <= 0) break;
 
         const descontar = Math.min(s.pendiente, cantidad);
 
-        // registrar detalle
         await tx.detalleliqsalida.create({
           data: {
             liqSalidaID: liqSalida.liqSalidaID,
             salidaID: s.salidaID,
             cantidadQQ: descontar,
+            movimiento: "Salida",
           },
         });
 

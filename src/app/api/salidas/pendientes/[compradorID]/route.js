@@ -13,7 +13,7 @@ export async function GET(req, { params }) {
   }
 
   try {
-    // Obtener todas las salidas del comprador con sus detalles de entregas
+    // Obtener todas las salidas del comprador (NO ANULADAS)
     const salidas = await prisma.salida.findMany({
       where: {
         compradorID,
@@ -25,29 +25,38 @@ export async function GET(req, { params }) {
         salidaID: true,
         salidaCantidadQQ: true,
         salidaDescripcion: true,
+
+        // LEFT JOIN detalles
         detalleliqsalida: {
-          select: { cantidadQQ: true },
-          where: { movimiento: { notIn: ["ANULADO", "Anulado", "anulado"] } },
+          select: { cantidadQQ: true, movimiento: true },
+
+          // NO usar notIn directo porque elimina el registro completo
+          // Filtraremos manualmente después
         },
       },
     });
 
-    // Calcular cantidad pendiente por salida
+    // PROCESAR SUMAS (aplicando IS NULL + NOT IN para detalle)
     const pendientes = salidas
       .map((s) => {
-        const entregado = s.detalleliqsalida.reduce(
-          (acc, d) => acc + Number(d.cantidadQQ),
-          0
-        );
+        const entregado = s.detalleliqsalida
+          // Aplicar NOT IN y permitir movimiento null
+          .filter(
+            (d) =>
+              d.movimiento === null ||
+              !["ANULADO", "Anulado", "anulado"].includes(d.movimiento)
+          )
+          .reduce((acc, d) => acc + Number(d.cantidadQQ || 0), 0);
+
         return {
           salidaID: s.salidaID,
           cantidadPendiente: Number(s.salidaCantidadQQ) - entregado,
           detalles: s.salidaDescripcion,
         };
       })
-      .filter((s) => s.cantidadPendiente > 0); // solo pendientes
+      .filter((s) => s.cantidadPendiente > 0);
 
-    // Total general
+    // TOTAL GENERAL
     const cantidadPendiente = pendientes.reduce(
       (acc, s) => acc + s.cantidadPendiente,
       0

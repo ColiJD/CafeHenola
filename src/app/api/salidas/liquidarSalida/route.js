@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { checkRole } from "@/lib/checkRole";
-
 export async function POST(req) {
   try {
     const body = await req.json();
@@ -24,7 +23,10 @@ export async function POST(req) {
     const resultado = await prisma.$transaction(async (tx) => {
       let cantidad = cantidadSolicitada;
 
-      // Obtener todas las salidas del comprador, FIFO
+      // ----------------------------
+      // ✔ Obtener salidas válidas (NO ANULADAS)
+      // ✔ No filtrar detalles en SQL (evita convertir LEFT JOIN en INNER)
+      // ----------------------------
       const salidas = await tx.salida.findMany({
         where: {
           compradorID: compradorIdNum,
@@ -33,19 +35,28 @@ export async function POST(req) {
         orderBy: { salidaFecha: "asc" },
         include: {
           detalleliqsalida: {
-            where: { movimiento: { notIn: ["ANULADO", "Anulado", "anulado"] } },
+            select: { cantidadQQ: true, movimiento: true },
+            // ❌ NO usar notIn aquí, se filtra manualmente
           },
         },
       });
 
-      // Calcular pendientes dinámicos
+      // ----------------------------
+      // ✔ Calcular pendientes con filtro correcto:
+      //   d.movimiento IS NULL OR d.movimiento NOT IN (...)
+      // ----------------------------
       const pendientes = salidas
         .map((s) => {
-          const totalLiquidado = s.detalleliqsalida.reduce(
-            (acc, d) => acc + Number(d.cantidadQQ || 0),
-            0
-          );
+          const totalLiquidado = s.detalleliqsalida
+            .filter(
+              (d) =>
+                d.movimiento === null ||
+                !["ANULADO", "Anulado", "anulado"].includes(d.movimiento)
+            )
+            .reduce((acc, d) => acc + Number(d.cantidadQQ || 0), 0);
+
           const pendiente = Number(s.salidaCantidadQQ) - totalLiquidado;
+
           return { salidaID: s.salidaID, pendiente };
         })
         .filter((s) => s.pendiente > 0);
@@ -54,7 +65,9 @@ export async function POST(req) {
         throw new Error("NO_PENDIENTES");
       }
 
-      // Crear registro maestro de liquidación
+      // ----------------------------
+      // ✔ Crear cabecera de liquidación
+      // ----------------------------
       const liqSalida = await tx.liqsalida.create({
         data: {
           liqFecha: new Date(),
@@ -65,7 +78,9 @@ export async function POST(req) {
         },
       });
 
-      // Recorrer FIFO y registrar detalle
+      // ----------------------------
+      // ✔ FIFO automático
+      // ----------------------------
       for (const s of pendientes) {
         if (cantidad <= 0) break;
 

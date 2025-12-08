@@ -10,15 +10,18 @@ import {
   Popconfirm,
   Button,
 } from "antd";
+import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
 import TarjetaMobile from "@/components/TarjetaMobile";
 import Filtros from "@/components/Filtros";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
+import { DetalleDrawer } from "../../contrato/detallecontrato/DrawerDetalle";
 import {
   CalendarOutlined,
   UserOutlined,
   DeleteFilled,
   FilePdfOutlined,
+  EditFilled,
 } from "@ant-design/icons";
 import { rangoInicial } from "../../../informe/reporteCliente/page";
 import SectionHeader from "@/components/ReportesElement/AccionesResporte";
@@ -35,6 +38,10 @@ const { Title, Text } = Typography;
 
 export default function ReporteRegistroSalida() {
   const hoy = [dayjs().startOf("day"), dayjs().endOf("day")];
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [detalleSeleccionado, setDetalleSeleccionado] = useState(null);
+  const [loadingDetalle, setLoadingDetalle] = useState(false);
+  const router = useRouter();
 
   const { mounted, isDesktop } = useClientAndDesktop();
   const [messageApi, contextHolder] = message.useMessage();
@@ -102,7 +109,12 @@ export default function ReporteRegistroSalida() {
   }, [datosFiltrados]);
 
   const columnasDesktop = [
-    { title: "Salida ID", fixed: "left", dataIndex: "salidaID", width: 80 },
+    {
+      title: "ID",
+      fixed: "left",
+      dataIndex: "salidaID",
+      width: 60,
+    },
     {
       title: "Fecha",
       dataIndex: "salidaFecha",
@@ -213,6 +225,14 @@ export default function ReporteRegistroSalida() {
           >
             <Button size="small" type="primary" icon={<FilePdfOutlined />} />
           </Popconfirm>
+          <ProtectedButton allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
+            <Button
+              size="small"
+              type="default"
+              icon={<EditFilled />}
+              onClick={() => cargarDetalle(record.salidaID)}
+            />
+          </ProtectedButton>
 
           <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
             <Popconfirm
@@ -274,6 +294,142 @@ export default function ReporteRegistroSalida() {
       render: (val) => formatNumber(val),
     },
     { label: "Descripción", key: "salidaDescripcion" },
+    { label: "Acciones", key: "acciones" },
+  ];
+
+  const cargarDetalle = async (salidaID) => {
+    try {
+      setLoadingDetalle(true);
+
+      const res = await fetch(`/api/salidas/${salidaID}`);
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error || "Error cargando salida");
+
+      setDetalleSeleccionado({
+        detalleID: data.salidaID,
+        fecha: data.salidaFecha,
+        salidaCantidadQQ: Number(data.salidaCantidadQQ),
+        salidaPrecio: Number(data.salidaPrecio),
+        salidaDescripcion: data.salidaDescripcion,
+
+        compradorID: data.compradores?.compradorId,
+        compradorNombre: data.compradores?.compradorNombre,
+      });
+
+      setDrawerVisible(true);
+    } catch (err) {
+      console.error(err);
+      messageApi.error("No se pudo cargar la salida");
+    } finally {
+      setLoadingDetalle(false);
+    }
+  };
+  const handleActualizarDetalle = async (values) => {
+    if (!detalleSeleccionado) return;
+
+    try {
+      messageApi.open({
+        type: "loading",
+        content: "Actualizando salida...",
+        duration: 0,
+      });
+
+      const res = await fetch(`/api/salidas/${detalleSeleccionado.detalleID}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cantidadQQ: Number(values.salidaCantidadQQ),
+          precio: Number(values.salidaPrecio),
+          observaciones: values.salidaDescripcion,
+        }),
+      });
+
+      const data = await res.json();
+      messageApi.destroy();
+
+      if (!res.ok) {
+        // Mostrar mensaje con botón para ir al registro de liquidaciones
+        return messageApi.open({
+          duration: 6,
+          content: (
+            <div>
+              <b>{data.error || "No se pudo actualizar la salida"}</b>
+              <br />
+              <Button
+                type="primary"
+                size="small"
+                style={{ marginTop: 6 }}
+                onClick={() =>
+                  router.push("/private/page/transacciones/salidas/registroliq")
+                }
+              >
+                Ver liquidaciones asociadas
+              </Button>
+            </div>
+          ),
+        });
+      }
+
+      // ÉXITO
+      messageApi.success("Salida actualizada correctamente");
+
+      // 🔄 Actualizar tabla llamando a fetchData
+      if (rangoFechas?.[0] && rangoFechas?.[1]) {
+        await fetchData(
+          rangoFechas[0].startOf("day").toISOString(),
+          rangoFechas[1].endOf("day").toISOString()
+        );
+      } else {
+        await fetchData();
+      }
+
+      // Cerrar Drawer
+      setDrawerVisible(false);
+    } catch (error) {
+      console.error(error);
+      messageApi.destroy();
+      messageApi.error("Error inesperado al actualizar la salida");
+    }
+  };
+
+  const camposDetalle = [
+    { label: "Comprador", key: "compradorNombre", editable: false },
+
+    {
+      label: "Cantidad QQ",
+      key: "salidaCantidadQQ",
+      editable: true,
+      type: "number",
+      rules: [
+        { required: true, message: "Ingrese cantidad" },
+        { type: "number", min: 1, message: "Debe ser mayor a 0" },
+      ],
+    },
+
+    {
+      label: "Precio",
+      key: "salidaPrecio",
+      editable: true,
+      type: "number",
+      rules: [
+        { required: true, message: "Ingrese precio" },
+        { type: "number", min: 1, message: "Debe ser mayor a 0" },
+      ],
+    },
+
+    {
+      label: "Descripción",
+      key: "salidaDescripcion",
+      editable: true,
+    },
+
+    {
+      label: "Fecha",
+      key: "salidaFecha",
+      editable: false,
+      render: (detalle) => dayjs(detalle.salidaFecha).format("DD/MM/YYYY"),
+    },
   ];
 
   if (!mounted) return null;
@@ -290,6 +446,15 @@ export default function ReporteRegistroSalida() {
         }}
       >
         {contextHolder}
+        <DetalleDrawer
+          visible={drawerVisible}
+          onClose={() => setDrawerVisible(false)}
+          detalle={detalleSeleccionado}
+          loading={loadingDetalle}
+          isDesktop={isDesktop}
+          campos={camposDetalle}
+          onFinish={handleActualizarDetalle}
+        />
 
         <Card>
           <SectionHeader
@@ -410,7 +575,113 @@ export default function ReporteRegistroSalida() {
             />
           ) : (
             <TarjetaMobile
-              data={datosFiltrados}
+              data={datosFiltrados.map((item) => ({
+                ...item,
+                acciones: (
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {/* Botón Editar */}
+                    <ProtectedButton
+                      allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}
+                    >
+                      <Button
+                        size="small"
+                        type="default"
+                        icon={<EditFilled />}
+                        onClick={() => cargarDetalle(item.salidaID)}
+                      />
+                    </ProtectedButton>
+
+                    {/* Botón Exportar PDF */}
+                    <Popconfirm
+                      title="¿Seguro que deseas EXPORTAR esta salida?"
+                      onConfirm={async () => {
+                        messageApi.open({
+                          type: "loading",
+                          content:
+                            "Generando comprobante de salida, por favor espere...",
+                          duration: 0,
+                          key: "generandoComprobante",
+                        });
+
+                        try {
+                          await PDFComprobante({
+                            tipoComprobante: "COMPROBANTE DE SALIDA",
+                            cliente:
+                              item.compradores?.compradorNombre || "Cliente",
+                            productos: [
+                              {
+                                nombre: "Café Seco",
+                                cantidad: parseFloat(item.salidaCantidadQQ),
+                                precio: parseFloat(item.salidaPrecio),
+                                total:
+                                  parseFloat(item.salidaCantidadQQ) *
+                                  parseFloat(item.salidaPrecio),
+                              },
+                            ],
+                            total:
+                              parseFloat(item.salidaCantidadQQ) *
+                              parseFloat(item.salidaPrecio),
+                            observaciones: item.salidaDescripcion,
+                            comprobanteID: item.salidaID,
+                            columnas: [
+                              { title: "Producto", key: "nombre" },
+                              { title: "Cantidad (QQ)", key: "cantidad" },
+                              { title: "Precio (LPS)", key: "precio" },
+                              { title: "Total (LPS)", key: "total" },
+                            ],
+                          });
+
+                          messageApi.destroy("generandoComprobante");
+                          messageApi.success(
+                            "Comprobante generado correctamente"
+                          );
+                        } catch (err) {
+                          console.error("Error generando comprobante:", err);
+                          messageApi.destroy("generandoComprobante");
+                          messageApi.error("Error generando comprobante PDF");
+                        }
+                      }}
+                      okText="Sí"
+                      cancelText="No"
+                    >
+                      <Button
+                        size="small"
+                        type="primary"
+                        icon={<FilePdfOutlined />}
+                      />
+                    </Popconfirm>
+
+                    {/* Botón Eliminar */}
+                    <ProtectedButton allowedRoles={["ADMIN", "GERENCIA"]}>
+                      <Popconfirm
+                        title="¿Seguro que deseas eliminar esta salida?"
+                        onConfirm={() =>
+                          eliminarRecurso({
+                            direccion: `/api/salidas/${item.salidaID}`,
+                            mensajeExito: "Salida eliminada correctamente",
+                            mensajeError: "Error al eliminar la salida",
+                            messageApi,
+                            onRefresh: async () => {
+                              if (rangoFechas?.[0] && rangoFechas?.[1]) {
+                                await fetchData(
+                                  rangoFechas[0].startOf("day").toISOString(),
+                                  rangoFechas[1].endOf("day").toISOString()
+                                );
+                              } else {
+                                await fetchData();
+                              }
+                            },
+                          })
+                        }
+                        okText="Sí"
+                        cancelText="No"
+                      >
+                        <Button size="small" danger icon={<DeleteFilled />} />
+                      </Popconfirm>
+                    </ProtectedButton>
+                  </div>
+                ),
+              }))}
               columns={columnasMobile}
               loading={loading}
             />

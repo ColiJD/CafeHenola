@@ -3,9 +3,11 @@ import prisma from "@/lib/prisma";
 export async function GET(req, { params }) {
   const compradorID = Number(params.compradorID);
 
-  if (!compradorID) {
+  if (isNaN(compradorID) || compradorID <= 0) {
     return new Response(
-      JSON.stringify({ error: "compradorID es obligatorio" }),
+      JSON.stringify({
+        error: "compradorID es obligatorio y debe ser un número válido",
+      }),
       { status: 400 }
     );
   }
@@ -13,12 +15,20 @@ export async function GET(req, { params }) {
   try {
     // Obtener todas las salidas del comprador con sus detalles de entregas
     const salidas = await prisma.salida.findMany({
-      where: { compradorID },
+      where: {
+        compradorID,
+        salidaMovimiento: {
+          notIn: ["ANULADO", "Anulado", "anulado"],
+        },
+      },
       select: {
         salidaID: true,
         salidaCantidadQQ: true,
         salidaDescripcion: true,
-        detalleliqsalida: { select: { cantidadQQ: true } },
+        detalleliqsalida: {
+          select: { cantidadQQ: true },
+          where: { movimiento: { notIn: ["ANULADO", "Anulado", "anulado"] } },
+        },
       },
     });
 
@@ -29,10 +39,9 @@ export async function GET(req, { params }) {
           (acc, d) => acc + Number(d.cantidadQQ),
           0
         );
-        const cantidadPendiente = Number(s.salidaCantidadQQ) - entregado;
         return {
           salidaID: s.salidaID,
-          cantidadPendiente,
+          cantidadPendiente: Number(s.salidaCantidadQQ) - entregado,
           detalles: s.salidaDescripcion,
         };
       })

@@ -132,6 +132,18 @@ export const menuItems = [
         href: RutaTransaccion + "/salidas",
         image: deposito,
       },
+      {
+        id: 203,
+        name: "Contrato",
+        href: RutaTransaccion + "/contratoSalida",
+        image: Contrato,
+      },
+      {
+        id: 204,
+        name: "Entrega Contrato",
+        href: RutaTransaccion + "/contratoSalida/entrega",
+        image: Contrato,
+      },
     ],
   },
 

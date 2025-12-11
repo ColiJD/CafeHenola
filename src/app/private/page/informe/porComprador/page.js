@@ -20,6 +20,7 @@ import { formatNumber } from "@/components/Formulario";
 import ProtectedPage from "@/components/ProtectedPage";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
 import SectionHeader from "@/components/ReportesElement/AccionesResporte";
+import { exportPDFMovimientosComprador } from "@/Doc/Reportes/porComprador";
 
 import { CalendarOutlined } from "@ant-design/icons";
 import { columnasPorTipo, columns } from "./columnas";
@@ -204,6 +205,56 @@ export default function MovimientosCompradorPage() {
           icon={<CalendarOutlined />}
           titulo="Registros por Comprador"
           subtitulo="Resumen de actividades por comprador"
+          onExportPDF={() => {
+            if (!Array.isArray(data) || data.length === 0) {
+              messageApi.warning(
+                "No hay datos válidos para generar el reporte."
+              );
+              return;
+            }
+            if (!compradorID) {
+              messageApi.warning(
+                "Seleccione un comprador para generar el reporte."
+              );
+              return;
+            }
+            const key = "generandoPDF";
+            messageApi.open({
+              key,
+              type: "loading",
+              content: "Generando reporte...",
+              duration: 0,
+            });
+
+            try {
+              const comprador = compradores.find(
+                (c) => (c.compradorId || c.compradorID) === compradorID
+              );
+              const compradorNombre = comprador?.compradorNombre || "-";
+
+              exportPDFMovimientosComprador({
+                dataTabla: data,
+                compradorNombre,
+                rangoFechas: {
+                  inicio: fechaRango?.[0]?.format("YYYY-MM-DD") || null,
+                  fin: fechaRango?.[1]?.format("YYYY-MM-DD") || null,
+                },
+              });
+
+              messageApi.success({
+                content: "Reporte generado correctamente",
+                key,
+                duration: 2,
+              });
+            } catch (error) {
+              console.error(error);
+              messageApi.error({
+                content: "Error al generar el reporte",
+                key,
+                duration: 2,
+              });
+            }
+          }}
           disableExport={!data || data.length === 0}
         />
 
@@ -290,9 +341,13 @@ export default function MovimientosCompradorPage() {
               <ResumenTablaGenerico
                 columns={columns}
                 data={data}
+                hasExpandable={true}
                 options={{
                   highlightColumn: "promedioPrecio",
                   weightedColumn: "totalQQ",
+                  highlightColumns: [
+                    { dataIndex: "totalQQPorLiquidar", type: "warning" },
+                  ],
                 }}
               />
             )}
@@ -307,8 +362,13 @@ export default function MovimientosCompradorPage() {
   );
 }
 
-export function ResumenTablaGenerico({ columns, data, options = {} }) {
-  const { highlightColumn, weightedColumn } = options;
+export function ResumenTablaGenerico({
+  columns,
+  data,
+  options = {},
+  hasExpandable = false,
+}) {
+  const { highlightColumn, weightedColumn, highlightColumns = [] } = options;
   const totals = {};
 
   columns.forEach((col) => {
@@ -337,19 +397,31 @@ export function ResumenTablaGenerico({ columns, data, options = {} }) {
 
   return (
     <Table.Summary.Row>
+      {hasExpandable && <Table.Summary.Cell index={0} />}
       {columns.map((col, index) => {
+        const cellIndex = hasExpandable ? index + 1 : index;
+
         if (index === 0)
           return (
-            <Table.Summary.Cell index={index} key={index}>
+            <Table.Summary.Cell index={cellIndex} key={index}>
               <strong>Total</strong>
             </Table.Summary.Cell>
           );
         const val = totals[col.dataIndex];
+        const highlightStyle = highlightColumns.find(
+          (h) => h.dataIndex === col.dataIndex
+        );
+        const color =
+          highlightStyle?.type === "danger"
+            ? "red"
+            : highlightStyle?.type === "warning"
+            ? "orange"
+            : "inherit";
 
         return (
-          <Table.Summary.Cell index={index} key={index} align={col.align}>
+          <Table.Summary.Cell index={cellIndex} key={index} align={col.align}>
             {val !== undefined ? (
-              <Text strong>
+              <Text strong style={{ color }}>
                 {col.dataIndex === "totalLps" ||
                 col.dataIndex === "promedioPrecio"
                   ? "L. "

@@ -57,6 +57,12 @@ export const menuItems = [
         href: Ruta + "/informe/porCliente",
         image: cliente,
       },
+      {
+        id: 405,
+        name: "Por Comprador",
+        href: Ruta + "/informe/porComprador",
+        image: contrato,
+      },
 
       {
         id: 401,

@@ -40,7 +40,7 @@ export default function CajaChicaBalanceWidget({ collapsed }) {
   useEffect(() => {
     fetchBalance();
     // Optional: Refresh every minute or on focus
-    const interval = setInterval(fetchBalance, 60000);
+    const interval = setInterval(fetchBalance, 40000);
     return () => clearInterval(interval);
   }, []);
 

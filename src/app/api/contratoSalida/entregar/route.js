@@ -75,13 +75,63 @@ export async function POST(request) {
 
     // 3️⃣ Ejecutar transacción completa
     const resultado = await prisma.$transaction(async (tx) => {
+      // 🔹 Deducción de Inventario (Global)
+      // Se descuenta de cualquier inventario disponible hasta cubrir la cantidad
+      const inventarios = await tx.inventariocliente.findMany({
+        orderBy: { inventarioClienteID: "asc" },
+      });
+
+      let restanteQQ = Number(cantidadQQ);
+      let totalDescontado = 0;
+
+      for (const inv of inventarios) {
+        if (restanteQQ <= 0) break;
+
+        const cantidadDisponible = Number(inv.cantidadQQ);
+        if (cantidadDisponible <= 0) continue;
+
+        const descontarQQ = Math.min(restanteQQ, cantidadDisponible);
+
+        // Actualizar inventario
+        await tx.inventariocliente.update({
+          where: { inventarioClienteID: inv.inventarioClienteID },
+          data: {
+            cantidadQQ: { decrement: descontarQQ },
+          },
+        });
+
+        // Registrar movimiento
+        await tx.movimientoinventario.create({
+          data: {
+            inventarioClienteID: inv.inventarioClienteID,
+            tipoMovimiento: "Salida", // Salida física
+            referenciaTipo: "Entrega Contrato Salida",
+            referenciaID: Number(contratoID), // Enlazamos al Contrato
+            cantidadQQ: descontarQQ,
+            nota: `Entrega de contrato #${contratoID} (Producto del contrato: ${tipoCafe})`,
+          },
+        });
+
+        restanteQQ -= descontarQQ;
+        totalDescontado += descontarQQ;
+      }
+
+      if (restanteQQ > 0.009) {
+        // Margen por decimales
+        throw new Error(
+          `Inventario global insuficiente. Faltan ${restanteQQ.toFixed(
+            2
+          )} QQ para cubrir la entrega.`
+        );
+      }
+
       // a) Crear detalle de entrega
       const detalleEntrega = await tx.detalleContratoSalida.create({
         data: {
           contratoID: Number(contratoID),
           cantidadQQ: Number(cantidadQQ),
           precioQQ: Number(precioQQ),
-          tipoMovimiento: "Salida", // It's a sale delivery, so "Salida" (Exit)
+          tipoMovimiento: "Salida",
           fecha: new Date(),
           observaciones: descripcion || null,
         },
@@ -98,11 +148,7 @@ export async function POST(request) {
         });
 
         estadoContrato = "Liquidado";
-
-        // No cierreContratoSalida logic as requested
       }
-
-      // No inventarioCliente logic as requested (or until clarified)
 
       return {
         saldoAntesQQ: truncarDosDecimalesSinRedondear(saldoDisponible),

@@ -18,7 +18,17 @@ import {
 } from "@/config/validacionesForm";
 import { useRouter } from "next/navigation";
 import { exportVentaDirecta } from "@/Doc/Documentos/venta";
-import {UnorderedListOutlined} from "@ant-design/icons"
+import {
+  UnorderedListOutlined,
+  FileTextOutlined,
+  FileSearchOutlined,
+} from "@ant-design/icons";
+import NotificationDrawer from "@/components/NotificationDrawer";
+import FloatingNotificationButton from "@/components/FloatingNotificationButton";
+import {
+  obtenerSalidasPendientes,
+  verificarContratosSalidaPendientes,
+} from "@/lib/consultas";
 
 export default function VentaForm({ compraId }) {
   const [compradores, setCompradores] = useState([]);
@@ -39,6 +49,8 @@ export default function VentaForm({ compraId }) {
   const [errors, setErrors] = useState({});
   const [previewVisible, setPreviewVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [notifications, setNotifications] = useState([]);
 
   const [messageApi, contextHolder] = message.useMessage();
 
@@ -154,6 +166,33 @@ export default function VentaForm({ compraId }) {
     }
     cargarDatos();
   }, [messageApi]);
+
+  useEffect(() => {
+    async function cargarNotificaciones() {
+      setNotifications([]);
+      if (!comprador?.value) return;
+
+      try {
+        const data = await obtenerSalidasPendientes(comprador.value);
+        const contratos = await verificarContratosSalidaPendientes(
+          comprador.value
+        );
+
+        const mensajes = [];
+        if (data.cantidadPendiente > 0) {
+          mensajes.push(`Salidas pendientes: ${data.cantidadPendiente} QQ`);
+        }
+        if (contratos.length > 0) {
+          mensajes.push(...contratos);
+        }
+        if (mensajes.length === 0) mensajes.push("No hay pendientes.");
+        setNotifications(mensajes);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    cargarNotificaciones();
+  }, [comprador]);
 
   // 🔹 Cálculo de total y oro
   useEffect(() => {
@@ -341,15 +380,40 @@ export default function VentaForm({ compraId }) {
 
   return (
     <ProtectedPage allowedRoles={["ADMIN", "GERENCIA", "OPERARIOS"]}>
-      <FloatingButton
-        title="Ir al registro"
-        icon={<UnorderedListOutlined />}
-        top={20}
-        right={30}
-        route="/private/page/transacciones/compra/vista"
-      />
       <>
         {contextHolder}
+        <FloatingNotificationButton
+          notifications={notifications}
+          onClick={() => setDrawerVisible(true)}
+        />
+        <NotificationDrawer
+          visible={drawerVisible}
+          onClose={() => setDrawerVisible(false)}
+          title="Notificaciones"
+          subtitle={comprador?.label}
+          notifications={notifications}
+          actions={[
+            {
+              tooltip: "Ir a Salidas",
+              icon: <FileTextOutlined />,
+              onClick: () =>
+                router.push("/private/page/transacciones/compra/vista"),
+            },
+            {
+              tooltip: "Ir a Contratos",
+              icon: <FileSearchOutlined />,
+              onClick: () =>
+                router.push(
+                  "/private/page/transacciones/contratoSalida/registrocontrato"
+                ),
+            },
+            {
+              tooltip: "Ir a Confirmacion",
+              icon: <FileTextOutlined />,
+              onClick: () => router.push("/private/page/transacciones/salidas"),
+            },
+          ]}
+        />
         {loadingDatos || loadingCompra ? (
           <div
             style={{

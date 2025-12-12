@@ -383,3 +383,21 @@ export async function obtenerSaldoContratoSalida(contratoID) {
     return null;
   }
 }
+
+export async function verificarContratosSalidaPendientes(compradorID) {
+  try {
+    const res = await fetch(`/api/contratoSalida/pendientes/${compradorID}`);
+    if (!res.ok) throw new Error("Error cargando contratos pendientes");
+
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) return [];
+
+    return data.map(
+      (c) =>
+        `Contrato Salida #${c.contratoID}: ${c.tipoCafeNombre} - ${c.contratoCantidadQQ} QQ`
+    );
+  } catch (err) {
+    console.error(err);
+    return ["Error verificando contratos de salida pendientes."];
+  }
+}

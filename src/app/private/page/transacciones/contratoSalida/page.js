@@ -19,12 +19,10 @@ import { exportContratoSalida } from "@/Doc/Documentos/contratoSalida";
 import ProtectedPage from "@/components/ProtectedPage";
 import NotificationDrawer from "@/components/NotificationDrawer";
 import FloatingNotificationButton from "@/components/FloatingNotificationButton";
-// import {
-//   verificarClientesPendientesContratos,
-//   verificarDepositosPendientes,
-//   verificarPrestamosPendientes,
-//   verificarAnticiposPendientes,
-// } from "@/lib/consultas";
+import {
+  obtenerSalidasPendientes,
+  verificarContratosSalidaPendientes,
+} from "@/lib/consultas";
 import { useRouter } from "next/navigation";
 
 export default function ContratoForm({ contratoID }) {
@@ -59,29 +57,30 @@ export default function ContratoForm({ contratoID }) {
   const [messageApi, contextHolder] = message.useMessage();
 
   useEffect(() => {
-    // async function cargarNotificaciones() {
-    //   setNotifications([]); // limpiar notificaciones si cambia el cliente
-    //   if (!formState.cliente || !formState.cliente.value) return;
-    //   const mensajesContratos = await verificarClientesPendientesContratos(
-    //     formState.cliente.value
-    //   );
-    //   const mensajesDepositos = await verificarDepositosPendientes(
-    //     formState.cliente.value
-    //   );
-    //   const mensajesPrestamos = await verificarPrestamosPendientes(
-    //     formState.cliente.value
-    //   );
-    //   const mensajesAnticipos = await verificarAnticiposPendientes(
-    //     formState.cliente.value
-    //   );
-    //   setNotifications([
-    //     ...mensajesContratos,
-    //     ...mensajesDepositos,
-    //     ...mensajesPrestamos,
-    //     ...mensajesAnticipos,
-    //   ]);
-    // }
-    // cargarNotificaciones();
+    async function cargarNotificaciones() {
+      setNotifications([]);
+      if (!formState.comprador || !formState.comprador.value) return;
+
+      try {
+        const data = await obtenerSalidasPendientes(formState.comprador.value);
+        const contratos = await verificarContratosSalidaPendientes(
+          formState.comprador.value
+        );
+
+        const mensajes = [];
+        if (data.cantidadPendiente > 0) {
+          mensajes.push(`Salidas pendientes: ${data.cantidadPendiente} QQ`);
+        }
+        if (contratos.length > 0) {
+          mensajes.push(...contratos);
+        }
+        if (mensajes.length === 0) mensajes.push("No hay pendientes.");
+        setNotifications(mensajes);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    cargarNotificaciones();
   }, [formState.comprador]);
 
   // 🔹 useEffect para calcular automáticamente el total (precio x cantidad)

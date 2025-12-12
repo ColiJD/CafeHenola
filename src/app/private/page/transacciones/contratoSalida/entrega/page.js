@@ -7,8 +7,7 @@ import { limpiarFormulario } from "@/config/validacionesForm";
 import { validarDatos } from "@/lib/validacionesForm";
 import { exportEntregaContratoSalida } from "@/Doc/Documentos/entregaContratoSalida";
 import ProtectedPage from "@/components/ProtectedPage";
-import { FloatingButton } from "@/components/Button";
-import { UnorderedListOutlined, SolutionOutlined } from "@ant-design/icons";
+import { SolutionOutlined } from "@ant-design/icons";
 import NotificationDrawer from "@/components/NotificationDrawer";
 import FloatingNotificationButton from "@/components/FloatingNotificationButton";
 import {
@@ -16,6 +15,7 @@ import {
   obtenerProductosSelect,
   obtenerSaldoContratoSalida,
   obtenerContratosSalidaPendientes,
+  obtenerSalidasPendientes,
 } from "@/lib/consultas";
 import { validarEnteroPositivo } from "@/config/validacionesForm";
 import {
@@ -24,6 +24,7 @@ import {
 } from "@/lib/calculoCafe";
 import { truncarDosDecimalesSinRedondear } from "@/lib/calculoCafe";
 import { useRouter } from "next/navigation";
+// Duplicate import removed
 
 export default function LiquidacionContratoForm() {
   const [clientes, setClientes] = useState([]);
@@ -58,6 +59,28 @@ export default function LiquidacionContratoForm() {
 
   useEffect(() => {
     // Notifications logic removed for Compradores as requested/not implemented yet
+  }, [formState.cliente]);
+
+  useEffect(() => {
+    async function cargarNotificaciones() {
+      setNotifications([]);
+      if (!formState.cliente || !formState.cliente.value) return;
+
+      try {
+        const data = await obtenerSalidasPendientes(formState.cliente.value);
+
+        const mensajes = [];
+        if (data.cantidadPendiente > 0) {
+          mensajes.push(`Salidas pendientes: ${data.cantidadPendiente} QQ`);
+        }
+
+        if (mensajes.length === 0) mensajes.push("No hay pendientes.");
+        setNotifications(mensajes);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    cargarNotificaciones();
   }, [formState.cliente]);
 
   const handleChange = (key, value) =>

@@ -1,24 +1,40 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(req) {
   try {
+    const { searchParams } = new URL(req.url);
+    const date = searchParams.get("date"); // YYYY-MM-DD
+
+    if (!date) return NextResponse.json([]);
+
+    const start = new Date(`${date}T00:00:00`);
+    const end = new Date(`${date}T23:59:59`);
+
     const movimientos = await prisma.caja_chica.findMany({
+      where: {
+        fecha: {
+          gte: start,
+          lte: end, // ← CORRECTO
+        },
+      },
       orderBy: {
-        fecha: "desc",
+        fecha: "asc",
       },
       include: {
         users: {
-          select: {
-            userName: true,
-          },
+          select: { userName: true },
         },
       },
     });
+
     return NextResponse.json(movimientos);
   } catch (error) {
     console.error("Error fetching caja chica movements:", error);
-    return NextResponse.json({ error: "Error fetching data" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Error fetching caja chica" },
+      { status: 500 }
+    );
   }
 }
 

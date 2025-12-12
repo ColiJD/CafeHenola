@@ -29,11 +29,17 @@ export default function CajaChicaPage() {
   const [messageApi, contextHolder] = message.useMessage();
   const messageApiRef = useRef(messageApi);
 
-  const cargarMovimientos = async () => {
+  const cargarMovimientos = async (fecha = filtroFecha) => {
     try {
-      const res = await fetch("/api/caja-chica");
+      const day = dayjs(fecha).format("YYYY-MM-DD");
+
+      const res = await fetch(`/api/caja-chica?date=${day}`, {
+        cache: "no-store",
+      });
+
       if (!res.ok) return;
       const data = await res.json();
+
       setMovimientos(data);
     } catch (e) {
       console.error(e);

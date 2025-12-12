@@ -57,6 +57,12 @@ export const menuItems = [
         href: Ruta + "/informe/porCliente",
         image: cliente,
       },
+      {
+        id: 405,
+        name: "Por Comprador",
+        href: Ruta + "/informe/porComprador",
+        image: contrato,
+      },
 
       {
         id: 401,
@@ -131,6 +137,18 @@ export const menuItems = [
         name: "Confirmacion De Venta",
         href: RutaTransaccion + "/salidas",
         image: deposito,
+      },
+      {
+        id: 203,
+        name: "Contrato",
+        href: RutaTransaccion + "/contratoSalida",
+        image: Contrato,
+      },
+      {
+        id: 204,
+        name: "Entrega Contrato",
+        href: RutaTransaccion + "/contratoSalida/entrega",
+        image: Contrato,
       },
     ],
   },

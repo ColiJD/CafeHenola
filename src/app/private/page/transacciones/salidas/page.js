@@ -8,7 +8,11 @@ import ProtectedPage from "@/components/ProtectedPage";
 import NotificationDrawer from "@/components/NotificationDrawer";
 import FloatingNotificationButton from "@/components/FloatingNotificationButton";
 import { useRouter } from "next/navigation";
-import { obtenerSelectData, obtenerSalidasPendientes } from "@/lib/consultas"; // tu función de referencia
+import {
+  obtenerSelectData,
+  obtenerSalidasPendientes,
+  verificarContratosSalidaPendientes,
+} from "@/lib/consultas"; // tu función de referencia
 import {
   SolutionOutlined,
   SaveOutlined,
@@ -41,11 +45,20 @@ export default function FormSalida() {
       if (!comprador?.value) return;
 
       const data = await obtenerSalidasPendientes(comprador.value);
+      const contratos = await verificarContratosSalidaPendientes(
+        comprador.value
+      );
 
-      const mensajes =
-        data.cantidadPendiente > 0
-          ? [`Salidas pendientes: ${data.cantidadPendiente} QQ`]
-          : ["No hay salidas pendientes."];
+      const mensajes = [];
+      if (data.cantidadPendiente > 0) {
+        mensajes.push(`Salidas pendientes: ${data.cantidadPendiente} QQ`);
+      }
+
+      if (contratos.length > 0) {
+        mensajes.push(...contratos);
+      }
+
+      if (mensajes.length === 0) mensajes.push("No hay pendientes.");
 
       setNotifications(mensajes);
     }
@@ -245,7 +258,6 @@ export default function FormSalida() {
                 router.push("/private/page/transacciones/salidas/registroliq"),
             },
             {
-             
               label: "Liquidar Salida",
               type: "primary", // color azul de primary
               onClick: () => handleAbrirLiquidacion(comprador),

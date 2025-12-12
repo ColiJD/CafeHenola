@@ -17,6 +17,24 @@ export async function obtenerClientesSelect(messageApi) {
   }
 }
 
+export async function obtenerCompradoresSelect(messageApi) {
+  try {
+    const res = await fetch("/api/compradores");
+    if (!res.ok) throw new Error("Error en la respuesta del servidor");
+
+    const compradoresData = await res.json();
+    return compradoresData.map((c) => ({
+      value: c.compradorId,
+      label: c.compradorNombre,
+      data: c,
+    }));
+  } catch (err) {
+    console.error("Error al cargar compradores:", err);
+    messageApi.error(" No se pudieron cargar los compradores.");
+    return [];
+  }
+}
+
 // lib/consultasProductos.js
 export async function obtenerProductosSelect(messageApi) {
   try {
@@ -313,5 +331,73 @@ export async function obtenerSalidasPendientes(compradorID) {
   } catch (err) {
     console.error(err);
     return { cantidadPendiente: 0, precioPendiente: 0, detalles: [] };
+  }
+}
+
+// ------------------------------------------------------------------
+// NUEVAS FUNCIONES PARA CONTRATO SALIDA
+// ------------------------------------------------------------------
+
+export async function obtenerCompradoresPendientesContratos(messageApi) {
+  try {
+    const res = await fetch("/api/contratoSalida/disponibles");
+    if (!res.ok) throw new Error("Error en la respuesta del servidor");
+
+    const clientesData = await res.json();
+    return clientesData.map((c) => ({
+      value: c.clienteID, // Keeping clienteID as key for compatibility
+      label: c.clienteNombreCompleto,
+    }));
+  } catch (err) {
+    console.error("Error al cargar compradores pendientes:", err);
+    messageApi.error("⚠️ No se pudieron cargar los compradores pendientes.");
+    return [];
+  }
+}
+
+export async function obtenerContratosSalidaPendientes(clienteID) {
+  try {
+    const res = await fetch(`/api/contratoSalida/pendientes/${clienteID}`);
+    if (!res.ok) throw new Error("Error cargando contratos pendientes");
+
+    const data = await res.json();
+    return data.map((c) => ({
+      value: c.contratoID,
+      label: `Contrato #${c.contratoID} - ${c.tipoCafeNombre} (${c.contratoCantidadQQ} QQ)`,
+    }));
+  } catch (err) {
+    console.error(err);
+    return [];
+  }
+}
+
+export async function obtenerSaldoContratoSalida(contratoID) {
+  try {
+    const res = await fetch(
+      `/api/contratoSalida/saldoDisponible/${contratoID}`
+    );
+    if (!res.ok) throw new Error("Error cargando saldo del contrato");
+    return await res.json();
+  } catch (err) {
+    console.error(err);
+    return null;
+  }
+}
+
+export async function verificarContratosSalidaPendientes(compradorID) {
+  try {
+    const res = await fetch(`/api/contratoSalida/pendientes/${compradorID}`);
+    if (!res.ok) throw new Error("Error cargando contratos pendientes");
+
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) return [];
+
+    return data.map(
+      (c) =>
+        `Contrato Salida #${c.contratoID}: ${c.tipoCafeNombre} - ${c.contratoCantidadQQ} QQ`
+    );
+  } catch (err) {
+    console.error(err);
+    return ["Error verificando contratos de salida pendientes."];
   }
 }

@@ -88,6 +88,20 @@ export async function GET(req) {
         },
       });
 
+      // 🔹 Depósitos Totales (Reales)
+      const totalDepositosRaw = await prisma.deposito.aggregate({
+        _sum: { depositoCantidadQQ: true },
+        where: {
+          clienteID: c.clienteID,
+          depositoMovimiento: "Deposito",
+
+          depositoFecha: { gte: desde, lte: hasta },
+        },
+      });
+      const totalDepositosQQ = Number(
+        totalDepositosRaw._sum.depositoCantidadQQ ?? 0
+      );
+
       // 🔹 Si no hay movimientos, retornamos null
       const hasMovimientos =
         (compraAgg._sum.compraCantidadQQ ?? 0) > 0 ||
@@ -105,6 +119,7 @@ export async function GET(req) {
         contratoTotalLps,
         depositoCantidadQQ: Number(depositoAgg._sum.cantidadQQ || 0),
         depositoTotalLps: Number(depositoAgg._sum.totalLps || 0),
+        totalDepositosQQ,
       };
     });
 

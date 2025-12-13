@@ -106,7 +106,8 @@ export async function GET(req) {
       const hasMovimientos =
         (compraAgg._sum.compraCantidadQQ ?? 0) > 0 ||
         contratoCantidadQQ > 0 ||
-        (depositoAgg._sum.cantidadQQ ?? 0) > 0;
+        (depositoAgg._sum.cantidadQQ ?? 0) > 0 ||
+        totalDepositosQQ > 0;
 
       if (!hasMovimientos) return null;
 

@@ -61,7 +61,7 @@ export const menuItems = [
         id: 405,
         name: "Por Comprador",
         href: Ruta + "/informe/porComprador",
-        image: contrato,
+        image: producto,
       },
 
       {
@@ -142,7 +142,7 @@ export const menuItems = [
         id: 203,
         name: "Contrato",
         href: RutaTransaccion + "/contratoSalida",
-        image: Contrato,
+        image: prestamo,
       },
       {
         id: 204,
@@ -152,21 +152,6 @@ export const menuItems = [
       },
     ],
   },
-
-  {
-    id: 3,
-    name: "Inventario",
-    image: producto,
-    href: Ruta + "/inventario",
-  },
-
-  {
-    id: 7,
-    name: "Prestamo",
-    href: RutaTransaccion + "/prestamos",
-    image: Contrato,
-  },
-
   {
     id: 5,
     name: "Registros",
@@ -178,9 +163,9 @@ export const menuItems = [
         id: 503,
         name: "Compradores",
         href: Ruta + "/compradores",
-        image: cliente,
+        image: prestamo,
       },
-      { id: 504, name: "Usuarios", href: Ruta + "/user", image: cliente },
+      { id: 504, name: "Usuarios", href: Ruta + "/user", image: eventos },
       {
         id: 505,
         name: "Registros de clientes",
@@ -188,6 +173,19 @@ export const menuItems = [
         image: Reportes,
       },
     ],
+  },
+  {
+    id: 7,
+    name: "Prestamo",
+    href: RutaTransaccion + "/prestamos",
+    image: Contrato,
+  },
+
+  {
+    id: 3,
+    name: "Inventario",
+    image: producto,
+    href: Ruta + "/inventario",
   },
 ];
 

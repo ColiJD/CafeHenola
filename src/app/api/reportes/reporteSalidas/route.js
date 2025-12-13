@@ -77,11 +77,37 @@ export async function GET(req) {
         salidaTotal += qq * precio;
       }
 
+      const contratos = await prisma.detalleContratoSalida.findMany({
+        where: {
+          contratoSalida: {
+            compradorID: c.compradorId,
+          },
+          fecha: { gte: desde, lte: hasta },
+          tipoMovimiento: "Salida",
+        },
+        select: {
+          cantidadQQ: true,
+          precioQQ: true,
+        },
+      });
+
+      let contratoCantidad = 0;
+      let contratoTotal = 0;
+
+      for (const ct of contratos) {
+        const qq = Number(ct.cantidadQQ || 0);
+        const precio = Number(ct.precioQQ || 0);
+        contratoCantidad += qq;
+        contratoTotal += qq * precio;
+      }
+
       if (
         totalCompraQQ === 0 &&
         totalCompraLps === 0 &&
         salidaCantidad === 0 &&
-        salidaTotal === 0
+        salidaTotal === 0 &&
+        contratoCantidad === 0 &&
+        contratoTotal === 0
       ) {
         return null;
       }
@@ -95,6 +121,9 @@ export async function GET(req) {
 
         salidaCantidadQQ: salidaCantidad,
         salidaTotalLps: salidaTotal,
+
+        contratoCantidadQQ: contratoCantidad,
+        contratoTotalLps: contratoTotal,
       };
     });
 

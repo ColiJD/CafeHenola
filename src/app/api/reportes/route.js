@@ -102,6 +102,23 @@ export async function GET(req) {
       { cantidadQQ: 0, total: 0 }
     );
 
+    const contratoSalidas = await prisma.detalleContratoSalida.findMany({
+      where: {
+        tipoMovimiento: "Salida",
+        fecha: { gte: desde, lte: hasta },
+      },
+      select: { cantidadQQ: true, precioQQ: true },
+    });
+
+    const contratoSalidasTotal = contratoSalidas.reduce(
+      (acc, item) => {
+        acc.cantidadQQ += Number(item.cantidadQQ || 0);
+        acc.total += Number(item.cantidadQQ || 0) * Number(item.precioQQ || 0);
+        return acc;
+      },
+      { cantidadQQ: 0, total: 0 }
+    );
+
     // 🔹 Préstamos
     const prestamosActivos = await prisma.prestamos.aggregate({
       _sum: { monto: true },
@@ -207,8 +224,6 @@ export async function GET(req) {
     // 3️⃣ Pendiente
     const pendiente = totalSalidas - totalLiquidado;
 
-
-
     return new Response(
       JSON.stringify({
         compras: { entradas: comprasEntradas, salidas: comprasSalidas },
@@ -223,6 +238,7 @@ export async function GET(req) {
         totalSalidas,
         totalLiquidado,
         pendiente,
+        contratoSalidasTotal,
       }),
       { status: 200 }
     );

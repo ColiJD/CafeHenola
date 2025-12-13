@@ -28,8 +28,11 @@ export function calcularTotalesComprador(comprador = {}) {
   const salidaQQ = parseFloat(comprador.salidaCantidadQQ) || 0;
   const salidaLps = parseFloat(comprador.salidaTotalLps) || 0;
 
-  const totalQQ = compraQQ + salidaQQ;
-  const totalLps = compraLps + salidaLps;
+  const contratoQQ = parseFloat(comprador.contratoCantidadQQ) || 0;
+  const contratoLps = parseFloat(comprador.contratoTotalLps) || 0;
+
+  const totalQQ = compraQQ + salidaQQ + contratoQQ;
+  const totalLps = compraLps + salidaLps + contratoLps;
 
   const promedio = totalQQ > 0 ? totalLps / totalQQ : 0;
 
@@ -38,6 +41,8 @@ export function calcularTotalesComprador(comprador = {}) {
     compraLps,
     salidaQQ,
     salidaLps,
+    contratoQQ,
+    contratoLps,
     totalQQ,
     totalLps,
     promedio,
@@ -137,6 +142,25 @@ export default function ReporteCompradoresSalidas() {
       ],
     },
 
+    // ✅ Contratos
+    {
+      title: "Contratos de Salida",
+      children: [
+        {
+          title: "QQ",
+          dataIndex: "contratoCantidadQQ",
+          align: "right",
+          render: (_, r) => formatNumber(r.contratoQQ),
+        },
+        {
+          title: "Lps",
+          dataIndex: "contratoTotalLps",
+          align: "right",
+          render: (_, r) => "L. " + formatNumber(r.contratoLps),
+        },
+      ],
+    },
+
     // ✅ Salidas / Compromisos
     {
       title: "Compromisos",
@@ -193,6 +217,14 @@ export default function ReporteCompradoresSalidas() {
     { label: "Venta QQ", key: "compraQQ", render: (v) => formatNumber(v) },
     { label: "Venta Lps", key: "compraLps", render: (v) => formatNumber(v) },
 
+    // Contratos
+    { label: "Contrato QQ", key: "contratoQQ", render: (v) => formatNumber(v) },
+    {
+      label: "Contrato Lps",
+      key: "contratoLps",
+      render: (v) => formatNumber(v),
+    },
+
     // Salidas
     { label: "Compromiso QQ", key: "salidaQQ", render: (v) => formatNumber(v) },
     {
@@ -215,6 +247,19 @@ export default function ReporteCompradoresSalidas() {
     { header: "Nombre", key: "nombre" },
 
     // ✅ SOLO AQUÍ VAN LOS INDICADORES
+    {
+      header: "Contrato QQ",
+      key: "contratoQQ",
+      format: "numero",
+      isCantidad: true,
+    },
+    {
+      header: "Contrato Lps",
+      key: "contratoLps",
+      format: "moneda",
+      isTotal: true,
+    },
+
     { header: "Total QQ", key: "totalQQ", format: "numero", isCantidad: true },
     { header: "Total Lps", key: "totalLps", format: "moneda", isTotal: true },
 

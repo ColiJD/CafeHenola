@@ -53,8 +53,8 @@ export default function ResumenMovimientos() {
         compraLps: Number(data?.compras?.salidas?._sum?.compraTotal ?? 0),
         depositoQQ: Number(data?.salidas?.cantidadQQ ?? 0),
         depositoLps: Number(data?.salidas?.total ?? 0),
-        contratoQQ: 0,
-        contratoLps: 0,
+        contratoQQ: Number(data?.contratoSalidasTotal?.cantidadQQ ?? 0),
+        contratoLps: Number(data?.contratoSalidasTotal?.total ?? 0),
       },
     ];
 
@@ -73,20 +73,20 @@ export default function ResumenMovimientos() {
     const saldoLps = (entradas?.totalLps ?? 0) - (salidas?.totalLps ?? 0);
     const saldoProm = saldoQQ > 0 ? saldoLps / saldoQQ : 0;
 
-    // filasConTotales.push({
-    //   key: "saldo",
-    //   tipo: "Saldo Restante",
-    //   compraQQ: null, // 👈 null evita que aparezca en DESGLOSE
-    //   compraLps: null,
-    //   depositoQQ: null,
-    //   depositoLps: null,
-    //   contratoQQ: null,
-    //   contratoLps: null,
-    //   totalQQ: saldoQQ,
-    //   totalLps: saldoLps,
-    //   promedio: saldoProm,
-    //   esSaldo: true, // para aplicar estilo especial
-    // });
+    filasConTotales.push({
+      key: "saldo",
+      tipo: "Saldo Restante",
+      compraQQ: null, // 👈 null evita que aparezca en DESGLOSE
+      compraLps: null,
+      depositoQQ: null,
+      depositoLps: null,
+      contratoQQ: null,
+      contratoLps: null,
+      totalQQ: saldoQQ,
+      totalLps: saldoLps,
+      promedio: saldoProm,
+      esSaldo: true, // para aplicar estilo especial
+    });
 
     return filasConTotales;
   }, [data]);
@@ -349,16 +349,16 @@ export default function ResumenMovimientos() {
         descripcion: "Inventario Disponible (QQ)",
         cantidad: Number(data?.inventario?.disponibleQQ ?? 0),
       },
-      {
-        key: "sal",
-        descripcion: "Confirmacion de venta(QQ)",
-        cantidad: Number(data?.totalSalidas ?? 0),
-      },
-      {
-        key: "pend",
-        descripcion: "Confirmacion por Liquidar (QQ)",
-        cantidad: Number(data?.pendiente ?? 0),
-      },
+      // {
+      //   key: "sal",
+      //   descripcion: "Confirmacion de venta(QQ)",
+      //   cantidad: Number(data?.totalSalidas ?? 0),
+      // },
+      // {
+      //   key: "pend",
+      //   descripcion: "Confirmacion por Liquidar (QQ)",
+      //   cantidad: Number(data?.pendiente ?? 0),
+      // },
     ];
   }, [data]);
 
@@ -431,7 +431,11 @@ export default function ResumenMovimientos() {
               });
               try {
                 exportPDFGeneralConPrestamos(
-                  [...datosTabla, ...datosPrestamosYAnticipos, ...datosInventario],
+                  [
+                    ...datosTabla,
+                    ...datosPrestamosYAnticipos,
+                    ...datosInventario,
+                  ],
                   { fechaInicio: rangoFechas?.[0], fechaFin: rangoFechas?.[1] },
                   { title: "Reporte Completo" }
                 );

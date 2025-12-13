@@ -19,10 +19,15 @@ import ProtectedPage from "@/components/ProtectedPage";
 const { Title, Text } = Typography;
 
 export function calcularTotalesCliente(cliente = {}) {
+  const depositoPendienteQQ =
+    (parseFloat(cliente.totalDepositosQQ) || 0) -
+    (parseFloat(cliente.depositoCantidadQQ) || 0);
+
   const totalQQ =
     (parseFloat(cliente.compraCantidadQQ) || 0) +
     (parseFloat(cliente.contratoCantidadQQ) || 0) +
-    (parseFloat(cliente.depositoCantidadQQ) || 0);
+    (parseFloat(cliente.depositoCantidadQQ) || 0) +
+    depositoPendienteQQ;
 
   const totalLps =
     (parseFloat(cliente.compraTotalLps) || 0) +
@@ -31,7 +36,7 @@ export function calcularTotalesCliente(cliente = {}) {
 
   const promedio = totalLps / totalQQ;
 
-  return { totalQQ, totalLps, promedio };
+  return { totalQQ, totalLps, promedio, depositoPendienteQQ };
 }
 const inicioAnio = dayjs().startOf("year");
 const finAnio = dayjs().endOf("year");
@@ -57,13 +62,20 @@ export default function ReporteClientesEntradas() {
           : item.nombre?.toLowerCase().includes(nombreFiltro.toLowerCase())
       )
       .map((item) => {
-        const { totalQQ, totalLps } = calcularTotalesCliente(item);
+        const { totalQQ, totalLps, depositoPendienteQQ } =
+          calcularTotalesCliente(item);
 
         // Promedio por cliente = totalLps / totalQQ (si hay cantidad)
         const promediocalculado =
           totalQQ && totalQQ > 0 ? totalLps / totalQQ : 0;
 
-        return { ...item, totalQQ, totalLps, promediocalculado };
+        return {
+          ...item,
+          totalQQ,
+          totalLps,
+          promediocalculado,
+          depositoPendienteQQ,
+        };
       });
   }, [data, nombreFiltro]);
 
@@ -92,6 +104,16 @@ export default function ReporteClientesEntradas() {
 
   // utils/totalesCliente.js
 
+  // Estilo compartido para encabezados
+  const headerStyle = {
+    backgroundColor: "#1890ff",
+    color: "#fff",
+    fontWeight: "bold",
+    textAlign: "center",
+  };
+
+  const onHeaderCell = () => ({ style: headerStyle });
+
   const columnasDesktop = [
     {
       title: "ID Cliente",
@@ -100,20 +122,24 @@ export default function ReporteClientesEntradas() {
       align: "center",
       fixed: "left",
       render: (text) => <Text strong>{text}</Text>,
+      onHeaderCell,
     },
     {
       title: "Nombre Cliente",
       dataIndex: "nombre",
       width: 150,
       render: (text) => <Text style={{ color: "#1890ff" }}>{text}</Text>,
+      onHeaderCell,
     },
     {
-      title: "Compra",
+      title: <span style={{ color: "#fff" }}>Compra</span>,
+      onHeaderCell,
       children: [
         {
           title: "QQ",
           dataIndex: "compraCantidadQQ",
           align: "right",
+          onHeaderCell,
           render: (_, r) => (
             <Text type={r.compraCantidadQQ > 0 ? "success" : "secondary"}>
               {formatNumber(r.compraCantidadQQ)}
@@ -124,6 +150,7 @@ export default function ReporteClientesEntradas() {
           title: "Total Lps",
           dataIndex: "compraTotalLps",
           align: "right",
+          onHeaderCell,
           render: (_, r) => (
             <Text strong type={r.compraTotalLps > 0 ? "success" : "secondary"}>
               L. {formatNumber(r.compraTotalLps)}
@@ -133,12 +160,14 @@ export default function ReporteClientesEntradas() {
       ],
     },
     {
-      title: "Contrato",
+      title: <span style={{ color: "#fff" }}>Contrato</span>,
+      onHeaderCell,
       children: [
         {
           title: "QQ",
           dataIndex: "contratoCantidadQQ",
           align: "right",
+          onHeaderCell,
           render: (_, r) => (
             <Text type={r.contratoCantidadQQ > 0 ? "success" : "secondary"}>
               {formatNumber(r.contratoCantidadQQ)}
@@ -149,6 +178,7 @@ export default function ReporteClientesEntradas() {
           title: "Total Lps",
           dataIndex: "contratoTotalLps",
           align: "right",
+          onHeaderCell,
           render: (_, r) => (
             <Text
               strong
@@ -161,12 +191,14 @@ export default function ReporteClientesEntradas() {
       ],
     },
     {
-      title: "Depósito",
+      title: <span style={{ color: "#fff" }}>Depósito</span>,
+      onHeaderCell,
       children: [
         {
           title: "QQ",
           dataIndex: "depositoCantidadQQ",
           align: "right",
+          onHeaderCell,
           render: (_, r) => (
             <Text type={r.depositoCantidadQQ > 0 ? "success" : "secondary"}>
               {formatNumber(r.depositoCantidadQQ)}
@@ -177,6 +209,7 @@ export default function ReporteClientesEntradas() {
           title: "Total Lps",
           dataIndex: "depositoTotalLps",
           align: "right",
+          onHeaderCell,
           render: (_, r) => (
             <Text
               strong
@@ -188,19 +221,37 @@ export default function ReporteClientesEntradas() {
         },
       ],
     },
-
-    // Agregamos al final de columnasDesktop
-
-    // ...tus columnas existentes
     {
-      title: "Totales",
+      title: <span style={{ color: "#fff" }}>Depósito Pendiente</span>,
+      onHeaderCell,
+      children: [
+        {
+          title: "QQ",
+          dataIndex: "depositoPendienteQQ",
+          align: "left",
+          onHeaderCell,
+          render: (_, r) => (
+            <Text type={r.depositoPendienteQQ > 0 ? "success" : "secondary"}>
+              {formatNumber(r.depositoPendienteQQ)}
+            </Text>
+          ),
+          onCell: () => ({
+            style: { backgroundColor: "#fff0f6", fontWeight: "bold" },
+          }),
+        },
+      ],
+    },
+    {
+      title: <span style={{ color: "#fff" }}>Totales</span>,
       align: "center",
+      onHeaderCell,
       children: [
         {
           title: "QQ",
           key: "totalQQ",
           dataIndex: "totalQQ",
           align: "right",
+          onHeaderCell,
           render: (_, r) => {
             const { totalQQ } = calcularTotalesCliente(r);
             return (
@@ -215,6 +266,7 @@ export default function ReporteClientesEntradas() {
           key: "totalLps",
           dataIndex: "totalLps",
           align: "right",
+          onHeaderCell,
           render: (_, r) => {
             const { totalLps } = calcularTotalesCliente(r);
             return (
@@ -229,6 +281,7 @@ export default function ReporteClientesEntradas() {
           key: "promedio",
           align: "right",
           dataIndex: "promediocalculado",
+          onHeaderCell,
           render: (_, r) => {
             const { promedio } = calcularTotalesCliente(r);
             return (
@@ -273,6 +326,11 @@ export default function ReporteClientesEntradas() {
     {
       label: "Depósito Lps",
       key: "depositoTotalLps",
+      render: (v) => formatNumber(v),
+    },
+    {
+      label: "Depósito Pendiente QQ",
+      key: "depositoPendienteQQ",
       render: (v) => formatNumber(v),
     },
     { label: "Total QQ", key: "totalQQ", render: (v) => formatNumber(v) },

@@ -43,6 +43,9 @@ export default function ResumenMovimientos() {
         compraLps: Number(data?.compras?.entradas?._sum?.compraTotal ?? 0),
         depositoQQ: Number(data?.depositos?.entradas?._sum?.cantidadQQ ?? 0),
         depositoLps: Number(data?.depositos?.entradas?._sum?.totalLps ?? 0),
+        depositoPendienteQQ:
+          Number(data?.depositos?.totalDepositosQQ ?? 0) -
+          Number(data?.depositos?.entradas?._sum?.cantidadQQ ?? 0),
         contratoQQ: Number(data?.contratos?.entradas?.cantidadQQ ?? 0),
         contratoLps: Number(data?.contratos?.entradas?.total ?? 0),
       },
@@ -59,7 +62,11 @@ export default function ResumenMovimientos() {
     ];
 
     const filasConTotales = filas.map((row) => {
-      const totalQQ = row.compraQQ + row.depositoQQ + row.contratoQQ;
+      const totalQQ =
+        (row.compraQQ || 0) +
+        (row.depositoQQ || 0) +
+        (row.depositoPendienteQQ || 0) +
+        (row.contratoQQ || 0);
       const totalLps = row.compraLps + row.depositoLps + row.contratoLps;
       const promedio = totalQQ > 0 ? totalLps / totalQQ : 0;
       return { ...row, totalQQ, totalLps, promedio };
@@ -118,12 +125,21 @@ export default function ResumenMovimientos() {
         onCell: () => ({
           style: { backgroundColor: "#e6f7ff", fontWeight: "bold" }, // celdas azul claro y negrita
         }),
+        onHeaderCell: () => ({
+          style: {
+            backgroundColor: "#1890ff",
+            color: "#fff",
+            fontWeight: "bold",
+            textAlign: "center",
+          },
+        }),
       })),
       onHeaderCell: () => ({
         style: {
           backgroundColor: "#1890ff",
           color: "#fff",
           fontWeight: "bold",
+          textAlign: "center",
         }, // header azul oscuro
       }),
     },
@@ -141,10 +157,16 @@ export default function ResumenMovimientos() {
             align: "left",
             render: (v) =>
               key.includes("Lps") ? `${formatNumber(v)}` : formatNumber(v),
+            onHeaderCell: () => ({
+              style: { textAlign: "center" },
+            }),
           })),
+          onHeaderCell: () => ({
+            style: { textAlign: "center" },
+          }),
         },
         {
-          title: "Depósito",
+          title: "Depósito Liquidado",
           children: ["depositoQQ", "depositoLps"].map((key) => ({
             title: key === "depositoQQ" ? "QQ" : "Lps",
             dataIndex: key,
@@ -152,7 +174,32 @@ export default function ResumenMovimientos() {
             align: "left",
             render: (v) =>
               key.includes("Lps") ? `${formatNumber(v)}` : formatNumber(v),
+            onHeaderCell: () => ({
+              style: { textAlign: "center" },
+            }),
           })),
+          onHeaderCell: () => ({
+            style: { textAlign: "center" },
+          }),
+        },
+        {
+          title: "Depósito Pendiente",
+          children: ["depositoPendienteQQ"].map((key) => ({
+            title: "QQ",
+            dataIndex: key,
+            key,
+            align: "left",
+            render: (v) => formatNumber(v),
+            onCell: () => ({
+              style: { backgroundColor: "#fff0f6", fontWeight: "bold" }, // color diferente
+            }),
+            onHeaderCell: () => ({
+              style: { textAlign: "center" },
+            }),
+          })),
+          onHeaderCell: () => ({
+            style: { textAlign: "center" },
+          }),
         },
         {
           title: "Contrato",
@@ -163,7 +210,13 @@ export default function ResumenMovimientos() {
             align: "left",
             render: (v) =>
               key.includes("Lps") ? `${formatNumber(v)}` : formatNumber(v),
+            onHeaderCell: () => ({
+              style: { textAlign: "center" },
+            }),
           })),
+          onHeaderCell: () => ({
+            style: { textAlign: "center" },
+          }),
         },
       ],
       onHeaderCell: () => ({
@@ -171,6 +224,7 @@ export default function ResumenMovimientos() {
           backgroundColor: "#1890ff",
           color: "#fff",
           fontWeight: "bold",
+          textAlign: "center",
         },
       }),
     },

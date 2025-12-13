@@ -82,6 +82,18 @@ export async function GET(req) {
       },
     });
 
+    // 🔹 Total Depósitos Reales (Entradas al almacén)
+    const totalDepositosRaw = await prisma.deposito.aggregate({
+      _sum: { depositoCantidadQQ: true },
+      where: {
+        depositoMovimiento: "Deposito",
+        depositoFecha: { gte: desde, lte: hasta },
+      },
+    });
+    const totalDepositosQQ = Number(
+      totalDepositosRaw._sum.depositoCantidadQQ ?? 0
+    );
+
     // 🔹 Salidas
     const salidasDetalles = await prisma.salida.findMany({
       where: {
@@ -228,7 +240,7 @@ export async function GET(req) {
       JSON.stringify({
         compras: { entradas: comprasEntradas, salidas: comprasSalidas },
         contratos: { entradas: contratosEntradas },
-        depositos: { entradas: depositosEntradas },
+        depositos: { entradas: depositosEntradas, totalDepositosQQ },
         salidas,
         prestamos,
         anticipos,

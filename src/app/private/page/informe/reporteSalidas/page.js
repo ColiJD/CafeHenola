@@ -107,6 +107,16 @@ export default function ReporteCompradoresSalidas() {
   // ---------------------------------------
   // Columnas Desktop
   // ---------------------------------------
+
+  const headerStyle = {
+    backgroundColor: "#1890ff",
+    color: "#fff",
+    fontWeight: "bold",
+    textAlign: "center",
+  };
+
+  const onHeaderCell = () => ({ style: headerStyle });
+
   const columnasDesktop = [
     {
       title: "ID Comprador",
@@ -115,92 +125,107 @@ export default function ReporteCompradoresSalidas() {
       align: "center",
       fixed: "left",
       render: (text) => <Text strong>{text}</Text>,
+      onHeaderCell,
     },
     {
       title: "Nombre Comprador",
       dataIndex: "nombre",
       width: 200,
       render: (text) => <Text style={{ color: "#1890ff" }}>{text}</Text>,
+      onHeaderCell,
     },
 
     // ✅ Compras
     {
-      title: "Venta Directa",
+      title: <span style={{ color: "#fff" }}>Venta Directa</span>,
+      onHeaderCell,
       children: [
         {
           title: "QQ",
           dataIndex: "compraCantidadQQ",
           align: "right",
           render: (_, r) => formatNumber(r.compraQQ),
+          onHeaderCell,
         },
         {
           title: "Total Lps",
           dataIndex: "compraTotalLps",
           align: "right",
           render: (_, r) => "L. " + formatNumber(r.compraLps),
+          onHeaderCell,
         },
       ],
     },
 
     // ✅ Contratos
     {
-      title: "Contratos de Salida",
+      title: <span style={{ color: "#fff" }}>Contratos de Salida</span>,
+      onHeaderCell,
       children: [
         {
           title: "QQ",
           dataIndex: "contratoCantidadQQ",
           align: "right",
           render: (_, r) => formatNumber(r.contratoQQ),
+          onHeaderCell,
         },
         {
           title: "Lps",
           dataIndex: "contratoTotalLps",
           align: "right",
           render: (_, r) => "L. " + formatNumber(r.contratoLps),
+          onHeaderCell,
         },
       ],
     },
 
     // ✅ Salidas / Compromisos
     {
-      title: "Compromisos",
+      title: <span style={{ color: "#fff" }}>Compromisos</span>,
+      onHeaderCell,
       children: [
         {
           title: "QQ",
           dataIndex: "salidaCantidadQQ",
           align: "right",
           render: (_, r) => formatNumber(r.salidaQQ),
+          onHeaderCell,
         },
         {
           title: "Lps",
           dataIndex: "salidaTotalLps",
           align: "right",
           render: (_, r) => "L. " + formatNumber(r.salidaLps),
+          onHeaderCell,
         },
       ],
     },
 
     // ✅ Totales globales
     {
-      title: "Totales",
+      title: <span style={{ color: "#fff" }}>Totales</span>,
+      onHeaderCell,
       children: [
         {
           title: "QQ",
           dataIndex: "totalQQ",
           align: "right",
           render: (_, r) => formatNumber(r.totalQQ),
+          onHeaderCell,
         },
         {
           title: "Lps",
           dataIndex: "totalLps",
           align: "right",
           render: (_, r) => "L. " + formatNumber(r.totalLps),
+          onHeaderCell,
         },
         {
           title: "Promedio",
           dataIndex: "promedio",
           align: "right",
           render: (_, r) => "L. " + formatNumber(r.promedio),
+          onHeaderCell,
         },
       ],
     },

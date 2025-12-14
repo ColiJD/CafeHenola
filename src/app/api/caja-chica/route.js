@@ -6,28 +6,32 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const date = searchParams.get("date"); // YYYY-MM-DD
 
-    if (!date) return NextResponse.json([]);
+    let whereClause = {};
 
-    // Ajuste de zona horaria: Honduras (UTC-6)
-    // Cuando es 00:00 en Honduras, es 06:00 UTC.
-    // Vercel corre en UTC. Si filtramos por local time del server, perdemos datos.
+    if (date) {
+      // /Ajuste de zona horaria: Honduras (UTC-6)
+      // Cuando es 00:00 en Honduras, es 06:00 UTC.
+      // Vercel corre en UTC. Si filtramos por local time del server, perdemos datos.
 
-    // Inicio del día: 06:00 UTC del día seleccionado
-    const start = new Date(`${date}T06:00:00Z`);
+      // Inicio del día: 06:00 UTC del día seleccionado
+      const start = new Date(`${date}T06:00:00Z`);
 
-    // Fin del día: 06:00 UTC del día siguiente (Usamos lt para excluir el límite exacto)
-    const end = new Date(start);
-    end.setUTCDate(end.getUTCDate() + 1);
+      // Fin del día: 06:00 UTC del día siguiente (Usamos lt para excluir el límite exacto)
+      const end = new Date(start);
+      end.setUTCDate(end.getUTCDate() + 1);
 
-    const movimientos = await prisma.caja_chica.findMany({
-      where: {
+      whereClause = {
         fecha: {
           gte: start,
           lt: end,
         },
-      },
+      };
+    }
+
+    const movimientos = await prisma.caja_chica.findMany({
+      where: whereClause,
       orderBy: {
-        fecha: "asc",
+        fecha: "desc", // Show newest first generally better for history
       },
       include: {
         users: {

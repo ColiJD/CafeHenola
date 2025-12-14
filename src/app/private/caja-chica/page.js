@@ -1,7 +1,15 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { message, Button, Space, Popconfirm, Table, DatePicker } from "antd";
+import {
+  message,
+  Button,
+  Space,
+  Popconfirm,
+  Table,
+  DatePicker,
+  Spin,
+} from "antd";
 import dayjs from "dayjs";
 import Formulario from "@/components/Formulario";
 import PreviewModal from "@/components/Modal";
@@ -25,15 +33,22 @@ export default function CajaChicaPage() {
   const [previewVisible, setPreviewVisible] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [filtroFecha, setFiltroFecha] = useState(dayjs());
+  const [loading, setLoading] = useState(false);
 
   const [messageApi, contextHolder] = message.useMessage();
   const messageApiRef = useRef(messageApi);
 
-  const cargarMovimientos = async (fecha = filtroFecha) => {
+  const cargarMovimientos = async (fecha) => {
     try {
-      const day = dayjs(fecha).format("YYYY-MM-DD");
+      setLoading(true);
+      // If fecha is undefined, use current filtroFecha state.
+      // If explicit null is passed (cleared), use null.
+      const dateToUse = fecha === undefined ? filtroFecha : fecha;
 
-      const res = await fetch(`/api/caja-chica?date=${day}`);
+      const day = dateToUse ? dayjs(dateToUse).format("YYYY-MM-DD") : "";
+      const url = day ? `/api/caja-chica?date=${day}` : `/api/caja-chica`;
+
+      const res = await fetch(url);
 
       if (!res.ok) return;
       const data = await res.json();
@@ -42,6 +57,8 @@ export default function CajaChicaPage() {
     } catch (e) {
       console.error(e);
       messageApiRef.current.error("Error cargando movimientos");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -50,12 +67,13 @@ export default function CajaChicaPage() {
   }, []);
 
   // Derived state for filtered movements
-  const movimientosFiltrados = movimientos.filter((mov) => {
-    if (!filtroFecha) return true; // Show all if no date selected
-    return (
-      dayjs(mov.fecha).format("YYYY-MM-DD") === filtroFecha.format("YYYY-MM-DD")
-    );
-  });
+  // If we fetched specific date from server, we show what we got.
+  // If we fetched ALL history (date=null), we might still want to filter locally?
+  // actually, if we fetch all, we show all. If we filter specific date, we fetch specific date.
+  // The client side filter is redundant if the server is doing it, but harmless.
+  // HOWEVER, if fetching 'all', we don't want to filter by 'filtroFecha' if 'filtroFecha' is null.
+  // If 'filtroFecha' is set, we fetched that date, so filtering by it matches.
+  const movimientosFiltrados = movimientos;
 
   // Calculate totals directly from filtered data
   const totales = movimientosFiltrados.reduce(
@@ -356,22 +374,36 @@ export default function CajaChicaPage() {
       <div className="mb-4 flex items-center gap-2">
         <DatePicker
           value={filtroFecha}
-          onChange={(date) => setFiltroFecha(date)}
-          placeholder="Filtrar por día"
+          onChange={(date) => {
+            setFiltroFecha(date);
+            cargarMovimientos(date);
+          }}
+          allowClear
+          placeholder="Sin filtro (Ver todo)"
           className="rounded border-gray-300"
         />
-        <Button onClick={() => setFiltroFecha(dayjs())}>Hoy</Button>
+        <Button
+          onClick={() => {
+            const today = dayjs();
+            setFiltroFecha(today);
+            cargarMovimientos(today);
+          }}
+        >
+          Hoy
+        </Button>
       </div>
 
       {/* Tabla */}
-      <Table
-        dataSource={movimientosFiltrados}
-        columns={columnas}
-        rowKey="id"
-        bordered
-        size="small"
-        scroll={{ x: "max-content" }}
-      />
+      <Spin spinning={loading} tip="Cargando movimientos...">
+        <Table
+          dataSource={movimientosFiltrados}
+          columns={columnas}
+          rowKey="id"
+          bordered
+          size="small"
+          scroll={{ x: "max-content" }}
+        />
+      </Spin>
     </ProtectedPage>
   );
 }

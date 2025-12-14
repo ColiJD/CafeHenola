@@ -39,9 +39,15 @@ export default function CajaChicaBalanceWidget({ collapsed }) {
 
   useEffect(() => {
     fetchBalance();
-    // Optional: Refresh every minute or on focus
-    const interval = setInterval(fetchBalance, 40000);
-    return () => clearInterval(interval);
+
+    const handleUpdate = () => fetchBalance();
+
+    // Escuchar el evento personalizado dispatcheado desde la página principal
+    window.addEventListener("caja-chica-updated", handleUpdate);
+
+    return () => {
+      window.removeEventListener("caja-chica-updated", handleUpdate);
+    };
   }, []);
 
   if (collapsed) {

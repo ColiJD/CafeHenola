@@ -8,14 +8,22 @@ export async function GET(req) {
 
     if (!date) return NextResponse.json([]);
 
-    const start = new Date(`${date}T00:00:00`);
-    const end = new Date(`${date}T23:59:59`);
+    // Ajuste de zona horaria: Honduras (UTC-6)
+    // Cuando es 00:00 en Honduras, es 06:00 UTC.
+    // Vercel corre en UTC. Si filtramos por local time del server, perdemos datos.
+
+    // Inicio del día: 06:00 UTC del día seleccionado
+    const start = new Date(`${date}T06:00:00Z`);
+
+    // Fin del día: 06:00 UTC del día siguiente (Usamos lt para excluir el límite exacto)
+    const end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + 1);
 
     const movimientos = await prisma.caja_chica.findMany({
       where: {
         fecha: {
           gte: start,
-          lte: end, // ← CORRECTO
+          lt: end,
         },
       },
       orderBy: {

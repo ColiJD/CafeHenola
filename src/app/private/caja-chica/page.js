@@ -33,9 +33,7 @@ export default function CajaChicaPage() {
     try {
       const day = dayjs(fecha).format("YYYY-MM-DD");
 
-      const res = await fetch(`/api/caja-chica?date=${day}`, {
-        cache: "no-store",
-      });
+      const res = await fetch(`/api/caja-chica?date=${day}`);
 
       if (!res.ok) return;
       const data = await res.json();
@@ -188,7 +186,10 @@ export default function CajaChicaPage() {
         setTipo({ label: "Salida", value: "Salida" });
         setErrors({});
         setSelectedMovimiento(null);
+        setSelectedMovimiento(null);
         await cargarMovimientos();
+        // Notificar al widget
+        window.dispatchEvent(new Event("caja-chica-updated"));
       } else {
         const err = await res.json();
         messageApiRef.current.error(err.error || "Error al guardar");
@@ -222,7 +223,8 @@ export default function CajaChicaPage() {
       const res = await fetch(`/api/caja-chica/${id}`, { method: "DELETE" });
       if (res.ok) {
         messageApiRef.current.success("Movimiento eliminado");
-        cargarMovimientos();
+        await cargarMovimientos();
+        window.dispatchEvent(new Event("caja-chica-updated"));
       } else {
         messageApiRef.current.error("Error al eliminar");
       }

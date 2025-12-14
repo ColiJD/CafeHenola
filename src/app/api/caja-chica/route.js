@@ -8,7 +8,7 @@ export async function GET(req) {
 
     if (!date) return NextResponse.json([]);
 
-    // Ajuste de zona horaria: Honduras (UTC-6)
+    // /Ajuste de zona horaria: Honduras (UTC-6)
     // Cuando es 00:00 en Honduras, es 06:00 UTC.
     // Vercel corre en UTC. Si filtramos por local time del server, perdemos datos.
 

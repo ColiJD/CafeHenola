@@ -24,6 +24,25 @@ export async function POST(req) {
       let cantidad = cantidadSolicitada;
 
       // ----------------------------
+      // ✔ Verificar inventario global disponible
+      // ----------------------------
+      const totalInventario = await tx.inventariocliente.aggregate({
+        _sum: { cantidadQQ: true },
+      });
+
+      const inventarioDisponible = Number(
+        totalInventario._sum?.cantidadQQ ?? 0
+      );
+
+      if (inventarioDisponible < cantidadSolicitada) {
+        throw new Error(
+          `Inventario insuficiente. Disponible: ${inventarioDisponible.toFixed(
+            2
+          )} QQ, Solicitado: ${cantidadSolicitada.toFixed(2)} QQ`
+        );
+      }
+
+      // ----------------------------
       // ✔ Obtener salidas válidas (NO ANULADAS)
       // ✔ No filtrar detalles en SQL (evita convertir LEFT JOIN en INNER)
       // ----------------------------
@@ -79,7 +98,7 @@ export async function POST(req) {
       });
 
       // ----------------------------
-      // ✔ FIFO automático
+      // ✔ FIFO automático para detalles de liquidación
       // ----------------------------
       for (const s of pendientes) {
         if (cantidad <= 0) break;
@@ -98,6 +117,61 @@ export async function POST(req) {
         cantidad -= descontar;
       }
 
+      // ----------------------------
+      // ✔ Reducir inventario global (FIFO)
+      // ----------------------------
+      const inventarios = await tx.inventariocliente.findMany({
+        orderBy: { inventarioClienteID: "asc" },
+      });
+
+      let restanteQQ = cantidadSolicitada;
+      const movimientosACrear = [];
+
+      for (const inv of inventarios) {
+        if (restanteQQ <= 0) break;
+
+        const cantidadDisponible = Number(inv.cantidadQQ);
+        if (cantidadDisponible <= 0) continue;
+
+        const descontarQQ = Math.min(restanteQQ, cantidadDisponible);
+
+        // Actualizar inventario
+        await tx.inventariocliente.update({
+          where: { inventarioClienteID: inv.inventarioClienteID },
+          data: {
+            cantidadQQ: { decrement: descontarQQ },
+          },
+        });
+
+        // Preparar movimiento para crear en lote
+        movimientosACrear.push({
+          inventarioClienteID: inv.inventarioClienteID,
+          tipoMovimiento: "Salida",
+          referenciaTipo: "Liquidación Salida",
+          referenciaID: liqSalida.liqSalidaID,
+          cantidadQQ: descontarQQ,
+          nota: `Liquidación de salida #${liqSalida.liqSalidaID} - Comprador ID: ${compradorIdNum}`,
+        });
+
+        restanteQQ -= descontarQQ;
+      }
+
+      // Crear todos los movimientos en una sola operación
+      if (movimientosACrear.length > 0) {
+        await tx.movimientoinventario.createMany({
+          data: movimientosACrear,
+        });
+      }
+
+      // Verificación final (margen por decimales)
+      if (restanteQQ > 0.009) {
+        throw new Error(
+          `Error interno: No se pudo descontar todo el inventario. Faltan ${restanteQQ.toFixed(
+            2
+          )} QQ`
+        );
+      }
+
       return liqSalida;
     });
 
@@ -113,6 +187,11 @@ export async function POST(req) {
         { error: "No hay salidas pendientes para este comprador" },
         { status: 400 }
       );
+    }
+
+    // Manejar error de inventario insuficiente
+    if (error.message && error.message.includes("Inventario insuficiente")) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     return NextResponse.json({ error: "Error interno" }, { status: 500 });

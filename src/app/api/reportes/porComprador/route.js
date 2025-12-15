@@ -59,10 +59,10 @@ export async function GET(req) {
         const cantidadQQ = Number(s.salidaCantidadQQ) || 0;
         const precioQQ = Number(s.salidaPrecio) || 0;
 
-        const totalQQEntregado = s.detalleliqsalida.reduce(
-          (sum, d) => sum + Number(d.cantidadQQ || 0),
-          0
-        );
+        // Filtrar liquidaciones anuladas
+        const totalQQEntregado = s.detalleliqsalida
+          .filter((d) => d.movimiento !== "Anulado")
+          .reduce((sum, d) => sum + Number(d.cantidadQQ || 0), 0);
 
         const totalQQPorLiquidar = cantidadQQ - totalQQEntregado;
 
@@ -78,7 +78,7 @@ export async function GET(req) {
           liquidado: totalQQPorLiquidar <= 0 ? "Sí" : "No",
         };
       });
-      console.log("detallesSalidas", detallesSalidas);
+
       // Totales generales
       const totalQQSalidas = detallesSalidas.reduce(
         (sum, s) => sum + s.cantidadQQ, // SUMA DE INICIALES
@@ -269,7 +269,6 @@ export async function GET(req) {
       Venta: totalsCompras,
       Contratos: totalsContratos,
     };
-    console.log(Totales);
 
     return new Response(
       JSON.stringify({

@@ -56,6 +56,7 @@ export default function ResumenMovimientos() {
         compraLps: Number(data?.compras?.salidas?._sum?.compraTotal ?? 0),
         depositoQQ: Number(data?.salidas?.cantidadQQ ?? 0),
         depositoLps: Number(data?.salidas?.total ?? 0),
+        depositoPendienteQQ: Number(data?.pendiente ?? 0),
         contratoQQ: Number(data?.contratoSalidasTotal?.cantidadQQ ?? 0),
         contratoLps: Number(data?.contratoSalidasTotal?.total ?? 0),
       },
@@ -65,7 +66,10 @@ export default function ResumenMovimientos() {
       const totalQQ =
         (row.compraQQ || 0) +
         (row.depositoQQ || 0) +
-        (row.depositoPendienteQQ || 0) +
+        // Para entradas suma, para salidas resta
+        (row.key === "salidas"
+          ? -(row.depositoPendienteQQ || 0)
+          : row.depositoPendienteQQ || 0) +
         (row.contratoQQ || 0);
       const totalLps = row.compraLps + row.depositoLps + row.contratoLps;
       const promedio = totalQQ > 0 ? totalLps / totalQQ : 0;
@@ -189,7 +193,11 @@ export default function ResumenMovimientos() {
             dataIndex: key,
             key,
             align: "left",
-            render: (v) => formatNumber(v),
+            render: (v, record) => {
+              // Si es la fila de salidas, mostrar con signo negativo
+              const valor = record.key === "salidas" ? -v : v;
+              return formatNumber(valor);
+            },
             onCell: () => ({
               style: { backgroundColor: "#fff0f6", fontWeight: "bold" }, // color diferente
             }),
@@ -403,16 +411,6 @@ export default function ResumenMovimientos() {
         descripcion: "Inventario Disponible (QQ)",
         cantidad: Number(data?.inventario?.disponibleQQ ?? 0),
       },
-      // {
-      //   key: "sal",
-      //   descripcion: "Confirmacion de venta(QQ)",
-      //   cantidad: Number(data?.totalSalidas ?? 0),
-      // },
-      // {
-      //   key: "pend",
-      //   descripcion: "Confirmacion por Liquidar (QQ)",
-      //   cantidad: Number(data?.pendiente ?? 0),
-      // },
     ];
   }, [data]);
 
@@ -433,7 +431,6 @@ export default function ResumenMovimientos() {
         let color = "inherit"; // color por defecto
 
         if (record.key === "inv") color = "green"; // Inventario en verde
-        if (record.key === "sal") color = "green"; // Total Salidas en naranja
         if (record.key === "pend") color = "red"; // Pendiente en rojo
 
         return <span style={{ color }}>{formatNumber(v)}</span>;

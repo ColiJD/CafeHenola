@@ -126,7 +126,7 @@ export async function GET(req) {
           liqsalida: {
             liqFecha: { gte: desde, lte: hasta },
           },
-          NOT: { movimiento: "Anulado" },
+          OR: [{ movimiento: "Salida" }, { movimiento: null }],
         },
       });
       const totalSalidaEjecutadaQQ = Number(

@@ -101,13 +101,47 @@ export async function GET(req) {
         contratoTotal += qq * precio;
       }
 
+      // 🔹 1. Contratos Creados (Compromisos de Contrato) en el rango
+      const contratosCreados = await prisma.contratoSalida.aggregate({
+        _sum: { contratoCantidadQQ: true },
+        where: {
+          compradorID: c.compradorId,
+          contratoMovimiento: "Salida",
+          contratoFecha: { gte: desde, lte: hasta },
+          NOT: { estado: "Anulado" },
+        },
+      });
+      const totalContratoCreadoQQ = Number(
+        contratosCreados._sum.contratoCantidadQQ || 0
+      );
+
+      // 🔹 2. Salidas Ejecutadas (Liquidaciones de ConfirmacionVenta) en el rango
+      const salidasEjecutadas = await prisma.detalleliqsalida.aggregate({
+        _sum: { cantidadQQ: true },
+        where: {
+          salida: {
+            compradorID: c.compradorId,
+            salidaMovimiento: "Salida",
+          },
+          liqsalida: {
+            liqFecha: { gte: desde, lte: hasta },
+          },
+          NOT: { movimiento: "Anulado" },
+        },
+      });
+      const totalSalidaEjecutadaQQ = Number(
+        salidasEjecutadas._sum.cantidadQQ || 0
+      );
+
       if (
         totalCompraQQ === 0 &&
         totalCompraLps === 0 &&
         salidaCantidad === 0 &&
         salidaTotal === 0 &&
         contratoCantidad === 0 &&
-        contratoTotal === 0
+        contratoTotal === 0 &&
+        totalContratoCreadoQQ === 0 &&
+        totalSalidaEjecutadaQQ === 0
       ) {
         return null;
       }
@@ -124,6 +158,10 @@ export async function GET(req) {
 
         contratoCantidadQQ: contratoCantidad,
         contratoTotalLps: contratoTotal,
+
+        // Nuevos datos para cálculo de pendientes
+        contratoCreadoQQ: totalContratoCreadoQQ,
+        salidaEjecutadaQQ: totalSalidaEjecutadaQQ,
       };
     });
 

@@ -132,6 +132,58 @@ export default function ReporteClientesEntradas() {
       onHeaderCell,
     },
     {
+      title: <span style={{ color: "#fff" }}>Totales</span>,
+      align: "center",
+      onHeaderCell,
+      children: [
+        {
+          title: "QQ",
+          key: "totalQQ",
+          dataIndex: "totalQQ",
+          align: "right",
+          onHeaderCell,
+          render: (_, r) => {
+            const { totalQQ } = calcularTotalesCliente(r);
+            return (
+              <Text strong type={totalQQ > 0 ? "success" : "secondary"}>
+                {formatNumber(totalQQ)}
+              </Text>
+            );
+          },
+        },
+        {
+          title: "Lps",
+          key: "totalLps",
+          dataIndex: "totalLps",
+          align: "right",
+          onHeaderCell,
+          render: (_, r) => {
+            const { totalLps } = calcularTotalesCliente(r);
+            return (
+              <Text strong type={totalLps > 0 ? "success" : "secondary"}>
+                L. {formatNumber(totalLps)}
+              </Text>
+            );
+          },
+        },
+        {
+          title: "Promedio",
+          key: "promedio",
+          align: "right",
+          dataIndex: "promediocalculado",
+          onHeaderCell,
+          render: (_, r) => {
+            const { promedio } = calcularTotalesCliente(r);
+            return (
+              <Text strong type={promedio > 0 ? "success" : "secondary"}>
+                L. {formatNumber(promedio)}
+              </Text>
+            );
+          },
+        },
+      ],
+    },
+    {
       title: <span style={{ color: "#fff" }}>Compra</span>,
       onHeaderCell,
       children: [
@@ -238,58 +290,6 @@ export default function ReporteClientesEntradas() {
           onCell: () => ({
             style: { backgroundColor: "#fff0f6", fontWeight: "bold" },
           }),
-        },
-      ],
-    },
-    {
-      title: <span style={{ color: "#fff" }}>Totales</span>,
-      align: "center",
-      onHeaderCell,
-      children: [
-        {
-          title: "QQ",
-          key: "totalQQ",
-          dataIndex: "totalQQ",
-          align: "right",
-          onHeaderCell,
-          render: (_, r) => {
-            const { totalQQ } = calcularTotalesCliente(r);
-            return (
-              <Text strong type={totalQQ > 0 ? "success" : "secondary"}>
-                {formatNumber(totalQQ)}
-              </Text>
-            );
-          },
-        },
-        {
-          title: "Lps",
-          key: "totalLps",
-          dataIndex: "totalLps",
-          align: "right",
-          onHeaderCell,
-          render: (_, r) => {
-            const { totalLps } = calcularTotalesCliente(r);
-            return (
-              <Text strong type={totalLps > 0 ? "success" : "secondary"}>
-                L. {formatNumber(totalLps)}
-              </Text>
-            );
-          },
-        },
-        {
-          title: "Promedio",
-          key: "promedio",
-          align: "right",
-          dataIndex: "promediocalculado",
-          onHeaderCell,
-          render: (_, r) => {
-            const { promedio } = calcularTotalesCliente(r);
-            return (
-              <Text strong type={promedio > 0 ? "success" : "secondary"}>
-                L. {formatNumber(promedio)}
-              </Text>
-            );
-          },
         },
       ],
     },

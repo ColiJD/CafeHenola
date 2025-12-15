@@ -31,8 +31,29 @@ export function calcularTotalesComprador(comprador = {}) {
   const contratoQQ = parseFloat(comprador.contratoCantidadQQ) || 0;
   const contratoLps = parseFloat(comprador.contratoTotalLps) || 0;
 
-  const totalQQ = compraQQ + salidaQQ + contratoQQ;
-  const totalLps = compraLps + salidaLps + contratoLps;
+  // Nuevos cálculos de pendiente
+  // Pendiente Salida (ConfirmacionVenta) = Compromiso (salidaCantidadQQ) - Ejecutado (salidaEjecutadaQQ)
+  const pendienteSalida =
+    (parseFloat(comprador.salidaCantidadQQ) || 0) -
+    (parseFloat(comprador.salidaEjecutadaQQ) || 0);
+
+  // Pendiente Contrato = Contrato Creado (contratoCreadoQQ) - Ejecutado (contratoCantidadQQ)
+  const pendienteContrato =
+    (parseFloat(comprador.contratoCreadoQQ) || 0) -
+    (parseFloat(comprador.contratoCantidadQQ) || 0);
+
+  const pendienteQQ = pendienteSalida + pendienteContrato;
+
+  // Calcular precio promedio de Salida (Compromiso) para estimar lo ejecutado en Lps
+  const precioPromedioSalida = salidaQQ > 0 ? salidaLps / salidaQQ : 0;
+  const salidaEjecutadaLps =
+    (parseFloat(comprador.salidaEjecutadaQQ) || 0) * precioPromedioSalida;
+
+  // Total General = Executed Venta + Executed Salida + Executed Contrato
+  // "Restar lo pendiente" implica usar solo lo ejecutado para las Salidas (ConfirmacionVenta)
+  const totalQQ =
+    compraQQ + (parseFloat(comprador.salidaEjecutadaQQ) || 0) + contratoQQ;
+  const totalLps = compraLps + salidaEjecutadaLps + contratoLps;
 
   const promedio = totalQQ > 0 ? totalLps / totalQQ : 0;
 
@@ -46,6 +67,7 @@ export function calcularTotalesComprador(comprador = {}) {
     totalQQ,
     totalLps,
     promedio,
+    pendienteQQ,
   };
 }
 
@@ -134,6 +156,33 @@ export default function ReporteCompradoresSalidas() {
       render: (text) => <Text style={{ color: "#1890ff" }}>{text}</Text>,
       onHeaderCell,
     },
+    {
+      title: <span style={{ color: "#fff" }}>Totales</span>,
+      onHeaderCell,
+      children: [
+        {
+          title: "QQ",
+          dataIndex: "totalQQ",
+          align: "right",
+          render: (_, r) => formatNumber(r.totalQQ),
+          onHeaderCell,
+        },
+        {
+          title: "Lps",
+          dataIndex: "totalLps",
+          align: "right",
+          render: (_, r) => "L. " + formatNumber(r.totalLps),
+          onHeaderCell,
+        },
+        {
+          title: "Promedio",
+          dataIndex: "promedio",
+          align: "right",
+          render: (_, r) => "L. " + formatNumber(r.promedio),
+          onHeaderCell,
+        },
+      ],
+    },
 
     // ✅ Compras
     {
@@ -181,7 +230,7 @@ export default function ReporteCompradoresSalidas() {
 
     // ✅ Salidas / Compromisos
     {
-      title: <span style={{ color: "#fff" }}>Compromisos</span>,
+      title: <span style={{ color: "#fff" }}>ConfirmacionVenta</span>,
       onHeaderCell,
       children: [
         {
@@ -201,34 +250,30 @@ export default function ReporteCompradoresSalidas() {
       ],
     },
 
-    // ✅ Totales globales
+    // ✅ Pendiente (Nuevo)
     {
-      title: <span style={{ color: "#fff" }}>Totales</span>,
+      title: <span style={{ color: "#fff" }}>Pendiente</span>,
       onHeaderCell,
       children: [
         {
           title: "QQ",
-          dataIndex: "totalQQ",
-          align: "right",
-          render: (_, r) => formatNumber(r.totalQQ),
+          dataIndex: "pendienteQQ",
+          align: "left",
+          render: (_, r) => (
+            <Text type={r.pendienteQQ > 0 ? "warning" : "secondary"}>
+              {r.pendienteQQ > 0 ? "-" : ""}
+              {formatNumber(r.pendienteQQ)}
+            </Text>
+          ),
           onHeaderCell,
-        },
-        {
-          title: "Lps",
-          dataIndex: "totalLps",
-          align: "right",
-          render: (_, r) => "L. " + formatNumber(r.totalLps),
-          onHeaderCell,
-        },
-        {
-          title: "Promedio",
-          dataIndex: "promedio",
-          align: "right",
-          render: (_, r) => "L. " + formatNumber(r.promedio),
-          onHeaderCell,
+          onCell: () => ({
+            style: { backgroundColor: "#fff0f6", fontWeight: "bold" },
+          }),
         },
       ],
     },
+
+    // ✅ Totales globales
   ];
 
   // ---------------------------------------
@@ -251,10 +296,21 @@ export default function ReporteCompradoresSalidas() {
     },
 
     // Salidas
-    { label: "Compromiso QQ", key: "salidaQQ", render: (v) => formatNumber(v) },
     {
-      label: "Compromiso Lps",
+      label: "ConfirmacionVenta QQ",
+      key: "salidaQQ",
+      render: (v) => formatNumber(v),
+    },
+    {
+      label: "ConfirmacionVenta Lps",
       key: "salidaLps",
+      render: (v) => formatNumber(v),
+    },
+
+    // Pendiente
+    {
+      label: "Pendiente QQ",
+      key: "pendienteQQ",
       render: (v) => formatNumber(v),
     },
 
@@ -270,20 +326,6 @@ export default function ReporteCompradoresSalidas() {
   const columnasPDF = [
     { header: "ID", key: "compradorId" },
     { header: "Nombre", key: "nombre" },
-
-    // ✅ SOLO AQUÍ VAN LOS INDICADORES
-    {
-      header: "Contrato QQ",
-      key: "contratoQQ",
-      format: "numero",
-      isCantidad: true,
-    },
-    {
-      header: "Contrato Lps",
-      key: "contratoLps",
-      format: "moneda",
-      isTotal: true,
-    },
 
     { header: "Total QQ", key: "totalQQ", format: "numero", isCantidad: true },
     { header: "Total Lps", key: "totalLps", format: "moneda", isTotal: true },

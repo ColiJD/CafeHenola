@@ -46,14 +46,15 @@ export function calcularTotalesComprador(comprador = {}) {
     (parseFloat(comprador.contratoCreadoLps) || 0) -
     (parseFloat(comprador.contratoTotalLps) || 0);
 
-  const pendienteQQ = pendienteSalida + pendienteContrato;
+  // Según solicitud: "no tomes lo pendiente de contrato solo los de salida"
+  const pendienteQQ = pendienteSalida; // + pendienteContrato;
 
   // Calcular precio promedio de Salida (Compromiso) para estimar lo pendiente en Lps de ConfirmacionVenta
   const precioPromedioSalida = salidaQQ > 0 ? salidaLps / salidaQQ : 0;
   // Pendiente Salida Lps = Pendiente Salida QQ * Precio Promedio
   const pendienteSalidaLps = pendienteSalida * precioPromedioSalida;
 
-  const pendienteLps = pendienteSalidaLps + pendienteContratoLps;
+  const pendienteLps = pendienteSalidaLps; // + pendienteContratoLps;
 
   // Total General VISUAL
   // Total QQ = Ejecutado (Restando pendiente)

@@ -72,7 +72,10 @@ export default function ResumenMovimientos() {
           : row.depositoPendienteQQ || 0) +
         (row.contratoQQ || 0);
       const totalLps = row.compraLps + row.depositoLps + row.contratoLps;
-      const promedio = totalQQ > 0 ? totalLps / totalQQ : 0;
+      const promedio =
+        totalQQ + row.depositoPendienteQQ > 0
+          ? totalLps / (totalQQ + row.depositoPendienteQQ)
+          : 0;
       return { ...row, totalQQ, totalLps, promedio };
     });
 

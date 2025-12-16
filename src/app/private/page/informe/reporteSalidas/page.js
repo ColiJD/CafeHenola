@@ -13,7 +13,7 @@ import SectionHeader from "@/components/ReportesElement/AccionesResporte";
 import { useFetchReport } from "@/hook/useFetchReport";
 import TablaTotales from "@/components/ReportesElement/TablaTotales";
 import ProtectedPage from "@/components/ProtectedPage";
-import { generarReportePDF } from "@/Doc/Reportes/FormatoDoc";
+import { generarReportePDF } from "@/Doc/Reportes/FormatoDocCustom";
 import { rangoInicial } from "../reporteCliente/page";
 
 const { Title, Text } = Typography;
@@ -37,48 +37,25 @@ export function calcularTotalesComprador(comprador = {}) {
     (parseFloat(comprador.salidaCantidadQQ) || 0) -
     (parseFloat(comprador.salidaEjecutadaQQ) || 0);
 
-  // Pendiente Contrato = Contrato Creado (contratoCreadoQQ) - Ejecutado (contratoCantidadQQ)
-  const pendienteContrato =
-    (parseFloat(comprador.contratoCreadoQQ) || 0) -
-    (parseFloat(comprador.contratoCantidadQQ) || 0);
-
-  const pendienteContratoLps =
-    (parseFloat(comprador.contratoCreadoLps) || 0) -
-    (parseFloat(comprador.contratoTotalLps) || 0);
-
   // Según solicitud: "no tomes lo pendiente de contrato solo los de salida"
   const pendienteQQ = pendienteSalida; // + pendienteContrato;
 
-  // Calcular precio promedio de Salida (Compromiso) para estimar lo pendiente en Lps de ConfirmacionVenta
-  const precioPromedioSalida = salidaQQ > 0 ? salidaLps / salidaQQ : 0;
-  // Pendiente Salida Lps = Pendiente Salida QQ * Precio Promedio
-  const pendienteSalidaLps = pendienteSalida * precioPromedioSalida;
-
-  const pendienteLps = pendienteSalidaLps; // + pendienteContratoLps;
-
-  // Total General VISUAL
   // Total QQ = Ejecutado (Restando pendiente)
-  const totalQQ =
-    compraQQ +
-    salidaQQ +
-    (parseFloat(comprador.contratoCreadoQQ) || 0) -
-    pendienteQQ;
+  const totalQQ = compraQQ + salidaQQ + contratoQQ - pendienteQQ;
 
   // Total Lps = Comprometido (Sin restar pendiente, según solicitud "7,000,000")
-  const totalLps =
-    compraLps + salidaLps + (parseFloat(comprador.contratoCreadoLps) || 0);
+  const totalLps = compraLps + salidaLps + contratoLps;
 
-  const promedio = totalQQ > 0 ? totalLps / totalQQ : 0;
+  const promedio =
+    totalQQ + pendienteQQ > 0 ? totalLps / (totalQQ + pendienteQQ) : 0;
 
   return {
     compraQQ,
     compraLps,
     salidaQQ,
     salidaLps,
-    contratoQQ, // Se mantiene para uso interno si se necesitara, pero en tabla va Creado
+    contratoQQ,
     contratoLps,
-    contratoCreadoQQ: parseFloat(comprador.contratoCreadoQQ) || 0,
-    contratoCreadoLps: parseFloat(comprador.contratoCreadoLps) || 0,
     totalQQ,
     totalLps,
     promedio,
@@ -130,13 +107,16 @@ export default function ReporteCompradoresSalidas() {
         acc.totalCompradores += 1;
         acc.totalQQ += r.totalQQ;
         acc.totalLps += r.totalLps;
+        acc.pendienteQQ += r.pendienteQQ;
         return acc;
       },
-      { totalCompradores: 0, totalQQ: 0, totalLps: 0 }
+      { totalCompradores: 0, totalQQ: 0, totalLps: 0, pendienteQQ: 0 }
     );
 
     resultado.promedioGeneral =
-      resultado.totalQQ > 0 ? resultado.totalLps / resultado.totalQQ : 0;
+      resultado.totalQQ + resultado.pendienteQQ > 0
+        ? resultado.totalLps / (resultado.totalQQ + resultado.pendienteQQ)
+        : 0;
 
     return resultado;
   }, [datosFiltrados]);
@@ -220,25 +200,22 @@ export default function ReporteCompradoresSalidas() {
         },
       ],
     },
-
-    // ✅ Contratos
-    // Se muestra el Compromiso (Creado), igual que en ConfirmacionVenta
     {
-      title: <span style={{ color: "#fff" }}>Contratos de Salida</span>,
+      title: <span style={{ color: "#fff" }}>Contratos</span>,
       onHeaderCell,
       children: [
         {
           title: "QQ",
-          dataIndex: "contratoCreadoQQ",
+          dataIndex: "contratoCantidadQQ",
           align: "right",
-          render: (_, r) => formatNumber(r.contratoCreadoQQ),
+          render: (_, r) => formatNumber(r.contratoQQ),
           onHeaderCell,
         },
         {
           title: "Lps",
-          dataIndex: "contratoCreadoLps",
+          dataIndex: "contratoTotalLps",
           align: "right",
-          render: (_, r) => "L. " + formatNumber(r.contratoCreadoLps),
+          render: (_, r) => "L. " + formatNumber(r.contratoLps),
           onHeaderCell,
         },
       ],
@@ -389,7 +366,10 @@ export default function ReporteCompradoresSalidas() {
                   nombreFiltro,
                 },
                 columnasPDF,
-                { title: "Reporte de Salidas" }
+                {
+                  title: "Reporte de Salidas",
+                  customPromedio: estadisticas?.promedioGeneral,
+                }
               );
             }}
             disableExport={!datosFiltrados.length}
@@ -466,14 +446,72 @@ export default function ReporteCompradoresSalidas() {
               bordered
               scroll={{ x: "max-content" }}
               size="small"
-              summary={() => (
-                <TablaTotales
-                  columns={columnasDesktop}
-                  data={datosFiltrados}
-                  offset={2}
-                  formatNumber={formatNumber}
-                />
-              )}
+              summary={() => {
+                const flattenColumns = (cols) => {
+                  let result = [];
+                  cols.forEach((col) => {
+                    if (col.children && col.children.length) {
+                      result = result.concat(flattenColumns(col.children));
+                    } else {
+                      result.push(col);
+                    }
+                  });
+                  return result;
+                };
+
+                const leafColumns = flattenColumns(columnasDesktop).slice(2);
+                const totales = {};
+
+                datosFiltrados.forEach((row) => {
+                  leafColumns.forEach((col) => {
+                    const key = col.dataIndex;
+                    if (!key || key === "promedio") return;
+                    const value = parseFloat(row[key]);
+                    if (!isNaN(value))
+                      totales[key] = (totales[key] || 0) + value;
+                  });
+                });
+
+                const totalQQ = totales.totalQQ || 0;
+                const totalLps = totales.totalLps || 0;
+                const pendienteQQ = totales.pendienteQQ || 0;
+                const promedioGeneral =
+                  totalQQ + pendienteQQ > 0
+                    ? totalLps / (totalQQ + pendienteQQ)
+                    : 0;
+
+                return (
+                  <Table.Summary.Row>
+                    <Table.Summary.Cell index={0} colSpan={2}>
+                      <Text strong>Total</Text>
+                    </Table.Summary.Cell>
+                    {leafColumns.map((col, idx) => {
+                      const key = col.dataIndex;
+                      let value = totales[key];
+
+                      if (key === "promedio") {
+                        value = promedioGeneral;
+                      }
+
+                      return (
+                        <Table.Summary.Cell
+                          key={idx}
+                          index={idx + 2}
+                          align="right"
+                        >
+                          <Text strong>
+                            {col.title &&
+                            col.title.toString().toLowerCase().includes("lps")
+                              ? "L. "
+                              : ""}
+                            {formatNumber(value)}
+                          </Text>
+                        </Table.Summary.Cell>
+                      );
+                    })}
+                  </Table.Summary.Row>
+                );
+              }}
             />
           ) : (
             <TarjetaMobile

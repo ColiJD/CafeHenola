@@ -391,6 +391,39 @@ export default function CajaChicaPage() {
         >
           Hoy
         </Button>
+        <Popconfirm
+          title="¿Cerrar caja del día seleccionado?"
+          description="Esto generará el Saldo Inicial para el día siguiente basado en el balance actual."
+          onConfirm={async () => {
+            const dateToUse = filtroFecha || dayjs();
+            const tomorrow = dateToUse.add(1, "day").format("YYYY-MM-DD");
+            try {
+              setLoading(true);
+              // Trigger the lazy evaluation for tomorrow, which sums up today's balance
+              const res = await fetch(`/api/caja-chica?date=${tomorrow}`);
+              if (res.ok) {
+                messageApiRef.current.success(
+                  "Caja cerrada. Saldo inicial generado para mañana."
+                );
+                // Optionally switch view to tomorrow or stay?
+                // User likely wants to stay, just confirm it's done.
+              } else {
+                messageApiRef.current.error("Error al cerrar caja");
+              }
+            } catch (e) {
+              console.error(e);
+              messageApiRef.current.error("Error de conexión");
+            } finally {
+              setLoading(false);
+            }
+          }}
+          okText="Sí, Cerrar"
+          cancelText="Cancelar"
+        >
+          <Button type="default" danger>
+            Cerrar Caja
+          </Button>
+        </Popconfirm>
       </div>
 
       {/* Tabla */}

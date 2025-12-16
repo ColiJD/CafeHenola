@@ -42,18 +42,30 @@ export function calcularTotalesComprador(comprador = {}) {
     (parseFloat(comprador.contratoCreadoQQ) || 0) -
     (parseFloat(comprador.contratoCantidadQQ) || 0);
 
+  const pendienteContratoLps =
+    (parseFloat(comprador.contratoCreadoLps) || 0) -
+    (parseFloat(comprador.contratoTotalLps) || 0);
+
   const pendienteQQ = pendienteSalida + pendienteContrato;
 
-  // Calcular precio promedio de Salida (Compromiso) para estimar lo ejecutado en Lps
+  // Calcular precio promedio de Salida (Compromiso) para estimar lo pendiente en Lps de ConfirmacionVenta
   const precioPromedioSalida = salidaQQ > 0 ? salidaLps / salidaQQ : 0;
-  const salidaEjecutadaLps =
-    (parseFloat(comprador.salidaEjecutadaQQ) || 0) * precioPromedioSalida;
+  // Pendiente Salida Lps = Pendiente Salida QQ * Precio Promedio
+  const pendienteSalidaLps = pendienteSalida * precioPromedioSalida;
 
-  // Total General = Executed Venta + Executed Salida + Executed Contrato
-  // "Restar lo pendiente" implica usar solo lo ejecutado para las Salidas (ConfirmacionVenta)
+  const pendienteLps = pendienteSalidaLps + pendienteContratoLps;
+
+  // Total General VISUAL
+  // Total QQ = Ejecutado (Restando pendiente)
   const totalQQ =
-    compraQQ + (parseFloat(comprador.salidaEjecutadaQQ) || 0) + contratoQQ;
-  const totalLps = compraLps + salidaEjecutadaLps + contratoLps;
+    compraQQ +
+    salidaQQ +
+    (parseFloat(comprador.contratoCreadoQQ) || 0) -
+    pendienteQQ;
+
+  // Total Lps = Comprometido (Sin restar pendiente, según solicitud "7,000,000")
+  const totalLps =
+    compraLps + salidaLps + (parseFloat(comprador.contratoCreadoLps) || 0);
 
   const promedio = totalQQ > 0 ? totalLps / totalQQ : 0;
 
@@ -62,8 +74,10 @@ export function calcularTotalesComprador(comprador = {}) {
     compraLps,
     salidaQQ,
     salidaLps,
-    contratoQQ,
+    contratoQQ, // Se mantiene para uso interno si se necesitara, pero en tabla va Creado
     contratoLps,
+    contratoCreadoQQ: parseFloat(comprador.contratoCreadoQQ) || 0,
+    contratoCreadoLps: parseFloat(comprador.contratoCreadoLps) || 0,
     totalQQ,
     totalLps,
     promedio,
@@ -207,22 +221,23 @@ export default function ReporteCompradoresSalidas() {
     },
 
     // ✅ Contratos
+    // Se muestra el Compromiso (Creado), igual que en ConfirmacionVenta
     {
       title: <span style={{ color: "#fff" }}>Contratos de Salida</span>,
       onHeaderCell,
       children: [
         {
           title: "QQ",
-          dataIndex: "contratoCantidadQQ",
+          dataIndex: "contratoCreadoQQ",
           align: "right",
-          render: (_, r) => formatNumber(r.contratoQQ),
+          render: (_, r) => formatNumber(r.contratoCreadoQQ),
           onHeaderCell,
         },
         {
           title: "Lps",
-          dataIndex: "contratoTotalLps",
+          dataIndex: "contratoCreadoLps",
           align: "right",
-          render: (_, r) => "L. " + formatNumber(r.contratoLps),
+          render: (_, r) => "L. " + formatNumber(r.contratoCreadoLps),
           onHeaderCell,
         },
       ],

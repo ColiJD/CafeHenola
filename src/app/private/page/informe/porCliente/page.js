@@ -45,7 +45,7 @@ export default function MovimientosComprasPage() {
   const [clientes, setClientes] = useState([]);
   const [clienteID, setClienteID] = useState(null);
   const [fechaRango, setFechaRango] = useState([
-    dayjs().startOf("year"),
+    dayjs().subtract(1, "year").startOf("year"),
     dayjs().endOf("year"),
   ]);
   const [data, setData] = useState([]);

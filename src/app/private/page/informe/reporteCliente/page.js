@@ -38,7 +38,7 @@ export function calcularTotalesCliente(cliente = {}) {
 
   return { totalQQ, totalLps, promedio, depositoPendienteQQ };
 }
-const inicioAnio = dayjs().startOf("year");
+const inicioAnio = dayjs().subtract(1, "year").startOf("year");
 const finAnio = dayjs().endOf("year");
 
 export const rangoInicial = [inicioAnio, finAnio];

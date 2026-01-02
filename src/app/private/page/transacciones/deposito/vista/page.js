@@ -29,7 +29,7 @@ export default function TablaSaldoDepositos() {
   const [nombreFiltro, setNombreFiltro] = useState("");
   const [tipoCafeFiltro, setTipoCafeFiltro] = useState("");
   const [rangoFecha, setRangoFecha] = useState([
-    dayjs().startOf("year"),
+    dayjs().subtract(1, "year").startOf("year"),
     dayjs().endOf("year"),
   ]);
 

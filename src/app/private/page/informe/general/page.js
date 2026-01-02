@@ -11,14 +11,11 @@ import SectionHeader from "@/components/ReportesElement/AccionesResporte";
 import { useFetchReport } from "@/hook/useFetchReport";
 import { exportPDFGeneralConPrestamos } from "@/Doc/Reportes/General";
 import ProtectedPage from "@/components/ProtectedPage";
+import { rangoInicial } from "../reporteCliente/page";
 
 const { Title, Text } = Typography;
 
 export default function ResumenMovimientos() {
-  const inicioAnio = dayjs().startOf("year");
-  const finAnio = dayjs().endOf("year");
-
-  const rangoInicial = [inicioAnio, finAnio];
   const {
     data,
     loading,

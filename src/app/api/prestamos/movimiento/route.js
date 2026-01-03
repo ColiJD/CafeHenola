@@ -21,7 +21,8 @@ export async function POST(req) {
       );
     }
 
-    const montoIngresado = parseFloat(monto);
+    const roundToTwo = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
+    const montoIngresado = roundToTwo(parseFloat(monto));
 
     await prisma.$transaction(async (tx) => {
       const prestamos = await tx.prestamos.findMany({
@@ -44,8 +45,13 @@ export async function POST(req) {
             const capitalPagado = p.movimientos_prestamo
               .filter((m) => ["ABONO"].includes(m.tipo_movimiento))
               .reduce((sum, m) => sum + Number(m.monto), 0);
-            const deudaCapital = Number(p.monto) - capitalPagado;
-            deudaTotalCapital += deudaCapital;
+
+            const capitalPagadoRounded = roundToTwo(capitalPagado);
+            const deudaCapital = roundToTwo(
+              Number(p.monto) - capitalPagadoRounded
+            );
+
+            deudaTotalCapital = roundToTwo(deudaTotalCapital + deudaCapital);
             return { prestamo: p, deudaCapital };
           })
           .filter((p) => p.deudaCapital > 0);
@@ -69,7 +75,9 @@ export async function POST(req) {
         for (const p of prestamosPendientes) {
           if (montoRestante <= 0) break;
 
-          const montoAplicar = Math.min(montoRestante, p.deudaCapital);
+          const montoAplicar = roundToTwo(
+            Math.min(montoRestante, p.deudaCapital)
+          );
 
           await tx.movimientos_prestamo.create({
             data: {
@@ -83,7 +91,7 @@ export async function POST(req) {
             },
           });
 
-          montoRestante -= montoAplicar;
+          montoRestante = roundToTwo(montoRestante - montoAplicar);
         }
       }
 
@@ -100,8 +108,14 @@ export async function POST(req) {
             const pagosInteres = p.movimientos_prestamo
               .filter((m) => m.tipo_movimiento === "PAGO_INTERES")
               .reduce((sum, m) => sum + Number(m.monto), 0);
-            const interesPendiente = cargos - pagosInteres;
-            interesesTotales += interesPendiente;
+
+            const cargosRounded = roundToTwo(cargos);
+            const pagosInteresRounded = roundToTwo(pagosInteres);
+            const interesPendiente = roundToTwo(
+              cargosRounded - pagosInteresRounded
+            );
+
+            interesesTotales = roundToTwo(interesesTotales + interesPendiente);
             return { prestamo: p, interesPendiente };
           })
           .filter((p) => p.interesPendiente > 0);
@@ -112,11 +126,7 @@ export async function POST(req) {
 
         if (montoIngresado > interesesTotales) {
           throw new Error(
-            `El pago de intereses (L. ${montoIngresado.toFixed(
-              2
-            )}) excede los intereses pendientes (L. ${interesesTotales.toFixed(
-              2
-            )}).`
+            `El pago de intereses (L. ${montoIngresado}) excede los intereses pendientes (L. ${interesesTotales}).`
           );
         }
 
@@ -125,7 +135,9 @@ export async function POST(req) {
         for (const p of prestamosConIntereses) {
           if (montoRestante <= 0) break;
 
-          const montoAplicar = Math.min(montoRestante, p.interesPendiente);
+          const montoAplicar = roundToTwo(
+            Math.min(montoRestante, p.interesPendiente)
+          );
 
           await tx.movimientos_prestamo.create({
             data: {
@@ -139,7 +151,7 @@ export async function POST(req) {
             },
           });
 
-          montoRestante -= montoAplicar;
+          montoRestante = roundToTwo(montoRestante - montoAplicar);
         }
       }
 
@@ -162,7 +174,9 @@ export async function POST(req) {
             const totalAbonos = p.movimientos_prestamo
               .filter((m) => m.tipo_movimiento === "ABONO")
               .reduce((sum, m) => sum + Number(m.monto), 0);
-            const capitalPendiente = Number(p.monto) - totalAbonos;
+            const capitalPendiente = roundToTwo(
+              Number(p.monto) - roundToTwo(totalAbonos)
+            );
 
             // Intereses pendientes
             const totalCargosInt = p.movimientos_prestamo
@@ -171,7 +185,9 @@ export async function POST(req) {
             const totalPagosInteres = p.movimientos_prestamo
               .filter((m) => m.tipo_movimiento === "PAGO_INTERES")
               .reduce((sum, m) => sum + Number(m.monto), 0);
-            const interesPendiente = totalCargosInt - totalPagosInteres;
+            const interesPendiente = roundToTwo(
+              roundToTwo(totalCargosInt) - roundToTwo(totalPagosInteres)
+            );
 
             return {
               ...p,

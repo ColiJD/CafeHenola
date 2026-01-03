@@ -14,11 +14,13 @@ export default function LiquidacionDrawer({
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
 
+  const roundToTwo = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
+
   const handleConfirm = async () => {
     try {
       const values = await form.validateFields();
 
-      if (values.cantidadLiquidar > cantidadPendiente) {
+      if (values.cantidadLiquidar > roundToTwo(cantidadPendiente)) {
         messageApi.error("La cantidad a liquidar excede lo pendiente");
         return;
       }
@@ -57,7 +59,8 @@ export default function LiquidacionDrawer({
       }
     >
       <p>
-        <strong>Total pendiente:</strong> {cantidadPendiente} QQ
+        <strong>Total pendiente:</strong> {Number(cantidadPendiente).toFixed(2)}{" "}
+        QQ
       </p>
 
       <Form form={form} layout="vertical">

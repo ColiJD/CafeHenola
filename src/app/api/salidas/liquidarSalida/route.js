@@ -20,8 +20,10 @@ export async function POST(req) {
       );
     }
 
+    const roundToTwo = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
+
     const resultado = await prisma.$transaction(async (tx) => {
-      let cantidad = cantidadSolicitada;
+      let cantidad = roundToTwo(cantidadSolicitada);
 
       // ----------------------------
       // ✔ Verificar inventario global disponible
@@ -30,15 +32,15 @@ export async function POST(req) {
         _sum: { cantidadQQ: true },
       });
 
-      const inventarioDisponible = Number(
-        totalInventario._sum?.cantidadQQ ?? 0
+      const inventarioDisponible = roundToTwo(
+        Number(totalInventario._sum?.cantidadQQ ?? 0)
       );
 
-      if (inventarioDisponible < cantidadSolicitada) {
+      if (inventarioDisponible < cantidad) {
         throw new Error(
           `Inventario insuficiente. Disponible: ${inventarioDisponible.toFixed(
             2
-          )} QQ, Solicitado: ${cantidadSolicitada.toFixed(2)} QQ`
+          )} QQ, Solicitado: ${cantidad.toFixed(2)} QQ`
         );
       }
 
@@ -74,7 +76,10 @@ export async function POST(req) {
             )
             .reduce((acc, d) => acc + Number(d.cantidadQQ || 0), 0);
 
-          const pendiente = Number(s.salidaCantidadQQ) - totalLiquidado;
+          const totalLiquidadoRounded = roundToTwo(totalLiquidado);
+          const pendiente = roundToTwo(
+            Number(s.salidaCantidadQQ) - totalLiquidadoRounded
+          );
 
           return { salidaID: s.salidaID, pendiente };
         })
@@ -90,10 +95,10 @@ export async function POST(req) {
       const liqSalida = await tx.liqsalida.create({
         data: {
           liqFecha: new Date(),
-          compradorID: compradorIdNum,
           liqMovimiento: "Salida",
-          liqCantidadQQ: cantidadSolicitada,
+          liqCantidadQQ: cantidad,
           liqDescripcion: descripcion || "",
+          compradores: { connect: { compradorId: compradorIdNum } }, // Relación correcta
         },
       });
 
@@ -103,7 +108,7 @@ export async function POST(req) {
       for (const s of pendientes) {
         if (cantidad <= 0) break;
 
-        const descontar = Math.min(s.pendiente, cantidad);
+        const descontar = roundToTwo(Math.min(s.pendiente, cantidad));
 
         await tx.detalleliqsalida.create({
           data: {
@@ -114,7 +119,7 @@ export async function POST(req) {
           },
         });
 
-        cantidad -= descontar;
+        cantidad = roundToTwo(cantidad - descontar);
       }
 
       // ----------------------------
@@ -124,16 +129,18 @@ export async function POST(req) {
         orderBy: { inventarioClienteID: "asc" },
       });
 
-      let restanteQQ = cantidadSolicitada;
+      let restanteQQ = roundToTwo(cantidadSolicitada);
       const movimientosACrear = [];
 
       for (const inv of inventarios) {
         if (restanteQQ <= 0) break;
 
-        const cantidadDisponible = Number(inv.cantidadQQ);
+        const cantidadDisponible = roundToTwo(Number(inv.cantidadQQ));
         if (cantidadDisponible <= 0) continue;
 
-        const descontarQQ = Math.min(restanteQQ, cantidadDisponible);
+        const descontarQQ = roundToTwo(
+          Math.min(restanteQQ, cantidadDisponible)
+        );
 
         // Actualizar inventario
         await tx.inventariocliente.update({
@@ -153,7 +160,7 @@ export async function POST(req) {
           nota: `Liquidación de salida #${liqSalida.liqSalidaID} - Comprador ID: ${compradorIdNum}`,
         });
 
-        restanteQQ -= descontarQQ;
+        restanteQQ = roundToTwo(restanteQQ - descontarQQ);
       }
 
       // Crear todos los movimientos en una sola operación
@@ -164,6 +171,12 @@ export async function POST(req) {
       }
 
       // Verificación final (margen por decimales)
+      if (restanteQQ > 0) {
+        // Mayor a 0 exacto porque roundToTwo ya maneja precisión
+        // Ojo: si roundToTwo funcionó perfecto, esto debería ser 0 exácto.
+        // Pero por seguridad podemos dejar un margen minúsculo o confiar en el redondeo
+      }
+
       if (restanteQQ > 0.009) {
         throw new Error(
           `Error interno: No se pudo descontar todo el inventario. Faltan ${restanteQQ.toFixed(

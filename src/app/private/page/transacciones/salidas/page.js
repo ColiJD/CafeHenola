@@ -51,7 +51,9 @@ export default function FormSalida() {
 
       const mensajes = [];
       if (data.cantidadPendiente > 0) {
-        mensajes.push(`Salidas pendientes: ${data.cantidadPendiente} QQ`);
+        mensajes.push(
+          `Salidas pendientes: ${Number(data.cantidadPendiente).toFixed(2)} QQ`
+        );
       }
 
       if (contratos.length > 0) {

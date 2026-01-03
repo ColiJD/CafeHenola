@@ -21,7 +21,8 @@ export async function POST(req) {
       );
     }
 
-    let montoIngresado = parseFloat(monto);
+    const roundToTwo = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
+    let montoIngresado = roundToTwo(parseFloat(monto));
 
     await prisma.$transaction(async (tx) => {
       const anticipos = await tx.anticipo.findMany({
@@ -48,18 +49,22 @@ export async function POST(req) {
           .filter((m) => m.tipo_movimiento === "INTERES_ANTICIPO")
           .reduce((sum, m) => sum + Number(m.monto || 0), 0);
 
+        const cargosRounded = roundToTwo(cargos);
+        const abonosRounded = roundToTwo(abonos);
+        const pagosInteresRounded = roundToTwo(pagosInteres);
+
         return {
           anticipo: a,
-          deudaCapital: parseFloat((Number(a.monto || 0) - abonos).toFixed(2)),
-          interesPendiente: parseFloat((cargos - pagosInteres).toFixed(2)),
-          totalCargos: cargos,
+          deudaCapital: roundToTwo(Number(a.monto || 0) - abonosRounded),
+          interesPendiente: roundToTwo(cargosRounded - pagosInteresRounded),
+          totalCargos: cargosRounded,
         };
       });
 
       // === ABONO AL CAPITAL ===
       if (tipo_movimiento === "ABONO_ANTICIPO") {
         const totalDeudaCapital = anticiposPendientes.reduce(
-          (sum, a) => sum + a.deudaCapital,
+          (sum, a) => roundToTwo(sum + a.deudaCapital),
           0
         );
         if (montoIngresado > totalDeudaCapital) {
@@ -76,7 +81,7 @@ export async function POST(req) {
         for (const a of anticiposPendientes) {
           if (restante <= 0 || a.deudaCapital <= 0) continue;
 
-          const aplicar = Math.min(restante, a.deudaCapital);
+          const aplicar = roundToTwo(Math.min(restante, a.deudaCapital));
 
           await tx.movimientos_anticipos.create({
             data: {
@@ -90,14 +95,14 @@ export async function POST(req) {
             },
           });
 
-          restante = parseFloat((restante - aplicar).toFixed(2));
+          restante = roundToTwo(restante - aplicar);
         }
       }
 
       // === PAGO DE INTERESES ===
       if (tipo_movimiento === "INTERES_ANTICIPO") {
         const totalIntereses = anticiposPendientes.reduce(
-          (sum, a) => sum + a.interesPendiente,
+          (sum, a) => roundToTwo(sum + a.interesPendiente),
           0
         );
 
@@ -119,7 +124,7 @@ export async function POST(req) {
         for (const a of anticiposPendientes) {
           if (restante <= 0 || a.interesPendiente <= 0) continue;
 
-          const aplicar = Math.min(restante, a.interesPendiente);
+          const aplicar = roundToTwo(Math.min(restante, a.interesPendiente));
 
           await tx.movimientos_anticipos.create({
             data: {
@@ -133,7 +138,7 @@ export async function POST(req) {
             },
           });
 
-          restante = parseFloat((restante - aplicar).toFixed(2));
+          restante = roundToTwo(restante - aplicar);
         }
       }
 
@@ -163,14 +168,22 @@ export async function POST(req) {
               .filter((m) => m.tipo_movimiento === "INTERES_ANTICIPO")
               .reduce((sum, m) => sum + Number(m.monto || 0), 0);
 
-            const deudaCapital = Number(a.monto || 0) - totalAbonos;
-            const interesPendiente = totalCargos - totalPagosInteres;
+            const totalAbonosRounded = roundToTwo(totalAbonos);
+            const totalCargosRounded = roundToTwo(totalCargos);
+            const totalPagosInteresRounded = roundToTwo(totalPagosInteres);
+
+            const deudaCapital = roundToTwo(
+              Number(a.monto || 0) - totalAbonosRounded
+            );
+            const interesPendiente = roundToTwo(
+              totalCargosRounded - totalPagosInteresRounded
+            );
 
             return {
               ...a,
               deudaCapital,
               interesPendiente,
-              totalCargos,
+              totalCargos: totalCargosRounded,
             };
           })
           .filter((a) => a.deudaCapital > 0 || a.interesPendiente > 0); // Solo los que tengan deuda

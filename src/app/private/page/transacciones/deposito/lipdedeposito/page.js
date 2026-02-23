@@ -19,7 +19,7 @@ import {
   DeleteFilled,
 } from "@ant-design/icons";
 import ProtectedButton from "@/components/ProtectedButton";
-import { exportLiquidacionDeposito } from "@/Doc/Documentos/liqDepositp";
+import { generarReporteLiquidacionesPDF } from "@/Doc/Reportes/FormatoLiquidacionDepositoDoc";
 import Filtros from "@/components/Filtros";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
 import EstadisticasCards from "@/components/ReportesElement/DatosEstadisticos";
@@ -121,7 +121,7 @@ export default function ReporteLiquidacionDeposito() {
           ? item.nombreCliente
               .toLowerCase()
               .includes(nombreFiltro.toLowerCase())
-          : true
+          : true,
       );
   }, [data, nombreFiltro, messageApi, fetchData]);
 
@@ -133,7 +133,7 @@ export default function ReporteLiquidacionDeposito() {
         totalQQ: (acc.totalQQ || 0) + (parseFloat(item.liqCatidadQQ) || 0),
         totalLps: (acc.totalLps || 0) + (parseFloat(item.liqTotalLps) || 0),
       }),
-      {}
+      {},
     );
   }, [datosFiltrados]);
 
@@ -268,7 +268,7 @@ export default function ReporteLiquidacionDeposito() {
                     if (rangoFechas?.[0] && rangoFechas?.[1]) {
                       await fetchData(
                         rangoFechas[0].startOf("day").toISOString(),
-                        rangoFechas[1].endOf("day").toISOString()
+                        rangoFechas[1].endOf("day").toISOString(),
                       );
                     } else {
                       await fetchData();
@@ -326,14 +326,14 @@ export default function ReporteLiquidacionDeposito() {
               if (rangoFechas?.[0] && rangoFechas?.[1]) {
                 fetchData(
                   rangoFechas[0].startOf("day").toISOString(),
-                  rangoFechas[1].endOf("day").toISOString()
+                  rangoFechas[1].endOf("day").toISOString(),
                 );
               } else {
                 fetchData();
               }
             }}
             onExportPDF={() =>
-              exportLiquidacionDeposito(
+              generarReporteLiquidacionesPDF(
                 datosFiltrados,
                 {
                   fechaInicio: rangoFechas?.[0]?.toISOString(),
@@ -344,7 +344,7 @@ export default function ReporteLiquidacionDeposito() {
                   totalRegistros: estadisticas?.totalRegistros || 0,
                   totalQQ: estadisticas?.totalQQ || 0,
                   totalLps: estadisticas?.totalLps || 0,
-                }
+                },
               )
             }
             disableExport={!datosFiltrados.length}
@@ -410,7 +410,7 @@ export default function ReporteLiquidacionDeposito() {
               {rangoFechas?.[0] &&
                 rangoFechas?.[1] &&
                 `Período: ${rangoFechas[0].format(
-                  "DD/MM/YYYY"
+                  "DD/MM/YYYY",
                 )} - ${rangoFechas[1].format("DD/MM/YYYY")}`}
             </Text>
           </div>

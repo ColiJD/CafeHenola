@@ -51,7 +51,7 @@ export default function ResumenMovimientos() {
         tipo: "Salidas",
         compraQQ: Number(data?.compras?.salidas?._sum?.compraCantidadQQ ?? 0),
         compraLps: Number(data?.compras?.salidas?._sum?.compraTotal ?? 0),
-        depositoQQ: Number(data?.liquidadoSalidasRange ?? 0), // Liquidado (Confirmación)
+        depositoQQ: Number(data?.salidas?.cantidadQQ ?? 0), // Total Compromiso
         depositoLps: Number(data?.salidas?.total ?? 0),
         depositoPendienteQQ:
           Number(data?.salidas?.cantidadQQ ?? 0) -
@@ -62,22 +62,24 @@ export default function ResumenMovimientos() {
     ];
 
     const filasConTotales = filas.map((row) => {
-      // Volumen total (Líquidado + Pendiente)
+      // El Total QQ para Salidas DEBE ser: Compromiso - Pendiente = Ejecutado
+      // Para Entradas es: Liquidado + Pendiente (en almacén)
       const totalQQ =
         (row.compraQQ || 0) +
         (row.depositoQQ || 0) +
-        (row.depositoPendienteQQ || 0) +
+        (row.key === "salidas"
+          ? -(row.depositoPendienteQQ || 0)
+          : row.depositoPendienteQQ || 0) +
         (row.contratoQQ || 0);
 
       const totalLps =
         (row.compraLps || 0) + (row.depositoLps || 0) + (row.contratoLps || 0);
 
-      // El promedio para Salidas usa el volumen total físico (porque ya tienen precio)
-      // Para Entradas solo usamos lo que tiene precio (Líq + Compra + Contrato)
+      // El denominador para promedio incluye todo lo que tiene precio
+      // En Salidas es el total comprometido (depositoQQ ya es el total)
+      // En Entradas es solo lo liquidado
       const denominadorPromedio =
-        row.key === "salidas"
-          ? totalQQ
-          : (row.compraQQ || 0) + (row.depositoQQ || 0) + (row.contratoQQ || 0);
+        (row.compraQQ || 0) + (row.depositoQQ || 0) + (row.contratoQQ || 0);
 
       const promedio =
         denominadorPromedio > 0 ? totalLps / denominadorPromedio : 0;
@@ -179,7 +181,7 @@ export default function ResumenMovimientos() {
           }),
         },
         {
-          title: "Depósito Liquidado",
+          title: "Depósito / Compromiso",
           children: ["depositoQQ", "depositoLps"].map((key) => ({
             title: key === "depositoQQ" ? "QQ" : "Lps",
             dataIndex: key,
@@ -415,6 +417,11 @@ export default function ResumenMovimientos() {
         key: "inv",
         descripcion: "Inventario Disponible (QQ)",
         cantidad: Number(data?.inventario?.disponibleQQ ?? 0),
+      },
+      {
+        key: "pend",
+        descripcion: "Pendiente de Salida (QQ)",
+        cantidad: Number(data?.pendienteSalidasGlobal ?? 0),
       },
     ];
   }, [data]);

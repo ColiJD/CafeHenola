@@ -51,30 +51,30 @@ export default function ResumenMovimientos() {
         tipo: "Salidas",
         compraQQ: Number(data?.compras?.salidas?._sum?.compraCantidadQQ ?? 0),
         compraLps: Number(data?.compras?.salidas?._sum?.compraTotal ?? 0),
-        depositoQQ: Number(data?.salidas?.cantidadQQ ?? 0), // Base física para salidas
+        depositoQQ: Number(data?.liquidadoSalidasRange ?? 0), // Liquidado (Confirmación)
         depositoLps: Number(data?.salidas?.total ?? 0),
         depositoPendienteQQ:
           Number(data?.salidas?.cantidadQQ ?? 0) -
-          Number(data?.liquidadoSalidasRange ?? 0),
+          Number(data?.liquidadoSalidasRange ?? 0) -
+          Number(data?.compras?.salidas?._sum?.compraCantidadQQ ?? 0) -
+          Number(data?.contratoSalidasTotal?.cantidadQQ ?? 0),
         contratoQQ: Number(data?.contratoSalidasTotal?.cantidadQQ ?? 0),
         contratoLps: Number(data?.contratoSalidasTotal?.total ?? 0),
       },
     ];
 
     const filasConTotales = filas.map((row) => {
-      // Para entradas suma (pasa de liquidado a físico), para salidas resta (pasa de físico a liquidado)
+      // Total físico (Liquidado + Pendiente)
       const totalQQ =
         (row.compraQQ || 0) +
         (row.depositoQQ || 0) +
-        (row.key === "salidas"
-          ? -(row.depositoPendienteQQ || 0)
-          : row.depositoPendienteQQ || 0) +
+        (row.depositoPendienteQQ || 0) +
         (row.contratoQQ || 0);
 
       const totalLps =
         (row.compraLps || 0) + (row.depositoLps || 0) + (row.contratoLps || 0);
 
-      // El promedio se basa en lo que tiene precio (Liquidado en Entradas, Físico en Salidas)
+      // El promedio se basa solo en lo que ya tiene precio/valor
       const denominadorPromedio =
         (row.compraQQ || 0) + (row.depositoQQ || 0) + (row.contratoQQ || 0);
 
@@ -201,11 +201,7 @@ export default function ResumenMovimientos() {
             dataIndex: key,
             key,
             align: "left",
-            render: (v, record) => {
-              // Si es la fila de salidas, mostrar con signo negativo para que se entienda la resta
-              const valor = record.key === "salidas" ? -v : v;
-              return formatNumber(valor);
-            },
+            render: (v) => formatNumber(v),
             onCell: () => ({
               style: { backgroundColor: "#fff0f6", fontWeight: "bold" }, // color diferente
             }),

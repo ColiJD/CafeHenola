@@ -418,11 +418,6 @@ export default function ResumenMovimientos() {
         descripcion: "Inventario Disponible (QQ)",
         cantidad: Number(data?.inventario?.disponibleQQ ?? 0),
       },
-      {
-        key: "pend",
-        descripcion: "Pendiente de Salida (QQ)",
-        cantidad: Number(data?.pendienteSalidasGlobal ?? 0),
-      },
     ];
   }, [data]);
 

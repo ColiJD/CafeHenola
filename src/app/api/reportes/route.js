@@ -58,7 +58,11 @@ export async function GET(req) {
 
     // 🔹 Contratos
     const contratosDetalles = await prisma.detallecontrato.findMany({
-      where: { tipoMovimiento: "Entrada", fecha: { gte: desde, lte: hasta } },
+      where: {
+        tipoMovimiento: "Entrada",
+        fecha: { gte: desde, lte: hasta },
+        NOT: { tipoMovimiento: "Anulado" },
+      },
       select: { cantidadQQ: true, precioQQ: true },
     });
 
@@ -79,6 +83,7 @@ export async function GET(req) {
           liqMovimiento: "Entrada",
           liqFecha: { gte: desde, lte: hasta },
         },
+        OR: [{ movimiento: "Entrada" }, { movimiento: null }],
       },
     });
 
@@ -118,6 +123,7 @@ export async function GET(req) {
       where: {
         tipoMovimiento: "Salida",
         fecha: { gte: desde, lte: hasta },
+        NOT: { tipoMovimiento: "Anulado" },
       },
       select: { cantidadQQ: true, precioQQ: true },
     });
@@ -144,6 +150,7 @@ export async function GET(req) {
       where: {
         tipo_movimiento: { in: ["ABONO", "PAGO_INTERES", "Int-Cargo"] },
         fecha: { gte: desde, lte: hasta },
+        NOT: { tipo_movimiento: "Anulado" },
       },
     });
 
@@ -184,6 +191,7 @@ export async function GET(req) {
           in: ["CARGO_ANTICIPO", "INTERES_ANTICIPO", "ABONO_ANTICIPO"],
         },
         fecha: { gte: desde, lte: hasta },
+        NOT: { tipo_movimiento: "Anulado" },
       },
     });
 
@@ -223,7 +231,10 @@ export async function GET(req) {
           liqsalida: {
             liqFecha: { gte: desde, lte: hasta },
           },
-          OR: [{ movimiento: null }, { movimiento: { not: "Anulado" } }],
+          salida: {
+            salidaMovimiento: "Salida",
+          },
+          OR: [{ movimiento: "Salida" }, { movimiento: null }],
         },
       });
     const totalLiquidadoSalidasRange = Number(

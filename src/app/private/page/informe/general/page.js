@@ -55,16 +55,14 @@ export default function ResumenMovimientos() {
         depositoLps: Number(data?.salidas?.total ?? 0),
         depositoPendienteQQ:
           Number(data?.salidas?.cantidadQQ ?? 0) -
-          Number(data?.liquidadoSalidasRange ?? 0) -
-          Number(data?.compras?.salidas?._sum?.compraCantidadQQ ?? 0) -
-          Number(data?.contratoSalidasTotal?.cantidadQQ ?? 0),
+          Number(data?.liquidadoSalidasRange ?? 0),
         contratoQQ: Number(data?.contratoSalidasTotal?.cantidadQQ ?? 0),
         contratoLps: Number(data?.contratoSalidasTotal?.total ?? 0),
       },
     ];
 
     const filasConTotales = filas.map((row) => {
-      // Total físico (Liquidado + Pendiente)
+      // Volumen total (Líquidado + Pendiente)
       const totalQQ =
         (row.compraQQ || 0) +
         (row.depositoQQ || 0) +
@@ -74,9 +72,12 @@ export default function ResumenMovimientos() {
       const totalLps =
         (row.compraLps || 0) + (row.depositoLps || 0) + (row.contratoLps || 0);
 
-      // El promedio se basa solo en lo que ya tiene precio/valor
+      // El promedio para Salidas usa el volumen total físico (porque ya tienen precio)
+      // Para Entradas solo usamos lo que tiene precio (Líq + Compra + Contrato)
       const denominadorPromedio =
-        (row.compraQQ || 0) + (row.depositoQQ || 0) + (row.contratoQQ || 0);
+        row.key === "salidas"
+          ? totalQQ
+          : (row.compraQQ || 0) + (row.depositoQQ || 0) + (row.contratoQQ || 0);
 
       const promedio =
         denominadorPromedio > 0 ? totalLps / denominadorPromedio : 0;

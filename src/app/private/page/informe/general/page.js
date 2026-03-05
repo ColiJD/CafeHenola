@@ -51,28 +51,36 @@ export default function ResumenMovimientos() {
         tipo: "Salidas",
         compraQQ: Number(data?.compras?.salidas?._sum?.compraCantidadQQ ?? 0),
         compraLps: Number(data?.compras?.salidas?._sum?.compraTotal ?? 0),
-        depositoQQ: Number(data?.salidas?.cantidadQQ ?? 0),
+        depositoQQ: Number(data?.salidas?.cantidadQQ ?? 0), // Base física para salidas
         depositoLps: Number(data?.salidas?.total ?? 0),
-        depositoPendienteQQ: Number(data?.pendiente ?? 0),
+        depositoPendienteQQ:
+          Number(data?.salidas?.cantidadQQ ?? 0) -
+          Number(data?.liquidadoSalidasRange ?? 0),
         contratoQQ: Number(data?.contratoSalidasTotal?.cantidadQQ ?? 0),
         contratoLps: Number(data?.contratoSalidasTotal?.total ?? 0),
       },
     ];
 
     const filasConTotales = filas.map((row) => {
+      // Para entradas suma (pasa de liquidado a físico), para salidas resta (pasa de físico a liquidado)
       const totalQQ =
         (row.compraQQ || 0) +
         (row.depositoQQ || 0) +
-        // Para entradas suma, para salidas resta
         (row.key === "salidas"
           ? -(row.depositoPendienteQQ || 0)
           : row.depositoPendienteQQ || 0) +
         (row.contratoQQ || 0);
-      const totalLps = row.compraLps + row.depositoLps + row.contratoLps;
+
+      const totalLps =
+        (row.compraLps || 0) + (row.depositoLps || 0) + (row.contratoLps || 0);
+
+      // El promedio se basa en lo que tiene precio (Liquidado en Entradas, Físico en Salidas)
+      const denominadorPromedio =
+        (row.compraQQ || 0) + (row.depositoQQ || 0) + (row.contratoQQ || 0);
+
       const promedio =
-        totalQQ + row.depositoPendienteQQ > 0
-          ? totalLps / (totalQQ + row.depositoPendienteQQ)
-          : 0;
+        denominadorPromedio > 0 ? totalLps / denominadorPromedio : 0;
+
       return { ...row, totalQQ, totalLps, promedio };
     });
 
@@ -118,8 +126,8 @@ export default function ResumenMovimientos() {
           key === "totalQQ"
             ? "QQ Total"
             : key === "totalLps"
-            ? "Total Lps"
-            : "Promedio",
+              ? "Total Lps"
+              : "Promedio",
         dataIndex: key,
         key,
         align: "left",
@@ -194,7 +202,7 @@ export default function ResumenMovimientos() {
             key,
             align: "left",
             render: (v, record) => {
-              // Si es la fila de salidas, mostrar con signo negativo
+              // Si es la fila de salidas, mostrar con signo negativo para que se entienda la resta
               const valor = record.key === "salidas" ? -v : v;
               return formatNumber(valor);
             },
@@ -245,7 +253,7 @@ export default function ResumenMovimientos() {
       row.contratoQQ > 0 ||
       row.contratoLps > 0 ||
       row.depositoQQ > 0 ||
-      row.depositoLps > 0
+      row.depositoLps > 0,
   );
 
   // 🔹 Normalizar y calcular totales de préstamos
@@ -324,8 +332,8 @@ export default function ResumenMovimientos() {
           key === "totalCreditos"
             ? "Total Créditos"
             : key === "totalAbonos"
-            ? "Total Abonos"
-            : "Saldo",
+              ? "Total Abonos"
+              : "Saldo",
         dataIndex: key,
         key,
         align: "left",
@@ -353,15 +361,15 @@ export default function ResumenMovimientos() {
             key === "totalPrestamos"
               ? "Monto Inicial"
               : key === "abono"
-              ? "Abono"
-              : key === "pagoInteres"
-              ? "Pago de interes"
-              : "Cargar Interes",
+                ? "Abono"
+                : key === "pagoInteres"
+                  ? "Pago de interes"
+                  : "Cargar Interes",
           dataIndex: key,
           key,
           align: "left",
           render: (v) => `L. ${formatNumber(v)}`,
-        })
+        }),
       ),
       onHeaderCell: () => ({
         style: {
@@ -378,7 +386,7 @@ export default function ResumenMovimientos() {
       if (col.children) {
         return flattenColumns(
           col.children,
-          parentTitle ? `${parentTitle} ${col.title}` : col.title
+          parentTitle ? `${parentTitle} ${col.title}` : col.title,
         );
       }
       return {
@@ -463,13 +471,13 @@ export default function ResumenMovimientos() {
             onRefresh={() =>
               fetchData(
                 rangoFechas?.[0]?.startOf("day").toISOString(),
-                rangoFechas?.[1]?.endOf("day").toISOString()
+                rangoFechas?.[1]?.endOf("day").toISOString(),
               )
             }
             onExportPDF={() => {
               if (!hayDatos) {
                 messageApi.warning(
-                  "No hay datos válidos para generar el reporte."
+                  "No hay datos válidos para generar el reporte.",
                 );
                 return;
               }
@@ -488,7 +496,7 @@ export default function ResumenMovimientos() {
                     ...datosInventario,
                   ],
                   { fechaInicio: rangoFechas?.[0], fechaFin: rangoFechas?.[1] },
-                  { title: "Reporte Completo" }
+                  { title: "Reporte Completo" },
                 );
                 messageApi.success({
                   content: "Reporte generado correctamente",
@@ -552,7 +560,7 @@ export default function ResumenMovimientos() {
               {rangoFechas?.[0] &&
                 rangoFechas?.[1] &&
                 `Período: ${rangoFechas[0].format(
-                  "DD/MM/YYYY"
+                  "DD/MM/YYYY",
                 )} - ${rangoFechas[1].format("DD/MM/YYYY")}`}
             </Text>
           </div>

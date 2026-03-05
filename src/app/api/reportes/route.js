@@ -24,7 +24,7 @@ export async function GET(req) {
     } else {
       const ahora = new Date();
       desde = new Date(
-        Date.UTC(ahora.getFullYear(), ahora.getMonth(), 1, 0, 0, 0)
+        Date.UTC(ahora.getFullYear(), ahora.getMonth(), 1, 0, 0, 0),
       );
       hasta = new Date(
         Date.UTC(
@@ -34,8 +34,8 @@ export async function GET(req) {
           23,
           59,
           59,
-          999
-        )
+          999,
+        ),
       );
     }
 
@@ -68,7 +68,7 @@ export async function GET(req) {
         acc.total += Number(item.cantidadQQ || 0) * Number(item.precioQQ || 0);
         return acc;
       },
-      { cantidadQQ: 0, total: 0 }
+      { cantidadQQ: 0, total: 0 },
     );
 
     // 🔹 Depósitos
@@ -91,7 +91,7 @@ export async function GET(req) {
       },
     });
     const totalDepositosQQ = Number(
-      totalDepositosRaw._sum.depositoCantidadQQ ?? 0
+      totalDepositosRaw._sum.depositoCantidadQQ ?? 0,
     );
 
     // 🔹 Salidas
@@ -111,7 +111,7 @@ export async function GET(req) {
         acc.total += cantidad * precio;
         return acc;
       },
-      { cantidadQQ: 0, total: 0 }
+      { cantidadQQ: 0, total: 0 },
     );
 
     const contratoSalidas = await prisma.detalleContratoSalida.findMany({
@@ -128,7 +128,7 @@ export async function GET(req) {
         acc.total += Number(item.cantidadQQ || 0) * Number(item.precioQQ || 0);
         return acc;
       },
-      { cantidadQQ: 0, total: 0 }
+      { cantidadQQ: 0, total: 0 },
     );
 
     // 🔹 Préstamos
@@ -137,13 +137,13 @@ export async function GET(req) {
       where: { estado: "ACTIVO" },
     });
 
-    // 🔹 Movimientos de préstamo filtrando los tres tipos
+    // 🔹 Movimientos de préstamo filtrando por fecha
     const movimientosPrestamo = await prisma.movimientos_prestamo.groupBy({
       by: ["tipo_movimiento"],
       _sum: { monto: true },
       where: {
         tipo_movimiento: { in: ["ABONO", "PAGO_INTERES", "Int-Cargo"] },
-        // usa el rango de fechas definido arriba
+        fecha: { gte: desde, lte: hasta },
       },
     });
 
@@ -175,7 +175,7 @@ export async function GET(req) {
       where: { estado: "ACTIVO" },
     });
 
-    // 🔹 Movimientos de anticipo filtrando los dos tipos
+    // 🔹 Movimientos de anticipo filtrando por fecha
     const movimientosAnticipo = await prisma.movimientos_anticipos.groupBy({
       by: ["tipo_movimiento"],
       _sum: { monto: true },
@@ -183,7 +183,7 @@ export async function GET(req) {
         tipo_movimiento: {
           in: ["CARGO_ANTICIPO", "INTERES_ANTICIPO", "ABONO_ANTICIPO"],
         },
-        // usa el mismo rango de fechas
+        fecha: { gte: desde, lte: hasta },
       },
     });
 
@@ -200,7 +200,7 @@ export async function GET(req) {
         resumenMovimientosAnticipo.hasOwnProperty(mov.tipo_movimiento)
       ) {
         resumenMovimientosAnticipo[mov.tipo_movimiento] = Number(
-          mov._sum.monto ?? 0
+          mov._sum.monto ?? 0,
         );
       }
     });
@@ -210,31 +210,64 @@ export async function GET(req) {
       totalAnticiposActivos: Number(anticiposActivos._sum.monto ?? 0),
       movimientos: resumenMovimientosAnticipo,
     };
+
     const inventario = await prisma.inventariocliente.aggregate({
       _sum: { cantidadQQ: true },
     });
 
-    // 1️⃣ Total de salidas válidas
-    const totalSalidasRaw = await prisma.salida.aggregate({
+    // 🔹 Liquidaciones de Salidas en el Rango
+    const totalLiquidadoSalidasRangeRaw =
+      await prisma.detalleliqsalida.aggregate({
+        _sum: { cantidadQQ: true },
+        where: {
+          liqsalida: {
+            liqFecha: { gte: desde, lte: hasta },
+          },
+          OR: [{ movimiento: null }, { movimiento: { not: "Anulado" } }],
+        },
+      });
+    const totalLiquidadoSalidasRange = Number(
+      totalLiquidadoSalidasRangeRaw._sum.cantidadQQ ?? 0,
+    );
+
+    // 1️⃣ Total de salidas válidas (Global para pendiente)
+    const totalSalidasRawGlobal = await prisma.salida.aggregate({
       _sum: { salidaCantidadQQ: true },
       where: { salidaMovimiento: "Salida" },
     });
-    const totalSalidas = Number(totalSalidasRaw._sum.salidaCantidadQQ ?? 0);
+    const totalSalidasGlobal = Number(
+      totalSalidasRawGlobal._sum.salidaCantidadQQ ?? 0,
+    );
 
-    // 2️⃣ Total liquidado válido (detalle no anulado)
-    const totalLiquidadoRaw = await prisma.detalleliqsalida.aggregate({
+    // 2️⃣ Total liquidado válido (Global para pendiente)
+    const totalLiquidadoRawGlobal = await prisma.detalleliqsalida.aggregate({
       _sum: { cantidadQQ: true },
       where: {
-        OR: [
-          { movimiento: null }, // incluir los nulos
-          { movimiento: { not: "Anulado" } }, // incluir los distintos de "Anulado"
-        ],
+        OR: [{ movimiento: null }, { movimiento: { not: "Anulado" } }],
       },
     });
-    const totalLiquidado = Number(totalLiquidadoRaw._sum.cantidadQQ ?? 0);
+    const totalLiquidadoGlobal = Number(
+      totalLiquidadoRawGlobal._sum.cantidadQQ ?? 0,
+    );
 
-    // 3️⃣ Pendiente
-    const pendiente = totalSalidas - totalLiquidado;
+    // 3️⃣ Pendiente Salidas (Global)
+    const pendienteSalidasGlobal = totalSalidasGlobal - totalLiquidadoGlobal;
+
+    // 4️⃣ Pendiente Depósitos (Global)
+    const totalDepositosGlobalRaw = await prisma.deposito.aggregate({
+      _sum: { depositoCantidadQQ: true },
+      where: { depositoMovimiento: "Deposito" },
+    });
+    const totalLiquidadoDepositosGlobalRaw =
+      await prisma.detalleliqdeposito.aggregate({
+        _sum: { cantidadQQ: true },
+        where: {
+          OR: [{ movimiento: null }, { movimiento: { not: "Anulado" } }],
+        },
+      });
+    const pendienteDepositosGlobal =
+      Number(totalDepositosGlobalRaw._sum.depositoCantidadQQ ?? 0) -
+      Number(totalLiquidadoDepositosGlobalRaw._sum.cantidadQQ ?? 0);
 
     return new Response(
       JSON.stringify({
@@ -242,17 +275,18 @@ export async function GET(req) {
         contratos: { entradas: contratosEntradas },
         depositos: { entradas: depositosEntradas, totalDepositosQQ },
         salidas,
+        liquidadoSalidasRange: totalLiquidadoSalidasRange,
         prestamos,
         anticipos,
         inventario: {
           disponibleQQ: Number(inventario._sum.cantidadQQ ?? 0),
         },
-        totalSalidas,
-        totalLiquidado,
-        pendiente,
+        pendienteSalidasGlobal,
+        pendienteDepositosGlobal,
         contratoSalidasTotal,
       }),
-      { status: 200 }
+
+      { status: 200 },
     );
   } catch (error) {
     console.error("❌ Error en API:", error);

@@ -36,7 +36,7 @@ export async function DELETE(req, { params }) {
     if (!movimiento) {
       return new Response(
         JSON.stringify({ error: "Movimiento de inventario no encontrado" }),
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -50,7 +50,7 @@ export async function DELETE(req, { params }) {
           error:
             "El movimiento no es ni Entrada ni Salida (posiblemente ya fue anulado)",
         }),
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -92,13 +92,13 @@ export async function DELETE(req, { params }) {
       JSON.stringify({
         message: `${esEntrada ? "Compra" : "Venta"} anulada correctamente`,
       }),
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("❌ Error al anular registro:", error);
     return new Response(
       JSON.stringify({ error: "Error interno al anular el registro" }),
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -141,7 +141,7 @@ export async function PUT(request, { params }) {
     ) {
       return new Response(
         JSON.stringify({ error: "Faltan datos obligatorios" }),
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -199,7 +199,6 @@ export async function PUT(request, { params }) {
       } else {
         await prisma.inventariocliente.create({
           data: {
-            clienteID: Number(clienteID),
             productoID,
             cantidadQQ: cantidadQQNueva,
             cantidadSacos: cantidadSacosNueva,
@@ -234,7 +233,7 @@ export async function PUT(request, { params }) {
     console.error(error);
     return new Response(
       JSON.stringify({ error: "Error al actualizar compra" }),
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -281,7 +280,7 @@ export async function GET(req, context) {
     if (!compra) {
       return NextResponse.json(
         { error: "Compra no encontrada" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -290,7 +289,7 @@ export async function GET(req, context) {
     console.error("Error en GET /api/compras/[id]:", error);
     return NextResponse.json(
       { error: "Error interno del servidor" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -9,6 +9,7 @@ export default function LiquidacionDrawer({
   comprador,
   cantidadPendiente,
   onLiquidar,
+  productos = [],
   messageApi,
 }) {
   const [form] = Form.useForm();
@@ -28,6 +29,7 @@ export default function LiquidacionDrawer({
       setSubmitting(true);
 
       await onLiquidar({
+        productoID: values.productoID,
         cantidadLiquidar: values.cantidadLiquidar,
         descripcion: values.descripcion,
       });
@@ -63,7 +65,28 @@ export default function LiquidacionDrawer({
         QQ
       </p>
 
-      <Form form={form} layout="vertical">
+      <Form form={form} layout="vertical" initialValues={{ productoID: 16 }}>
+        <Form.Item
+          label="Producto"
+          name="productoID"
+          rules={[{ required: true, message: "Seleccione un producto" }]}
+        >
+          <select
+            style={{
+              width: "100%",
+              padding: "8px",
+              borderRadius: "4px",
+              border: "1px solid #d9d9d9",
+              background: "white",
+            }}
+          >
+            {productos.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </Form.Item>
         <Form.Item
           label="Cantidad a liquidar"
           name="cantidadLiquidar"

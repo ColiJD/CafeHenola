@@ -1,6 +1,6 @@
 import prisma from "@/lib/prisma";
 import { checkRole } from "@/lib/checkRole";
-export async function POST(request,req) {
+export async function POST(request, req) {
   const sessionOrResponse = await checkRole(req, [
     "ADMIN",
     "GERENCIA",
@@ -29,7 +29,7 @@ export async function POST(request,req) {
     ) {
       return new Response(
         JSON.stringify({ error: "Faltan datos obligatorios" }),
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -44,14 +44,14 @@ export async function POST(request,req) {
         JSON.stringify({
           error: "La cantidad en QQ debe ser un número mayor que cero",
         }),
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (cantidadSacos < 0 || isNaN(cantidadSacos)) {
       return new Response(
         JSON.stringify({ error: "La cantidad de sacos no puede ser negativa" }),
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -59,7 +59,7 @@ export async function POST(request,req) {
     if (typeof depositoEn !== "string" || depositoEn.trim() === "") {
       return new Response(
         JSON.stringify({ error: "El campo 'depositoEn' es obligatorio" }),
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -81,20 +81,16 @@ export async function POST(request,req) {
       },
     });
 
-    // 🔹 Actualizar inventario del cliente
-    const inventarioCliente = await prisma.inventariocliente.upsert({
+    // 🔹 Actualizar inventario global por producto
+    const inventarioGlobal = await prisma.inventariocliente.upsert({
       where: {
-        clienteID_productoID: {
-          clienteID: Number(clienteID),
-          productoID: Number(depositoTipoCafe),
-        },
+        productoID: Number(depositoTipoCafe),
       },
       update: {
         cantidadQQ: { increment: cantidadQQ },
         cantidadSacos: { increment: cantidadSacos },
       },
       create: {
-        clienteID: Number(clienteID),
         productoID: Number(depositoTipoCafe),
         cantidadQQ: cantidadQQ,
         cantidadSacos: cantidadSacos,
@@ -104,7 +100,7 @@ export async function POST(request,req) {
     // ✅ Registrar movimiento usando inventarioClienteID
     await prisma.movimientoinventario.create({
       data: {
-        inventarioClienteID: inventarioCliente.inventarioClienteID,
+        inventarioClienteID: inventarioGlobal.inventarioClienteID,
         tipoMovimiento: "Entrada",
         referenciaTipo: `Deposito #${nuevoDeposito.depositoID}`,
         referenciaID: nuevoDeposito.depositoID,
@@ -119,7 +115,7 @@ export async function POST(request,req) {
     console.error("Error al registrar depósito:", error);
     return new Response(
       JSON.stringify({ error: "Error al registrar depósito" }),
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

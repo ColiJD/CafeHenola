@@ -40,7 +40,7 @@ export async function GET(req) {
         _sum: { monto: true },
         where: {
           clienteId: cli.clienteID,
-          estado: "ACTIVO",
+          estado: { in: ["ACTIVO", "COMPLETADO"] },
         },
       });
 
@@ -50,7 +50,15 @@ export async function GET(req) {
         where: {
           prestamos: { clienteId: cli.clienteID },
           fecha: { gte: desde, lte: hasta },
-          tipo_movimiento: { in: ["Int-Cargo", "ABONO", "PAGO_INTERES"] },
+          tipo_movimiento: {
+            in: [
+              "Int-Cargo",
+              "ABONO",
+              "PAGO_INTERES",
+              "CARGO_INTERES",
+              "ABONO_INTERES",
+            ],
+          },
         },
       });
 
@@ -60,7 +68,13 @@ export async function GET(req) {
         PAGO_INTERES: 0,
       };
       for (const m of movPrestamo) {
-        Mpre[m.tipo_movimiento] = Number(m._sum.monto ?? 0);
+        if (["Int-Cargo", "CARGO_INTERES"].includes(m.tipo_movimiento)) {
+          Mpre["Int-Cargo"] += Number(m._sum.monto ?? 0);
+        } else if (["ABONO", "ABONO_INTERES"].includes(m.tipo_movimiento)) {
+          Mpre["ABONO"] += Number(m._sum.monto ?? 0);
+        } else if (m.tipo_movimiento === "PAGO_INTERES") {
+          Mpre["PAGO_INTERES"] += Number(m._sum.monto ?? 0);
+        }
       }
 
       const activoPrestamo =
@@ -75,7 +89,7 @@ export async function GET(req) {
         _sum: { monto: true },
         where: {
           clienteId: cli.clienteID,
-          estado: "ACTIVO",
+          estado: { in: ["ACTIVO", "COMPLETADO"] },
         },
       });
 
@@ -137,7 +151,7 @@ export async function GET(req) {
     console.error("ERROR REPORTE: ", error);
     return Response.json(
       { ok: false, error: "Error al obtener el reporte" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -54,7 +54,8 @@ export async function GET(req) {
         const saldoInicial = Number(a.monto || 0);
         const saldoPendiente =
           Math.round(
-            (saldoInicial + totalIntCargo - totalAbono - totalPagoInteres) * 100
+            (saldoInicial + totalIntCargo - totalAbono - totalPagoInteres) *
+              100,
           ) / 100;
 
         const completado = saldoPendiente <= 0;
@@ -84,7 +85,7 @@ export async function GET(req) {
     console.error("Error al obtener anticipos pendientes:", error);
     return new Response(
       JSON.stringify({ error: "No se pudieron cargar los anticipos." }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: { "Content-Type": "application/json" } },
     );
   }
 }

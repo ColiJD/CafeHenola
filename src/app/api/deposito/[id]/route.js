@@ -47,7 +47,7 @@ export async function DELETE(req, { params }) {
           error: `No se puede eliminar el depósito porque está asociado a la liquidación ${listaLiquidaciones}.`,
           detalles: liquidacionesActivas,
         }),
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -63,7 +63,7 @@ export async function DELETE(req, { params }) {
     if (!movimiento) {
       return new Response(
         JSON.stringify({ error: "Movimiento de inventario no encontrado" }),
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -102,13 +102,13 @@ export async function DELETE(req, { params }) {
       JSON.stringify({
         message: `${esEntrada ? "Compra" : "Venta"} anulada correctamente`,
       }),
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     console.error("❌ Error al anular depósito:", error);
     return new Response(
       JSON.stringify({ error: "Error interno al anular el depósito" }),
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -127,7 +127,7 @@ export async function PUT(request, { params }) {
     if (!depositoID) {
       return Response.json(
         { error: "ID de depósito inválido" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -137,7 +137,7 @@ export async function PUT(request, { params }) {
     if (cantidadQQ === undefined || observaciones === undefined) {
       return Response.json(
         { error: "Faltan datos obligatorios" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -146,7 +146,7 @@ export async function PUT(request, { params }) {
     if (isNaN(cantidad) || cantidad <= 0) {
       return Response.json(
         { error: "La cantidad en QQ debe ser un número mayor que cero" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -157,7 +157,7 @@ export async function PUT(request, { params }) {
     if (!depositoOriginal) {
       return Response.json(
         { error: "No se encontró el depósito a modificar" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -180,7 +180,7 @@ export async function PUT(request, { params }) {
         {
           error: `No se puede modificar el depósito porque ya tiene registros de liquidación asociados (Liquidación #${numeroLiquidacion})`,
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -201,16 +201,12 @@ export async function PUT(request, { params }) {
       const diferenciaQQ =
         cantidad - Number(depositoOriginal.depositoCantidadQQ);
 
-      const inventarioCliente = await tx.inventariocliente.upsert({
+      const inventarioGlobal = await tx.inventariocliente.upsert({
         where: {
-          clienteID_productoID: {
-            clienteID: Number(clienteID),
-            productoID: Number(depositoTipoCafe),
-          },
+          productoID: Number(depositoTipoCafe),
         },
         update: { cantidadQQ: { increment: diferenciaQQ } },
         create: {
-          clienteID: Number(clienteID),
           productoID: Number(depositoTipoCafe),
           cantidadQQ: cantidad,
           cantidadSacos: depositoOriginal.depositoTotalSacos || 0,
@@ -220,7 +216,7 @@ export async function PUT(request, { params }) {
       // c) Registrar movimiento de inventario
       await tx.movimientoinventario.create({
         data: {
-          inventarioClienteID: inventarioCliente.inventarioClienteID,
+          inventarioClienteID: inventarioGlobal.inventarioClienteID,
           tipoMovimiento: "Ajuste",
           referenciaTipo: `Depósito #${depositoID}`,
           referenciaID: depositoID,
@@ -240,7 +236,7 @@ export async function PUT(request, { params }) {
     console.error("Error al actualizar depósito:", error);
     return Response.json(
       { error: error?.message || "Error al actualizar depósito" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -282,7 +278,7 @@ export async function GET(req, context) {
     if (!deposito) {
       return NextResponse.json(
         { error: "Depósito no encontrado" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -301,7 +297,7 @@ export async function GET(req, context) {
     console.error("Error en GET /api/deposito/[id]:", error);
     return NextResponse.json(
       { error: "Error interno del servidor" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -140,7 +140,7 @@ export async function GET(req) {
     // 🔹 Préstamos
     const prestamosActivos = await prisma.prestamos.aggregate({
       _sum: { monto: true },
-      where: { estado: "ACTIVO" },
+      where: { estado: { in: ["ACTIVO", "COMPLETADO"] } },
     });
 
     // 🔹 Movimientos de préstamo filtrando por fecha
@@ -148,7 +148,15 @@ export async function GET(req) {
       by: ["tipo_movimiento"],
       _sum: { monto: true },
       where: {
-        tipo_movimiento: { in: ["ABONO", "PAGO_INTERES", "Int-Cargo"] },
+        tipo_movimiento: {
+          in: [
+            "ABONO",
+            "PAGO_INTERES",
+            "Int-Cargo",
+            "CARGO_INTERES",
+            "ABONO_INTERES",
+          ],
+        },
         fecha: { gte: desde, lte: hasta },
         NOT: { tipo_movimiento: "Anulado" },
       },
@@ -159,6 +167,8 @@ export async function GET(req) {
       ABONO: 0,
       PAGO_INTERES: 0,
       "Int-Cargo": 0,
+      CARGO_INTERES: 0,
+      ABONO_INTERES: 0,
     };
 
     movimientosPrestamo.forEach((mov) => {
@@ -179,7 +189,7 @@ export async function GET(req) {
     // 🔹 Anticipos
     const anticiposActivos = await prisma.anticipo.aggregate({
       _sum: { monto: true },
-      where: { estado: "ACTIVO" },
+      where: { estado: { in: ["ACTIVO", "COMPLETADO"] } },
     });
 
     // 🔹 Movimientos de anticipo filtrando por fecha

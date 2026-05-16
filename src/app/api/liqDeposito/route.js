@@ -1,7 +1,7 @@
 import prisma from "@/lib/prisma";
 import { checkRole } from "@/lib/checkRole";
 
-export async function POST(request,req) {
+export async function POST(request, req) {
   const sessionOrResponse = await checkRole(req, [
     "ADMIN",
     "GERENCIA",
@@ -41,42 +41,99 @@ export async function POST(request,req) {
         JSON.stringify({
           error: "Cantidad supera saldo pendiente del cliente",
         }),
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // 3️⃣ Llamar al stored procedure para liquidar
-    await prisma.$executeRawUnsafe(
-      `CALL LiquidarDepositoAuto(?, ?, ?, ?, ?, ?,?)`,
-      Number(clienteID),
-      Number(tipoCafe),
-      Number(cantidadQQ),
-      Number(precioQQ),
-      tipoDocumento,
-      descripcion,
-      liqEn
-    );
+    // 3️⃣ Ejecutar liquidación en transacción
+    const resultadoLiq = await prisma.$transaction(async (tx) => {
+      let restante = Number(cantidadQQ);
 
-    const lastLiq = await prisma.$queryRaw`
-      SELECT liqID 
-      FROM liqdeposito
-      WHERE liqclienteID = ${clienteID} AND liqTipoCafe = ${tipoCafe}
-      ORDER BY liqFecha DESC
-      LIMIT 1
-    `;
-    const liqID = lastLiq[0]?.liqID;
+      // Crear cabecera de liquidación
+      const liqHeader = await tx.liqdeposito.create({
+        data: {
+          liqFecha: new Date(),
+          liqclienteID: Number(clienteID),
+          liqTipoCafe: Number(tipoCafe),
+          liqCatidadQQ: Number(cantidadQQ),
+          liqPrecio: Number(precioQQ),
+          liqTotalLps: Number(cantidadQQ) * Number(precioQQ),
+          liqTipoDocumento: tipoDocumento || "Liquidación",
+          liqMovimiento: "Salida",
+        },
+      });
+
+      // Obtener depósitos pendientes para este cliente y producto
+      const depositos = await tx.deposito.findMany({
+        where: {
+          clienteID: Number(clienteID),
+          depositoTipoCafe: Number(tipoCafe),
+          depositoMovimiento: { notIn: ["ANULADO", "Anulado", "anulado"] },
+        },
+        include: {
+          detalleliqdeposito: {
+            where: { movimiento: { notIn: ["ANULADO", "Anulado", "anulado"] } },
+          },
+        },
+        orderBy: { depositoFecha: "asc" },
+      });
+
+      for (const dep of depositos) {
+        if (restante <= 0) break;
+
+        const yaLiquidado = dep.detalleliqdeposito.reduce(
+          (sum, d) => sum + Number(d.cantidadQQ || 0),
+          0,
+        );
+        const pendienteDep = Number(dep.depositoCantidadQQ) - yaLiquidado;
+
+        if (pendienteDep > 0) {
+          const aLiquidar = Math.min(restante, pendienteDep);
+
+          await tx.detalleliqdeposito.create({
+            data: {
+              liqID: liqHeader.liqID,
+              depositoID: dep.depositoID,
+              cantidadQQ: aLiquidar,
+              movimiento: "Salida",
+            },
+          });
+
+          restante -= aLiquidar;
+        }
+      }
+
+      // 4️⃣ Actualizar inventario global
+      const inventarioGlobal = await tx.inventariocliente.update({
+        where: { productoID: Number(tipoCafe) },
+        data: {
+          cantidadQQ: { decrement: Number(cantidadQQ) },
+        },
+      });
+
+      // 5️⃣ Movimiento de inventario
+      await tx.movimientoinventario.create({
+        data: {
+          inventarioClienteID: inventarioGlobal.inventarioClienteID,
+          tipoMovimiento: "Salida",
+          referenciaTipo: `Liquidación Depósito #${liqHeader.liqID}`,
+          referenciaID: liqHeader.liqID,
+          cantidadQQ: Number(cantidadQQ),
+          nota: `Liquidación de depósito para cliente ${clienteID}`,
+        },
+      });
+
+      return liqHeader;
+    });
 
     // 4️⃣ Retornar información
     return new Response(
       JSON.stringify({
         message: "Liquidación realizada correctamente",
-        saldoAntes: saldoDisponible,
+        liqID: resultadoLiq.liqID,
         cantidadLiquidada: Number(cantidadQQ),
-        saldoDespues: saldoDisponible - Number(cantidadQQ),
-        liqID,
       }),
-
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error("Error al liquidar depósito:", error);
@@ -129,7 +186,7 @@ export async function POST(request,req) {
 //   }
 // }
 
-export async function GET(request,req) {
+export async function GET(request, req) {
   const sessionOrResponse = await checkRole(req, [
     "ADMIN",
     "GERENCIA",

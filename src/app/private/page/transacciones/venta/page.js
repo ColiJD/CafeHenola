@@ -38,7 +38,7 @@ export default function VentaForm({ compraId }) {
   const [loadingCompra, setLoadingCompra] = useState(false); // 🔹 loading para editar
 
   const [comprador, setComprador] = useState(null);
-  const [producto, setProducto] = useState(null);
+  const [producto, setProducto] = useState({ value: 16, label: "Cafe Seco" });
   const [ventaCantidadQQ, setVentaCantidadQQ] = useState("");
   const [ventaTotalSacos, setVentaTotalSacos] = useState("");
   const [ventaPrecioQQ, setVentaPrecioQQ] = useState("");
@@ -157,6 +157,10 @@ export default function VentaForm({ compraId }) {
         const productosData = await obtenerProductosSelect(messageApi);
         setCompradores(compradoresData);
         setProductos(productosData);
+
+        // 🔹 Intentar encontrar el Cafe Seco (ID 16) para asegurar que el label sea correcto
+        const cafeSeco = productosData.find((p) => p.value === 16);
+        if (cafeSeco) setProducto(cafeSeco);
       } catch (err) {
         console.error(err);
         messageApi.error("Error cargando compradores o productos");
@@ -175,15 +179,15 @@ export default function VentaForm({ compraId }) {
       try {
         const data = await obtenerSalidasPendientes(comprador.value);
         const contratos = await verificarContratosSalidaPendientes(
-          comprador.value
+          comprador.value,
         );
 
         const mensajes = [];
         if (data.cantidadPendiente > 0) {
           mensajes.push(
             `Salidas pendientes: ${Number(data.cantidadPendiente).toFixed(
-              2
-            )} QQ`
+              2,
+            )} QQ`,
           );
         }
         if (contratos.length > 0) {
@@ -206,7 +210,7 @@ export default function VentaForm({ compraId }) {
       ventaCantidadQQ,
       ventaTotalSacos,
       producto,
-      ventaPrecioQQ
+      ventaPrecioQQ,
     );
 
     setVentaTotal(resultado.total);
@@ -275,7 +279,7 @@ export default function VentaForm({ compraId }) {
       messageApi.success(
         compraId
           ? "Venta actualizada correctamente"
-          : "Venta registrada correctamente"
+          : "Venta registrada correctamente",
       );
       setPreviewVisible(false);
 
@@ -347,16 +351,16 @@ export default function VentaForm({ compraId }) {
         if (!res.ok) throw new Error(data.error || "Error cargando la venta");
 
         const compradorMatch = compradores.find(
-          (c) => c.value === data.compradorID
+          (c) => c.value === data.compradorID,
         );
         const productoMatch = productos.find(
-          (p) => p.value === data.compraTipoCafe
+          (p) => p.value === data.compraTipoCafe,
         );
         setComprador(
-          compradorMatch || { value: data.compradorID, label: "Cargando..." }
+          compradorMatch || { value: data.compradorID, label: "Cargando..." },
         );
         setProducto(
-          productoMatch || { value: data.compraTipoCafe, label: "Cargando..." }
+          productoMatch || { value: data.compraTipoCafe, label: "Cargando..." },
         );
         setVentaCantidadQQ(data.compraCantidadQQ.toString());
         setVentaTotalSacos(data.compraTotalSacos.toString());
@@ -368,7 +372,7 @@ export default function VentaForm({ compraId }) {
         const pesoBruto = calcularPesoBrutoDesdeOro(
           data.compraCantidadQQ,
           data.compraTotalSacos,
-          productoMatch
+          productoMatch,
         );
         setVentaCantidadQQ(pesoBruto.pesoBruto);
       } catch (err) {
@@ -408,7 +412,7 @@ export default function VentaForm({ compraId }) {
               icon: <FileSearchOutlined />,
               onClick: () =>
                 router.push(
-                  "/private/page/transacciones/contratoSalida/registrocontrato"
+                  "/private/page/transacciones/contratoSalida/registrocontrato",
                 ),
             },
             {
@@ -456,8 +460,9 @@ export default function VentaForm({ compraId }) {
                   f.label === "Total Sacos" && producto?.label === "Cafe Lata"
                     ? 0
                     : f.type === "select"
-                    ? f.options?.find((o) => o.value === f.value?.value)?.label
-                    : f.value || "-",
+                      ? f.options?.find((o) => o.value === f.value?.value)
+                          ?.label
+                      : f.value || "-",
               }))}
             />
           </>

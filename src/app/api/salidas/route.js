@@ -26,7 +26,7 @@ export async function POST(request, req) {
     if (!compradorID || !salidaCantidadQQ || !salidaPrecio) {
       return new Response(
         JSON.stringify({ error: "Faltan datos obligatorios" }),
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -39,7 +39,7 @@ export async function POST(request, req) {
         JSON.stringify({
           error: "La cantidad en QQ debe ser un número mayor que cero",
         }),
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -48,7 +48,7 @@ export async function POST(request, req) {
         JSON.stringify({
           error: "El precio debe ser un número mayor que cero",
         }),
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -56,6 +56,7 @@ export async function POST(request, req) {
     const nuevaSalida = await prisma.salida.create({
       data: {
         compradorID: Number(compradorID),
+        productoID: Number(productoID), // Se requiere para el inventario global
         salidaFecha: new Date(),
         salidaMovimiento: "Salida",
         salidaCantidadQQ: cantidadQQ,
@@ -69,12 +70,10 @@ export async function POST(request, req) {
     console.error("Error al registrar salida:", error);
     return new Response(
       JSON.stringify({ error: "Error al registrar salida" }),
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-
-
 
 export async function GET(req) {
   // Validar roles

@@ -75,55 +75,38 @@ export async function POST(request) {
 
     // 3️⃣ Ejecutar transacción completa
     const resultado = await prisma.$transaction(async (tx) => {
-      // 🔹 Deducción de Inventario (Global)
-      // Se descuenta de cualquier inventario disponible hasta cubrir la cantidad
-      const inventarios = await tx.inventariocliente.findMany({
-        orderBy: { inventarioClienteID: "asc" },
+      const productoID = Number(contrato.contratoTipoCafe);
+      const cantidadEntregar = Number(cantidadQQ);
+      const inventario = await tx.inventariocliente.findUnique({
+        where: { productoID },
       });
 
-      let restanteQQ = Number(cantidadQQ);
-      let totalDescontado = 0;
-
-      for (const inv of inventarios) {
-        if (restanteQQ <= 0) break;
-
-        const cantidadDisponible = Number(inv.cantidadQQ);
-        if (cantidadDisponible <= 0) continue;
-
-        const descontarQQ = Math.min(restanteQQ, cantidadDisponible);
-
-        // Actualizar inventario
-        await tx.inventariocliente.update({
-          where: { inventarioClienteID: inv.inventarioClienteID },
-          data: {
-            cantidadQQ: { decrement: descontarQQ },
-          },
-        });
-
-        // Registrar movimiento
-        await tx.movimientoinventario.create({
-          data: {
-            inventarioClienteID: inv.inventarioClienteID,
-            tipoMovimiento: "Salida", // Salida física
-            referenciaTipo: "Entrega Contrato Salida",
-            referenciaID: Number(contratoID), // Enlazamos al Contrato
-            cantidadQQ: descontarQQ,
-            nota: `Entrega de contrato #${contratoID} (Producto del contrato: ${tipoCafe})`,
-          },
-        });
-
-        restanteQQ -= descontarQQ;
-        totalDescontado += descontarQQ;
-      }
-
-      if (restanteQQ > 0.009) {
-        // Margen por decimales
+      const disponible = Number(inventario?.cantidadQQ ?? 0);
+      if (disponible < cantidadEntregar) {
         throw new Error(
-          `Inventario global insuficiente. Faltan ${restanteQQ.toFixed(
+          `Inventario insuficiente para el producto del contrato. Disponible: ${disponible.toFixed(
             2
-          )} QQ para cubrir la entrega.`
+          )} QQ, requerido: ${cantidadEntregar.toFixed(2)} QQ.`
         );
       }
+
+      await tx.inventariocliente.update({
+        where: { productoID },
+        data: {
+          cantidadQQ: { decrement: cantidadEntregar },
+        },
+      });
+
+      await tx.movimientoinventario.create({
+        data: {
+          inventarioClienteID: inventario.inventarioClienteID,
+          tipoMovimiento: "Salida",
+          referenciaTipo: "Entrega Contrato Salida",
+          referenciaID: Number(contratoID),
+          cantidadQQ: cantidadEntregar,
+          nota: `Entrega de contrato #${contratoID} (Producto del contrato: ${tipoCafe})`,
+        },
+      });
 
       // a) Crear detalle de entrega
       const detalleEntrega = await tx.detalleContratoSalida.create({

@@ -184,13 +184,13 @@ export async function PUT(request, { params }) {
 
       // 2️⃣ Actualizar inventario (solo por tipo de café)
       const productoID = Number(compraTipoCafe);
-      const inventario = await prisma.inventariocliente.findFirst({
+      const inventario = await prisma.inventariocliente.findUnique({
         where: { productoID },
       });
 
       if (inventario) {
         await prisma.inventariocliente.update({
-          where: { inventarioClienteID: inventario.inventarioClienteID },
+          where: { productoID },
           data: {
             cantidadQQ: { increment: diffQQ },
             cantidadSacos: { increment: diffSacos },

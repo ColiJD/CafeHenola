@@ -54,20 +54,33 @@ export async function PUT(request, { params }) {
         status: 404,
       });
 
+    const productoAnteriorID = Number(ventaExistente.compraTipoCafe);
+    const productoNuevoID = Number(compraTipoCafe);
     const cantidadQQAnterior = parseFloat(ventaExistente.compraCantidadQQ);
     const diffQQ = cantidadQQNueva - cantidadQQAnterior;
 
-    // Verificar inventario solo si la venta aumenta
-    if (diffQQ > 0) {
-      const totalInventario = await prisma.inventariocliente.aggregate({
-        where: { productoID: Number(compraTipoCafe) },
-        _sum: { cantidadQQ: true },
+    if (productoAnteriorID === productoNuevoID && diffQQ > 0) {
+      const inventarioActual = await prisma.inventariocliente.findUnique({
+        where: { productoID: productoNuevoID },
       });
-      const totalQQ = totalInventario._sum?.cantidadQQ || 0;
+      const totalQQ = Number(inventarioActual?.cantidadQQ ?? 0);
       if (totalQQ < diffQQ) {
         return new Response(
           JSON.stringify({
             error: "Inventario insuficiente para actualizar la venta",
+          }),
+          { status: 400 }
+        );
+      }
+    } else if (productoAnteriorID !== productoNuevoID) {
+      const inventarioNuevo = await prisma.inventariocliente.findUnique({
+        where: { productoID: productoNuevoID },
+      });
+      const totalQQ = Number(inventarioNuevo?.cantidadQQ ?? 0);
+      if (totalQQ < cantidadQQNueva) {
+        return new Response(
+          JSON.stringify({
+            error: "Inventario insuficiente para cambiar la venta al nuevo producto",
           }),
           { status: 400 }
         );
@@ -90,135 +103,101 @@ export async function PUT(request, { params }) {
       });
 
       // 2️⃣ Ajustar inventario y movimiento
-      // 2️⃣ Ajustar inventario y movimiento
-      if (diffQQ !== 0) {
-        const inventarios = await tx.inventariocliente.findMany({
-          where: { productoID: Number(compraTipoCafe) },
-          orderBy: { inventarioClienteID: "asc" },
+      if (productoAnteriorID !== productoNuevoID) {
+        const inventarioAnterior = await tx.inventariocliente.findUnique({
+          where: { productoID: productoAnteriorID },
+        });
+        const inventarioNuevo = await tx.inventariocliente.findUnique({
+          where: { productoID: productoNuevoID },
         });
 
-        if (inventarios.length === 0) {
-          throw new Error("No hay inventario para este tipo de café.");
+        if (!inventarioNuevo) {
+          throw new Error("No hay inventario para el nuevo tipo de café.");
         }
 
-        if (diffQQ > 0) {
-          // 🔻 Venta aumentó → reducir inventario
-          let restante = diffQQ;
-
-          for (const inv of inventarios) {
-            const cantidadActual = parseFloat(inv.cantidadQQ);
-            if (cantidadActual <= 0) continue;
-
-            const reducir = Math.min(restante, cantidadActual);
-            await tx.inventariocliente.update({
-              where: { inventarioClienteID: inv.inventarioClienteID },
-              data: {
-                cantidadQQ: { decrement: new Prisma.Decimal(reducir) },
-              },
-            });
-
-            restante -= reducir;
-            if (restante <= 0) break;
-          }
-
-          if (restante > 0) {
-            throw new Error(
-              "Inventario insuficiente para realizar la actualización."
-            );
-          }
-        } else {
-          // 🔺 Venta disminuyó → devolver inventario (a primer registro)
-          const devolver = Math.abs(diffQQ);
-          const primerInv = inventarios[0];
-
+        if (inventarioAnterior) {
           await tx.inventariocliente.update({
-            where: { inventarioClienteID: primerInv.inventarioClienteID },
+            where: { productoID: productoAnteriorID },
             data: {
-              cantidadQQ: { increment: new Prisma.Decimal(devolver) },
+              cantidadQQ: { increment: new Prisma.Decimal(cantidadQQAnterior) },
+            },
+          });
+
+          await tx.movimientoinventario.create({
+            data: {
+              inventarioClienteID: inventarioAnterior.inventarioClienteID,
+              tipoMovimiento: "Entrada",
+              referenciaTipo: `Ajuste cambio venta #${ventaId}`,
+              referenciaID: ventaId,
+              cantidadQQ: new Prisma.Decimal(cantidadQQAnterior),
+              nota: `Reversión de venta por cambio de producto para comprador ${compradorID}`,
             },
           });
         }
 
-        // 🧾 Actualizar movimiento existente
-        // 🧾 Actualizar movimientos existentes
-        const movimientos = await tx.movimientoinventario.findMany({
-          where: {
-            referenciaTipo: { contains: `Venta directa #${ventaId}` },
-            tipoMovimiento: "Salida",
-            NOT: { tipoMovimiento: "Anulado" },
+        await tx.inventariocliente.update({
+          where: { productoID: productoNuevoID },
+          data: {
+            cantidadQQ: { decrement: new Prisma.Decimal(cantidadQQNueva) },
           },
-
-          orderBy: { movimientoID: "asc" }, // FIFO
         });
 
-        if (movimientos.length > 0) {
-          if (diffQQ > 0) {
-            // 🔻 Venta aumentó → repartir incremento proporcionalmente
-            let restante = diffQQ;
+        await tx.movimientoinventario.create({
+          data: {
+            inventarioClienteID: inventarioNuevo.inventarioClienteID,
+            tipoMovimiento: "Salida",
+            referenciaTipo: `Ajuste cambio venta #${ventaId}`,
+            referenciaID: ventaId,
+            cantidadQQ: new Prisma.Decimal(cantidadQQNueva),
+            nota: `Nueva salida por cambio de producto para comprador ${compradorID}`,
+          },
+        });
+      } else if (diffQQ !== 0) {
+        const inventario = await tx.inventariocliente.findUnique({
+          where: { productoID: productoNuevoID },
+        });
 
-            for (const mov of movimientos) {
-              if (restante <= 0) break;
+        if (!inventario) {
+          throw new Error("No hay inventario para este tipo de café.");
+        }
 
-              // Aquí podrías repartir proporcionalmente según cantidad original
-              // Para simplificar, repartimos en orden hasta cubrir el aumento
-              const incremento = restante;
-              const nuevaCantidad = mov.cantidadQQ.add(
-                new Prisma.Decimal(incremento)
-              );
+        if (diffQQ > 0) {
+          await tx.inventariocliente.update({
+            where: { productoID: productoNuevoID },
+            data: {
+              cantidadQQ: { decrement: new Prisma.Decimal(diffQQ) },
+            },
+          });
 
-              await tx.movimientoinventario.update({
-                where: { movimientoID: mov.movimientoID },
-                data: {
-                  cantidadQQ: nuevaCantidad,
-                  nota: `Ajuste por aumento de venta a comprador ${compradorID}`,
-                },
-              });
+          await tx.movimientoinventario.create({
+            data: {
+              inventarioClienteID: inventario.inventarioClienteID,
+              tipoMovimiento: "Salida",
+              referenciaTipo: `Ajuste venta directa #${ventaId}`,
+              referenciaID: ventaId,
+              cantidadQQ: new Prisma.Decimal(diffQQ),
+              nota: `Ajuste por aumento de venta a comprador ${compradorID}`,
+            },
+          });
+        } else {
+          const devolver = Math.abs(diffQQ);
+          await tx.inventariocliente.update({
+            where: { productoID: productoNuevoID },
+            data: {
+              cantidadQQ: { increment: new Prisma.Decimal(devolver) },
+            },
+          });
 
-              restante -= incremento;
-            }
-
-            // Si sobra restante, puedes crear un nuevo movimiento adicional
-            if (restante > 0) {
-              await tx.movimientoinventario.create({
-                data: {
-                  referenciaID: ventaId,
-                  tipoMovimiento: "Salida",
-                  cantidadQQ: new Prisma.Decimal(restante),
-                  nota: `Ajuste adicional por aumento de venta a comprador ${compradorID}`,
-                  fechaMovimiento: new Date(),
-                },
-              });
-            }
-          } else {
-            // 🔺 Venta disminuyó → reducir proporcionalmente entre movimientos existentes
-            let restante = Math.abs(diffQQ);
-
-            for (const mov of movimientos) {
-              if (restante <= 0) break;
-
-              const cantidadActual = parseFloat(mov.cantidadQQ);
-              if (cantidadActual <= 0) continue;
-
-              const reducir = Math.min(restante, cantidadActual);
-              const nuevaCantidad = cantidadActual - reducir;
-
-              await tx.movimientoinventario.update({
-                where: { movimientoID: mov.movimientoID },
-                data: {
-                  cantidadQQ: new Prisma.Decimal(nuevaCantidad),
-                  nota: `Ajuste por disminución de venta a comprador ${compradorID}`,
-                },
-              });
-
-              restante -= reducir;
-            }
-
-            if (restante > 0) {
-              console.warn(
-                `⚠️ No se pudo distribuir ${restante} QQ, revisar inventario.`
-              );
-            }
-          }
+          await tx.movimientoinventario.create({
+            data: {
+              inventarioClienteID: inventario.inventarioClienteID,
+              tipoMovimiento: "Entrada",
+              referenciaTipo: `Ajuste venta directa #${ventaId}`,
+              referenciaID: ventaId,
+              cantidadQQ: new Prisma.Decimal(devolver),
+              nota: `Ajuste por disminución de venta a comprador ${compradorID}`,
+            },
+          });
         }
       }
 

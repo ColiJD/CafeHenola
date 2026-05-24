@@ -40,17 +40,11 @@ export async function POST(req, res) {
 
     // 🔹 4️⃣ Transacción para mover inventario de manera atómica
     const result = await prisma.$transaction(async (tx) => {
-      // 🔹 4a️⃣ Buscar inventario origen disponible (FIFO)
-      const inventarioOrigen = await tx.inventariocliente.findMany({
-        where: { productoID: fromProductID, cantidadQQ: { gt: 0 } },
-        orderBy: { inventarioClienteID: "asc" },
+      const inventarioOrigen = await tx.inventariocliente.findUnique({
+        where: { productoID: fromProductID },
       });
 
-      // 🔹 4b️⃣ Validar que hay suficiente inventario
-      const totalDisponible = inventarioOrigen.reduce(
-        (sum, inv) => sum + Number(inv.cantidadQQ),
-        0
-      );
+      const totalDisponible = Number(inventarioOrigen?.cantidadQQ ?? 0);
       if (totalDisponible < cantidad) {
         return {
           ok: false,
@@ -58,54 +52,39 @@ export async function POST(req, res) {
         };
       }
 
-      let cantidadRestante = cantidad;
+      await tx.inventariocliente.update({
+        where: { productoID: fromProductID },
+        data: { cantidadQQ: Number(inventarioOrigen.cantidadQQ) - cantidad },
+      });
 
-      // 🔹 4c️⃣ Procesar la transferencia usando FIFO
-      for (const inv of inventarioOrigen) {
-        if (cantidadRestante <= 0) break;
+      let inventarioDestino = await tx.inventariocliente.findUnique({
+        where: { productoID: toProductID },
+      });
 
-        const extraer = Math.min(Number(inv.cantidadQQ), cantidadRestante);
-
-        // 🔹 Reducir inventario origen
-        await tx.inventariocliente.update({
-          where: { inventarioClienteID: inv.inventarioClienteID },
-          data: { cantidadQQ: Number(inv.cantidadQQ) - extraer },
+      if (!inventarioDestino) {
+        inventarioDestino = await tx.inventariocliente.create({
+          data: { productoID: toProductID, cantidadQQ: 0, cantidadSacos: 0 },
         });
-
-        // 🔹 Actualizar inventario destino
-        let inventarioDestino = await tx.inventariocliente.findFirst({
-          where: { productoID: toProductID },
-        });
-
-        if (!inventarioDestino) {
-          inventarioDestino = await tx.inventariocliente.create({
-            data: { productoID: toProductID, cantidadQQ: 0, cantidadSacos: 0 },
-          });
-        }
-
-        const cantidadDestino = Number(inventarioDestino.cantidadQQ) + extraer;
-        await tx.inventariocliente.update({
-          where: { inventarioClienteID: inventarioDestino.inventarioClienteID },
-          data: { cantidadQQ: cantidadDestino },
-        });
-
-        // 🔹 Registrar solo un movimiento: salida explicando la transferencia
-        await tx.movimientoinventario.create({
-          data: {
-            inventarioClienteID: inv.inventarioClienteID,
-            tipoMovimiento: "Transferencia",
-            referenciaTipo: `Transferencia de producto ${fromProductID} ➜ ${toProductID}`,
-            referenciaID: toProductID,
-            cantidadQQ: extraer,
-            cantidadSacos: 0,
-            nota:
-              nota ||
-              `Transferencia de ${extraer} QQ desde producto #${fromProductID} hacia producto #${toProductID}`,
-          },
-        });
-
-        cantidadRestante -= extraer;
       }
+
+      await tx.inventariocliente.update({
+        where: { productoID: toProductID },
+        data: { cantidadQQ: Number(inventarioDestino.cantidadQQ) + cantidad },
+      });
+
+      await tx.movimientoinventario.create({
+        data: {
+          inventarioClienteID: inventarioOrigen.inventarioClienteID,
+          tipoMovimiento: "Transferencia",
+          referenciaTipo: `Transferencia de producto ${fromProductID} ➜ ${toProductID}`,
+          referenciaID: toProductID,
+          cantidadQQ: cantidad,
+          cantidadSacos: 0,
+          nota:
+            nota ||
+            `Transferencia de ${cantidad} QQ desde producto #${fromProductID} hacia producto #${toProductID}`,
+        },
+      });
 
       // 🔹 5️⃣ Confirmación de éxito
       return { ok: true };

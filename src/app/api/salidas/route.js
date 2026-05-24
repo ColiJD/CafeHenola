@@ -15,6 +15,7 @@ export async function POST(request, req) {
     const body = await request.json();
     const {
       compradorID,
+      productoID,
       salidaMovimiento,
       salidaCantidadQQ,
       salidaPrecio,
@@ -23,7 +24,7 @@ export async function POST(request, req) {
     } = body;
 
     // 🔹 Validaciones básicas
-    if (!compradorID || !salidaCantidadQQ || !salidaPrecio) {
+    if (!compradorID || !productoID || !salidaCantidadQQ || !salidaPrecio) {
       return new Response(
         JSON.stringify({ error: "Faltan datos obligatorios" }),
         { status: 400 },

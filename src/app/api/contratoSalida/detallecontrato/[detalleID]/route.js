@@ -34,15 +34,12 @@ export async function DELETE(req, { params }) {
       });
 
       // 🔹 REVERSIÓN DE INVENTARIO (ANULACIÓN)
-      // Devolver la cantidad al inventario. Intentamos devolverlo al producto del contrato si existe, sino al primero.
-      // Como la deducción fue global, la devolución también es "flexible", pero preferimos mantener coherencia si posible.
-      const productoID = registro.contratoSalida.productoID || 0; // Necesitamos incluir esto en el findUnique inicial si no está
-
-      // Buscamos inventario preferente (mismo producto) o cualquiera
-      // Nota: Para hacerlo robusto, buscamos el primer inventario disponible.
-      const inventarioDestino = await tx.inventariocliente.findFirst({
-        orderBy: { inventarioClienteID: "asc" }, // Devolvemos al primero que encontremos (LIFO/FIFO no aplica tanto en devolución global simplificada)
-      });
+      const productoID = Number(registro.contratoSalida.contratoTipoCafe || 0);
+      const inventarioDestino = productoID
+        ? await tx.inventariocliente.findUnique({
+            where: { productoID },
+          })
+        : null;
 
       if (inventarioDestino) {
         // Devolvemos Cantidad
@@ -274,6 +271,7 @@ export async function PUT(request, { params }) {
 
     if (diferencia > 0) {
       const stockActualResult = await prisma.inventariocliente.aggregate({
+        where: { productoID: Number(contrato.contratoTipoCafe) },
         _sum: { cantidadQQ: true },
       });
       const stockActual = Number(stockActualResult._sum.cantidadQQ || 0);
@@ -296,69 +294,55 @@ export async function PUT(request, { params }) {
       const diferencia = cantidadNueva - cantidadAnterior;
 
       if (diferencia !== 0) {
+        const productoID = Number(contrato.contratoTipoCafe);
+        const inventario = await tx.inventariocliente.findUnique({
+          where: { productoID },
+        });
+
         if (diferencia > 0) {
-          // 🔹 Aumentó la entrega -> Debemos descontar más inventario
-          const inventarios = await tx.inventariocliente.findMany({
-            orderBy: { inventarioClienteID: "asc" },
-          });
-
-          let restantePorDescontar = diferencia;
-
-          for (const inv of inventarios) {
-            if (restantePorDescontar <= 0) break;
-            const disp = Number(inv.cantidadQQ);
-            if (disp <= 0) continue;
-
-            const desc = Math.min(restantePorDescontar, disp);
-            await tx.inventariocliente.update({
-              where: { inventarioClienteID: inv.inventarioClienteID },
-              data: { cantidadQQ: { decrement: desc } },
-            });
-            await tx.movimientoinventario.create({
-              data: {
-                inventarioClienteID: inv.inventarioClienteID,
-                tipoMovimiento: "Salida",
-                referenciaTipo: "Edición Entrega Contrato (Inc)",
-                referenciaID: Number(contratoID),
-                cantidadQQ: desc,
-                nota: `Ajuste positivo por edición de entrega #${detalleID}`,
-              },
-            });
-            restantePorDescontar -= desc;
-          }
-
-          if (restantePorDescontar > 0.009) {
+          const disponible = Number(inventario?.cantidadQQ ?? 0);
+          if (disponible < diferencia) {
             throw new Error(
-              `Inventario global insuficiente para cubrir el incremento.`
+              "Inventario insuficiente para cubrir el incremento."
             );
           }
-        } else {
-          // 🔹 Disminuyó la entrega (diferencia negativa) -> Devolver inventario
-          const devolverQQ = Math.abs(diferencia);
 
-          // Devolvemos al primer inventario (simplificación global)
-          const inventarioDestino = await tx.inventariocliente.findFirst({
-            orderBy: { inventarioClienteID: "asc" },
+          await tx.inventariocliente.update({
+            where: { productoID },
+            data: { cantidadQQ: { decrement: diferencia } },
           });
-
-          if (inventarioDestino) {
-            await tx.inventariocliente.update({
-              where: {
-                inventarioClienteID: inventarioDestino.inventarioClienteID,
-              },
-              data: { cantidadQQ: { increment: devolverQQ } },
-            });
-            await tx.movimientoinventario.create({
-              data: {
-                inventarioClienteID: inventarioDestino.inventarioClienteID,
-                tipoMovimiento: "Entrada",
-                referenciaTipo: "Edición Entrega Contrato (Dec)",
-                referenciaID: Number(contratoID),
-                cantidadQQ: devolverQQ,
-                nota: `Ajuste negativo por edición de entrega #${detalleID}`,
-              },
-            });
+          await tx.movimientoinventario.create({
+            data: {
+              inventarioClienteID: inventario.inventarioClienteID,
+              tipoMovimiento: "Salida",
+              referenciaTipo: "Edición Entrega Contrato (Inc)",
+              referenciaID: Number(contratoID),
+              cantidadQQ: diferencia,
+              nota: `Ajuste positivo por edición de entrega #${detalleID}`,
+            },
+          });
+        } else {
+          const devolverQQ = Math.abs(diferencia);
+          if (!inventario) {
+            throw new Error(
+              "No se encontró inventario para el producto del contrato."
+            );
           }
+
+          await tx.inventariocliente.update({
+            where: { productoID },
+            data: { cantidadQQ: { increment: devolverQQ } },
+          });
+          await tx.movimientoinventario.create({
+            data: {
+              inventarioClienteID: inventario.inventarioClienteID,
+              tipoMovimiento: "Entrada",
+              referenciaTipo: "Edición Entrega Contrato (Dec)",
+              referenciaID: Number(contratoID),
+              cantidadQQ: devolverQQ,
+              nota: `Ajuste negativo por edición de entrega #${detalleID}`,
+            },
+          });
         }
       }
 

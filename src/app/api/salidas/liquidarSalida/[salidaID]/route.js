@@ -139,6 +139,7 @@ export async function PUT(req, context) {
       // 1. Si aumenta la cantidad, verificar inventario disponible
       if (diferencia > 0) {
         const totalInventario = await tx.inventariocliente.aggregate({
+          where: { productoID: Number(registroActual.productoID) },
           _sum: { cantidadQQ: true },
         });
 
@@ -154,46 +155,32 @@ export async function PUT(req, context) {
           );
         }
 
-        // Reducir inventario adicional
-        const inventarios = await tx.inventariocliente.findMany({
-          orderBy: { inventarioClienteID: "asc" },
+        const inventario = await tx.inventariocliente.findUnique({
+          where: { productoID: Number(registroActual.productoID) },
+        });
+        if (!inventario) {
+          throw new Error(
+            "No se encontró inventario para el producto de la liquidación."
+          );
+        }
+
+        await tx.inventariocliente.update({
+          where: { productoID: Number(registroActual.productoID) },
+          data: { cantidadQQ: { decrement: diferencia } },
         });
 
-        let restanteQQ = diferencia;
-        const movimientosACrear = [];
-
-        for (const inv of inventarios) {
-          if (restanteQQ <= 0) break;
-
-          const cantidadDisponible = Number(inv.cantidadQQ);
-          if (cantidadDisponible <= 0) continue;
-
-          const descontarQQ = Math.min(restanteQQ, cantidadDisponible);
-
-          await tx.inventariocliente.update({
-            where: { inventarioClienteID: inv.inventarioClienteID },
-            data: { cantidadQQ: { decrement: descontarQQ } },
-          });
-
-          movimientosACrear.push({
-            inventarioClienteID: inv.inventarioClienteID,
+        await tx.movimientoinventario.create({
+          data: {
+            inventarioClienteID: inventario.inventarioClienteID,
             tipoMovimiento: "Salida",
             referenciaTipo: "Modificación Liquidación Salida",
             referenciaID: liqSalidaID,
-            cantidadQQ: descontarQQ,
+            cantidadQQ: diferencia,
             nota: `Ajuste por modificación de liquidación #${liqSalidaID} (+${diferencia.toFixed(
               2
             )} QQ)`,
-          });
-
-          restanteQQ -= descontarQQ;
-        }
-
-        if (movimientosACrear.length > 0) {
-          await tx.movimientoinventario.createMany({
-            data: movimientosACrear,
-          });
-        }
+          },
+        });
       } else if (diferencia < 0) {
         // 2. Si disminuye la cantidad, devolver inventario
         const cantidadDevolver = Math.abs(diferencia);

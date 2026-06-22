@@ -15,12 +15,12 @@ import {
   Row,
   Col,
 } from "antd";
-import dayjs from "dayjs";
 import { formatNumber } from "@/components/Formulario";
 import ProtectedPage from "@/components/ProtectedPage";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
 import SectionHeader from "@/components/ReportesElement/AccionesResporte";
 import { exportPDFMovimientosCliente } from "@/Doc/Reportes/porCliente";
+import { rangoInicial } from "@/app/private/page/informe/reporteCliente/page";
 
 import {
   CalendarOutlined,
@@ -44,10 +44,7 @@ const { RangePicker } = DatePicker;
 export default function MovimientosComprasPage() {
   const [clientes, setClientes] = useState([]);
   const [clienteID, setClienteID] = useState(null);
-  const [fechaRango, setFechaRango] = useState([
-    dayjs().subtract(1, "year").startOf("year"),
-    dayjs().endOf("year"),
-  ]);
+  const [fechaRango, setFechaRango] = useState(rangoInicial);
   const [data, setData] = useState([]);
   // const [totales, setTotales] = useState({});
   const [prestamos, setPrestamos] = useState([]);

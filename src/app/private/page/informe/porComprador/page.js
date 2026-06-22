@@ -15,12 +15,12 @@ import {
   Row,
   Col,
 } from "antd";
-import dayjs from "dayjs";
 import { formatNumber } from "@/components/Formulario";
 import ProtectedPage from "@/components/ProtectedPage";
 import useClientAndDesktop from "@/hook/useClientAndDesktop";
 import SectionHeader from "@/components/ReportesElement/AccionesResporte";
 import { exportPDFMovimientosComprador } from "@/Doc/Reportes/porComprador";
+import { rangoInicial } from "@/app/private/page/informe/reporteCliente/page";
 
 import { CalendarOutlined } from "@ant-design/icons";
 import { columnasPorTipo, columns } from "./columnas";
@@ -31,10 +31,7 @@ const { RangePicker } = DatePicker;
 export default function MovimientosCompradorPage() {
   const [compradores, setCompradores] = useState([]);
   const [compradorID, setCompradorID] = useState(null);
-  const [fechaRango, setFechaRango] = useState([
-    dayjs().subtract(1, "year").startOf("year"),
-    dayjs().endOf("year"),
-  ]);
+  const [fechaRango, setFechaRango] = useState(rangoInicial);
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const { mounted, isDesktop } = useClientAndDesktop();

@@ -85,7 +85,7 @@ export const exportCompraDirecta = async (formState) => {
     doc.setFontSize(11 * scale);
     doc.setTextColor(0, 0, 0);
 
-    doc.text("Cosecha 2025 - 2026", leftMargin, topMargin + 80 + offsetY - 18);
+    doc.text("Cosecha 2026 - 2027", leftMargin, topMargin + 80 + offsetY - 18);
 
     //Encabezado central
     doc.setFont("times", "bold");

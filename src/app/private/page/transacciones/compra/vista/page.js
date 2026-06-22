@@ -26,6 +26,7 @@ import { exportCompraDirecta } from "@/Doc/Documentos/compra";
 import { exportVentaDirecta } from "@/Doc/Documentos/venta";
 
 import ProtectedPage from "@/components/ProtectedPage";
+import { rangoInicial } from "@/app/private/page/informe/reporteCliente/page";
 import { formatNumber } from "@/components/Formulario";
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -55,7 +56,7 @@ export default function TablaCompras() {
   const router = useRouter();
 
   const [nombreFiltro, setNombreFiltro] = useState("");
-  const [rangoFecha, setRangoFecha] = useState([dayjs(), dayjs()]);
+  const [rangoFecha, setRangoFecha] = useState(rangoInicial);
   const [movimientoFiltro, setMovimientoFiltro] = useState("Entrada"); // Entrada o Salida
 
   // 🔹 Cargar datos desde API

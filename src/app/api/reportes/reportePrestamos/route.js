@@ -20,103 +20,91 @@ export async function GET(req) {
       ? new Date(searchParams.get("hasta"))
       : new Date();
 
-    // 1️⃣ Clientes
-    const clientes = await prisma.cliente.findMany({
-      select: {
-        clienteID: true,
-        clienteNombre: true,
-        clienteApellido: true,
-      },
-      orderBy: { clienteNombre: "asc" },
-    });
+    // 4 queries en total en lugar de 4 por cliente
+    const [clientes, prestamosSums, anticiposSums, movPrestamo, movAnticipo] =
+      await Promise.all([
+        prisma.cliente.findMany({
+          select: {
+            clienteID: true,
+            clienteNombre: true,
+            clienteApellido: true,
+          },
+          orderBy: { clienteNombre: "asc" },
+        }),
+
+        prisma.prestamos.groupBy({
+          by: ["clienteId"],
+          _sum: { monto: true },
+          where: { estado: { in: ["ACTIVO", "COMPLETADO"] } },
+        }),
+
+        prisma.anticipo.groupBy({
+          by: ["clienteId"],
+          _sum: { monto: true },
+          where: { estado: { in: ["ACTIVO", "COMPLETADO"] } },
+        }),
+
+        prisma.$queryRaw`
+          SELECT p.clienteId, mp.tipo_movimiento, SUM(mp.monto) AS total
+          FROM movimientos_prestamo mp
+          JOIN prestamos p ON p.prestamoId = mp.prestamo_id
+          WHERE mp.fecha >= ${desde} AND mp.fecha <= ${hasta}
+            AND mp.tipo_movimiento IN ('Int-Cargo','ABONO','PAGO_INTERES','CARGO_INTERES','ABONO_INTERES')
+          GROUP BY p.clienteId, mp.tipo_movimiento
+        `,
+
+        prisma.$queryRaw`
+          SELECT a.clienteId, ma.tipo_movimiento, SUM(ma.monto) AS total
+          FROM movimientos_anticipos ma
+          JOIN anticipo a ON a.anticipoId = ma.anticipoId
+          WHERE ma.fecha >= ${desde} AND ma.fecha <= ${hasta}
+            AND ma.tipo_movimiento IN ('CARGO_ANTICIPO','INTERES_ANTICIPO','ABONO_ANTICIPO')
+          GROUP BY a.clienteId, ma.tipo_movimiento
+        `,
+      ]);
+
+    // Indexar resultados por clienteId para O(1) lookup
+    const prestamosPorCliente = new Map(
+      prestamosSums.map((r) => [r.clienteId, Number(r._sum.monto ?? 0)])
+    );
+    const anticiposPorCliente = new Map(
+      anticiposSums.map((r) => [r.clienteId, Number(r._sum.monto ?? 0)])
+    );
+
+    const movPrePorCliente = new Map();
+    for (const row of movPrestamo) {
+      const cid = row.clienteId;
+      if (!movPrePorCliente.has(cid)) movPrePorCliente.set(cid, {});
+      movPrePorCliente.get(cid)[row.tipo_movimiento] = Number(row.total ?? 0);
+    }
+
+    const movAntiPorCliente = new Map();
+    for (const row of movAnticipo) {
+      const cid = row.clienteId;
+      if (!movAntiPorCliente.has(cid)) movAntiPorCliente.set(cid, {});
+      movAntiPorCliente.get(cid)[row.tipo_movimiento] = Number(row.total ?? 0);
+    }
 
     const resultados = [];
 
     for (const cli of clientes) {
-      // -------------------------------------------------------------
-      // 2️⃣ PRESTAMOS → activos + movimientos
-      // -------------------------------------------------------------
-      const activosPrestamo = await prisma.prestamos.aggregate({
-        _sum: { monto: true },
-        where: {
-          clienteId: cli.clienteID,
-          estado: { in: ["ACTIVO", "COMPLETADO"] },
-        },
-      });
+      const cid = cli.clienteID;
 
-      const movPrestamo = await prisma.movimientos_prestamo.groupBy({
-        by: ["tipo_movimiento"],
-        _sum: { monto: true },
-        where: {
-          prestamos: { clienteId: cli.clienteID },
-          fecha: { gte: desde, lte: hasta },
-          tipo_movimiento: {
-            in: [
-              "Int-Cargo",
-              "ABONO",
-              "PAGO_INTERES",
-              "CARGO_INTERES",
-              "ABONO_INTERES",
-            ],
-          },
-        },
-      });
+      const Mpre = movPrePorCliente.get(cid) ?? {};
+      const intCargo =
+        (Mpre["Int-Cargo"] ?? 0) + (Mpre["CARGO_INTERES"] ?? 0);
+      const abonoPre = (Mpre["ABONO"] ?? 0) + (Mpre["ABONO_INTERES"] ?? 0);
+      const pagIntPre = Mpre["PAGO_INTERES"] ?? 0;
 
-      const Mpre = {
-        "Int-Cargo": 0,
-        ABONO: 0,
-        PAGO_INTERES: 0,
-      };
-      for (const m of movPrestamo) {
-        if (["Int-Cargo", "CARGO_INTERES"].includes(m.tipo_movimiento)) {
-          Mpre["Int-Cargo"] += Number(m._sum.monto ?? 0);
-        } else if (["ABONO", "ABONO_INTERES"].includes(m.tipo_movimiento)) {
-          Mpre["ABONO"] += Number(m._sum.monto ?? 0);
-        } else if (m.tipo_movimiento === "PAGO_INTERES") {
-          Mpre["PAGO_INTERES"] += Number(m._sum.monto ?? 0);
-        }
-      }
-
-      const activoPrestamo =
-        Number(activosPrestamo._sum.monto ?? 0) + Mpre["Int-Cargo"];
-      const abonoPrestamo = Mpre["ABONO"] + Mpre["PAGO_INTERES"];
+      const activoPrestamo = (prestamosPorCliente.get(cid) ?? 0) + intCargo;
+      const abonoPrestamo = abonoPre + pagIntPre;
       const saldoPrestamo = activoPrestamo - abonoPrestamo;
 
-      // -------------------------------------------------------------
-      // 3️⃣ ANTICIPOS → activos + movimientos
-      // -------------------------------------------------------------
-      const activosAnticipo = await prisma.anticipo.aggregate({
-        _sum: { monto: true },
-        where: {
-          clienteId: cli.clienteID,
-          estado: { in: ["ACTIVO", "COMPLETADO"] },
-        },
-      });
-
-      const movAnticipo = await prisma.movimientos_anticipos.groupBy({
-        by: ["tipo_movimiento"],
-        _sum: { monto: true },
-        where: {
-          anticipo: { clienteId: cli.clienteID },
-          fecha: { gte: desde, lte: hasta },
-          tipo_movimiento: {
-            in: ["CARGO_ANTICIPO", "INTERES_ANTICIPO", "ABONO_ANTICIPO"],
-          },
-        },
-      });
-
-      const Manti = {
-        CARGO_ANTICIPO: 0,
-        INTERES_ANTICIPO: 0,
-        ABONO_ANTICIPO: 0,
-      };
-      for (const m of movAnticipo) {
-        Manti[m.tipo_movimiento] = Number(m._sum.monto ?? 0);
-      }
-
+      const Manti = movAntiPorCliente.get(cid) ?? {};
       const activoAnticipo =
-        Number(activosAnticipo._sum.monto ?? 0) + Manti["CARGO_ANTICIPO"];
-      const abonoAnticipo = Manti["ABONO_ANTICIPO"] + Manti["INTERES_ANTICIPO"];
+        (anticiposPorCliente.get(cid) ?? 0) + (Manti["CARGO_ANTICIPO"] ?? 0);
+      const abonoAnticipo =
+        (Manti["ABONO_ANTICIPO"] ?? 0) + (Manti["INTERES_ANTICIPO"] ?? 0);
       const saldoAnticipo = activoAnticipo - abonoAnticipo;
 
       const totalCliente =
@@ -129,14 +117,9 @@ export async function GET(req) {
 
       if (totalCliente === 0) continue;
 
-      // -------------------------------------------------------------
-      // 4️⃣ Enviar cliente con cálculos listos
-      // -------------------------------------------------------------
       resultados.push({
-        clienteID: cli.clienteID,
-        nombre: `${cli.clienteNombre ?? ""} ${
-          cli.clienteApellido ?? ""
-        }`.trim(),
+        clienteID: cid,
+        nombre: `${cli.clienteNombre ?? ""} ${cli.clienteApellido ?? ""}`.trim(),
         activoPrestamo,
         abonoPrestamo,
         saldoPrestamo,
@@ -151,7 +134,7 @@ export async function GET(req) {
     console.error("ERROR REPORTE: ", error);
     return Response.json(
       { ok: false, error: "Error al obtener el reporte" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

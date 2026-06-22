@@ -119,7 +119,7 @@ export const exportEntregaContratoSalida = async (formState) => {
     // Cosecha
     doc.setFont("times", "bold");
     doc.setFontSize(FS_BODY);
-    doc.text("Cosecha 2025 - 2026", leftMargin, topMargin + 60 + offsetY);
+    doc.text("Cosecha 2026 - 2027", leftMargin, topMargin + 60 + offsetY);
 
     // Comprador
     doc.setFont("times", "normal");

@@ -119,7 +119,7 @@ export const exportLiquidacionDeposito = async (formState) => {
     // Cosecha y Productor (nombre rojo)
     doc.setFontSize(11 * scale);
     doc.setTextColor(0, 0, 0);
-    doc.text(`Cosecha 2025 - 2026`, leftMargin, topMargin + 60 + offsetY);
+    doc.text(`Cosecha 2026 - 2027`, leftMargin, topMargin + 60 + offsetY);
 
     const yProd = topMargin + 80 + offsetY;
     const labelProd = "Productor:";

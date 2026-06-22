@@ -104,7 +104,7 @@ export const exportVentaDirecta = async (formState) => {
     doc.setFontSize(11 * scale);
     doc.setTextColor(0, 0, 0);
     doc.text(
-      "Cosecha 2025 - 2026",
+      "Cosecha 2026 - 2027",
       leftMargin + logo.width / 30,
       20 + logo.height + offsetY + 22
     );

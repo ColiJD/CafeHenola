@@ -90,7 +90,7 @@ export const exportContratoCafe = async (formState) => {
   let startY = topMargin + 80;
   doc.setFont("times", "bold");
   doc.setFontSize(10 * scale);
-  doc.text("Cosecha 2025 - 2026", leftMargin, startY);
+  doc.text("Cosecha 2026 - 2027", leftMargin, startY);
 
   //Contrato No. pasa donde estaba Cosecha
   const cosechaX = pageWidth - rightMargin - frijolimg.width;

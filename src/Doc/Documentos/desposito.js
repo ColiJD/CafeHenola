@@ -131,7 +131,7 @@ export const exportDeposito = async (formState) => {
 
     // Cosecha
     doc.setFont("times", "normal");
-    doc.text("Cosecha 2025 - 2026", leftMargin, 110 + offsetY);
+    doc.text("Cosecha 2026 - 2027", leftMargin, 110 + offsetY);
 
     // Productor y comprobante alineados
     let startY = topMargin + 70 + offsetY;

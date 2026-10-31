@@ -82,7 +82,7 @@ export async function GET(req) {
         where: {
           liqdeposito: {
             liqclienteID: c.clienteID,
-            liqMovimiento: "Entrada",
+            liqMovimiento: "Salida",
             liqFecha: { gte: desde, lte: hasta },
           },
         },

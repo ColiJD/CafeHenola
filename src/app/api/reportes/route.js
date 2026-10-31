@@ -80,10 +80,10 @@ export async function GET(req) {
       _sum: { cantidadQQ: true, totalLps: true },
       where: {
         liqdeposito: {
-          liqMovimiento: "Entrada",
+          liqMovimiento: "Salida",
           liqFecha: { gte: desde, lte: hasta },
         },
-        OR: [{ movimiento: "Entrada" }, { movimiento: null }],
+        OR: [{ movimiento: "Salida" }, { movimiento: null }],
       },
     });
 

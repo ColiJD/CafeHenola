@@ -146,7 +146,7 @@ export async function GET(req) {
         producto: { select: { productName: true } },
         detalleliqdeposito: {
           where: {
-            movimiento: "Entrada", // ignora 'Anulado'
+            movimiento: "Salida", // ignora 'Anulado'
           },
           select: { id: true, cantidadQQ: true, precio: true },
         },

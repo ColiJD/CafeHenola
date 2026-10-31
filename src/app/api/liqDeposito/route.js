@@ -95,6 +95,8 @@ export async function POST(request, req) {
               liqID: liqHeader.liqID,
               depositoID: dep.depositoID,
               cantidadQQ: aLiquidar,
+              precio: Number(precioQQ),
+              totalLps: aLiquidar * Number(precioQQ),
               movimiento: "Salida",
             },
           });

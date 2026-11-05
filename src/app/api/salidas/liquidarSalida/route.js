@@ -2,6 +2,14 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { checkRole } from "@/lib/checkRole";
 export async function POST(req) {
+  const sessionOrResponse = await checkRole(req, [
+    "ADMIN",
+    "GERENCIA",
+    "OPERARIOS",
+    "AUDITORES",
+  ]);
+  if (sessionOrResponse instanceof Response) return sessionOrResponse;
+
   try {
     const body = await req.json();
     const { compradorID, productoID, cantidadLiquidar, descripcion } = body;
@@ -91,6 +99,18 @@ export async function POST(req) {
         throw new Error("NO_PENDIENTES");
       }
 
+      // No se puede liquidar más de lo pendiente: el inventario bajaría por
+      // café que no quedó asignado a ninguna salida.
+      const totalPendiente = roundToTwo(
+        pendientes.reduce((acc, s) => acc + s.pendiente, 0),
+      );
+      if (cantidad > totalPendiente) {
+        throw new Error(
+          `CANTIDAD_EXCEDE: solo hay ${totalPendiente.toFixed(2)} QQ pendientes por liquidar`,
+        );
+      }
+      const cantidadTotal = cantidad;
+
       // ----------------------------
       // ✔ Crear cabecera de liquidación
       // ----------------------------
@@ -131,7 +151,7 @@ export async function POST(req) {
       await tx.inventariocliente.update({
         where: { inventarioClienteID: inventarioExistente.inventarioClienteID },
         data: {
-          cantidadQQ: { decrement: cantidadSolicitada },
+          cantidadQQ: { decrement: cantidadTotal },
         },
       });
 
@@ -142,7 +162,7 @@ export async function POST(req) {
           tipoMovimiento: "Salida",
           referenciaTipo: "Liquidación Salida",
           referenciaID: liqSalida.liqSalidaID,
-          cantidadQQ: cantidadSolicitada,
+          cantidadQQ: cantidadTotal,
           nota: `Liquidación de salida #${liqSalida.liqSalidaID} - Comprador ID: ${compradorIdNum}`,
         },
       });
@@ -164,8 +184,12 @@ export async function POST(req) {
       );
     }
 
-    // Manejar error de inventario insuficiente
-    if (error.message && error.message.includes("Inventario insuficiente")) {
+    // Manejar inventario insuficiente o cantidad mayor a lo pendiente
+    if (
+      error.message &&
+      (error.message.includes("Inventario insuficiente") ||
+        error.message.startsWith("CANTIDAD_EXCEDE"))
+    ) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 

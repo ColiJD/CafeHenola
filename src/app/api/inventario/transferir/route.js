@@ -86,6 +86,19 @@ export async function POST(req, res) {
         },
       });
 
+      // Entrada en el destino: sin ella el historial del producto destino no cuadra con su saldo
+      await tx.movimientoinventario.create({
+        data: {
+          inventarioClienteID: inventarioDestino.inventarioClienteID,
+          tipoMovimiento: "Entrada por Transferencia",
+          referenciaTipo: `Transferencia desde producto ${fromProductID}`,
+          referenciaID: fromProductID,
+          cantidadQQ: cantidad,
+          cantidadSacos: 0,
+          nota: `Entrada por transferencia desde producto #${fromProductID}`,
+        },
+      });
+
       // 🔹 5️⃣ Confirmación de éxito
       return { ok: true };
     });

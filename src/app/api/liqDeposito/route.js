@@ -105,25 +105,8 @@ export async function POST(request, req) {
         }
       }
 
-      // 4️⃣ Actualizar inventario global
-      const inventarioGlobal = await tx.inventariocliente.update({
-        where: { productoID: Number(tipoCafe) },
-        data: {
-          cantidadQQ: { decrement: Number(cantidadQQ) },
-        },
-      });
-
-      // 5️⃣ Movimiento de inventario
-      await tx.movimientoinventario.create({
-        data: {
-          inventarioClienteID: inventarioGlobal.inventarioClienteID,
-          tipoMovimiento: "Salida",
-          referenciaTipo: `Liquidación Depósito #${liqHeader.liqID}`,
-          referenciaID: liqHeader.liqID,
-          cantidadQQ: Number(cantidadQQ),
-          nota: `Liquidación de depósito para cliente ${clienteID}`,
-        },
-      });
+      // Liquidar un depósito como compra no mueve el inventario: el café ya está
+      // en el almacén (entró con el depósito) y pasa a ser de la empresa.
 
       return liqHeader;
     });

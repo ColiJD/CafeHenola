@@ -127,10 +127,11 @@ export default function DetalleCafePage() {
         x += colWidth[i];
       });
 
-      totalQQ +=
-        item.tipoMovimiento === "Entrada"
-          ? parseFloat(item.cantidadQQ || 0)
-          : -parseFloat(item.cantidadQQ || 0);
+      const qq = parseFloat(item.cantidadQQ || 0);
+      // Entradas suman; Ajuste ya viene con signo; Anulado no mueve saldo; el resto (Salida, Transferencia) resta
+      if (["Entrada", "Entrada por Transferencia"].includes(item.tipoMovimiento)) totalQQ += qq;
+      else if (item.tipoMovimiento === "Ajuste") totalQQ += qq;
+      else if (item.tipoMovimiento !== "Anulado") totalQQ -= qq;
 
       y += lineHeight;
 
@@ -205,6 +206,9 @@ export default function DetalleCafePage() {
               options: [
                 { value: "Entrada", label: "Entrada" },
                 { value: "Salida", label: "Salida" },
+                { value: "Transferencia", label: "Transferencia (salida)" },
+                { value: "Entrada por Transferencia", label: "Entrada por Transferencia" },
+                { value: "Ajuste", label: "Ajuste" },
               ],
             },
             { type: "date", value: rangoFecha, setter: setRangoFecha },

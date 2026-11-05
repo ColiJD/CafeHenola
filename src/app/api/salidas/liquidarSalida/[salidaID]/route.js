@@ -1,6 +1,8 @@
 import prisma from "@/lib/prisma";
 import { checkRole } from "@/lib/checkRole";
 
+const roundToTwo = (num) => Math.round((num + Number.EPSILON) * 100) / 100;
+
 export async function DELETE(req, context) {
   // ✅ Verificar permisos
   const sessionOrResponse = await checkRole(req, ["ADMIN", "GERENCIA"]);
@@ -28,34 +30,54 @@ export async function DELETE(req, context) {
       });
     }
 
+    // Evita devolver el inventario dos veces (doble clic o reintento)
+    if (registro.liqMovimiento === "Anulado") {
+      return new Response(
+        JSON.stringify({ error: "La liquidación ya está anulada" }),
+        { status: 400 },
+      );
+    }
+
     // ✅ Transacción para anular todo y devolver inventario
     await prisma.$transaction(async (tx) => {
-      // 1. Buscar todos los movimientos de inventario relacionados
+      // 1. Movimientos de la liquidación: la salida original, las salidas por
+      //    aumento y las entradas por disminución (todas "…Liquidación Salida")
       const movimientos = await tx.movimientoinventario.findMany({
         where: {
-          referenciaTipo: "Liquidación Salida",
+          referenciaTipo: {
+            in: ["Liquidación Salida", "Modificación Liquidación Salida"],
+          },
           referenciaID: liqSalidaID,
         },
       });
 
-      // 2. Devolver inventario (revertir cada movimiento)
+      // 2. Devolver solo lo que realmente sigue fuera del inventario (neto)
+      const netoPorInventario = new Map();
       for (const mov of movimientos) {
-        // Incrementar el inventario
+        const signo = mov.tipoMovimiento === "Salida" ? 1 : -1;
+        netoPorInventario.set(
+          mov.inventarioClienteID,
+          (netoPorInventario.get(mov.inventarioClienteID) ?? 0) +
+            signo * Number(mov.cantidadQQ),
+        );
+      }
+
+      for (const [inventarioClienteID, neto] of netoPorInventario) {
+        const devolver = Math.round((neto + Number.EPSILON) * 100) / 100;
+        if (devolver <= 0) continue;
+
         await tx.inventariocliente.update({
-          where: { inventarioClienteID: mov.inventarioClienteID },
-          data: {
-            cantidadQQ: { increment: Number(mov.cantidadQQ) },
-          },
+          where: { inventarioClienteID },
+          data: { cantidadQQ: { increment: devolver } },
         });
 
-        // Registrar movimiento de devolución
         await tx.movimientoinventario.create({
           data: {
-            inventarioClienteID: mov.inventarioClienteID,
+            inventarioClienteID,
             tipoMovimiento: "Entrada",
             referenciaTipo: "Anulación Liquidación Salida",
             referenciaID: liqSalidaID,
-            cantidadQQ: Number(mov.cantidadQQ),
+            cantidadQQ: devolver,
             nota: `Devolución por anulación de liquidación #${liqSalidaID}`,
           },
         });
@@ -164,6 +186,51 @@ export async function PUT(req, context) {
           );
         }
 
+        // Asignar el aumento (FIFO) a las salidas pendientes del comprador,
+        // para que los detalles sigan sumando lo mismo que la liquidación.
+        const salidas = await tx.salida.findMany({
+          where: {
+            compradorID: registroActual.compradorID,
+            productoID: Number(registroActual.productoID),
+            salidaMovimiento: { notIn: ["ANULADO", "Anulado", "anulado"] },
+          },
+          orderBy: { salidaFecha: "asc" },
+          include: {
+            detalleliqsalida: { select: { cantidadQQ: true, movimiento: true } },
+          },
+        });
+
+        let porAsignar = roundToTwo(diferencia);
+        for (const s of salidas) {
+          if (porAsignar <= 0) break;
+          const liquidado = s.detalleliqsalida
+            .filter(
+              (d) =>
+                d.movimiento === null ||
+                !["ANULADO", "Anulado", "anulado"].includes(d.movimiento),
+            )
+            .reduce((acc, d) => acc + Number(d.cantidadQQ || 0), 0);
+          const pendiente = roundToTwo(Number(s.salidaCantidadQQ) - liquidado);
+          if (pendiente <= 0) continue;
+
+          const asignar = roundToTwo(Math.min(pendiente, porAsignar));
+          await tx.detalleliqsalida.create({
+            data: {
+              liqSalidaID,
+              salidaID: s.salidaID,
+              cantidadQQ: asignar,
+              movimiento: "Salida",
+            },
+          });
+          porAsignar = roundToTwo(porAsignar - asignar);
+        }
+
+        if (porAsignar > 0) {
+          throw new Error(
+            `CANTIDAD_EXCEDE: el aumento supera lo pendiente por liquidar en ${porAsignar.toFixed(2)} QQ`,
+          );
+        }
+
         await tx.inventariocliente.update({
           where: { productoID: Number(registroActual.productoID) },
           data: { cantidadQQ: { decrement: diferencia } },
@@ -183,47 +250,58 @@ export async function PUT(req, context) {
         });
       } else if (diferencia < 0) {
         // 2. Si disminuye la cantidad, devolver inventario
-        const cantidadDevolver = Math.abs(diferencia);
+        const cantidadDevolver = roundToTwo(Math.abs(diferencia));
 
-        // Buscar los últimos movimientos de esta liquidación
-        const movimientos = await tx.movimientoinventario.findMany({
+        // Reducir los detalles vigentes (los últimos primero) para que sigan
+        // sumando lo mismo que la liquidación.
+        const detalles = await tx.detalleliqsalida.findMany({
           where: {
-            referenciaTipo: "Liquidación Salida",
-            referenciaID: liqSalidaID,
+            liqSalidaID,
+            OR: [
+              { movimiento: null },
+              { movimiento: { notIn: ["ANULADO", "Anulado", "anulado"] } },
+            ],
           },
-          orderBy: { movimientoID: "desc" },
+          orderBy: { id: "desc" },
         });
 
-        let restanteDevolver = cantidadDevolver;
-
-        for (const mov of movimientos) {
-          if (restanteDevolver <= 0) break;
-
-          const cantidadMov = Number(mov.cantidadQQ);
-          const devolver = Math.min(restanteDevolver, cantidadMov);
-
-          // Incrementar inventario
-          await tx.inventariocliente.update({
-            where: { inventarioClienteID: mov.inventarioClienteID },
-            data: { cantidadQQ: { increment: devolver } },
+        let porQuitar = cantidadDevolver;
+        for (const d of detalles) {
+          if (porQuitar <= 0) break;
+          const quitar = roundToTwo(Math.min(porQuitar, Number(d.cantidadQQ)));
+          await tx.detalleliqsalida.update({
+            where: { id: d.id },
+            data: { cantidadQQ: roundToTwo(Number(d.cantidadQQ) - quitar) },
           });
-
-          // Registrar devolución
-          await tx.movimientoinventario.create({
-            data: {
-              inventarioClienteID: mov.inventarioClienteID,
-              tipoMovimiento: "Entrada",
-              referenciaTipo: "Modificación Liquidación Salida",
-              referenciaID: liqSalidaID,
-              cantidadQQ: devolver,
-              nota: `Ajuste por modificación de liquidación #${liqSalidaID} (${diferencia.toFixed(
-                2
-              )} QQ)`,
-            },
-          });
-
-          restanteDevolver -= devolver;
+          porQuitar = roundToTwo(porQuitar - quitar);
         }
+
+        const inventario = await tx.inventariocliente.findUnique({
+          where: { productoID: Number(registroActual.productoID) },
+        });
+        if (!inventario) {
+          throw new Error(
+            "No se encontró inventario para el producto de la liquidación.",
+          );
+        }
+
+        await tx.inventariocliente.update({
+          where: { productoID: Number(registroActual.productoID) },
+          data: { cantidadQQ: { increment: cantidadDevolver } },
+        });
+
+        await tx.movimientoinventario.create({
+          data: {
+            inventarioClienteID: inventario.inventarioClienteID,
+            tipoMovimiento: "Entrada",
+            referenciaTipo: "Modificación Liquidación Salida",
+            referenciaID: liqSalidaID,
+            cantidadQQ: cantidadDevolver,
+            nota: `Ajuste por modificación de liquidación #${liqSalidaID} (${diferencia.toFixed(
+              2,
+            )} QQ)`,
+          },
+        });
       }
 
       // 3. Actualizar el registro de liquidación
@@ -246,8 +324,12 @@ export async function PUT(req, context) {
   } catch (error) {
     console.error("❌ Error al actualizar liquidación:", error);
 
-    // Manejar error de inventario insuficiente
-    if (error.message && error.message.includes("Inventario insuficiente")) {
+    // Manejar error de inventario insuficiente o aumento mayor al pendiente
+    if (
+      error.message &&
+      (error.message.includes("Inventario insuficiente") ||
+        error.message.startsWith("CANTIDAD_EXCEDE"))
+    ) {
       return new Response(JSON.stringify({ error: error.message }), {
         status: 400,
       });
